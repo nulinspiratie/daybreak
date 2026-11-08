@@ -39,3 +39,9 @@ Best offered as a layout setting rather than a replacement. It suits a window sn
 A small panel listing Overdue, Today, each remaining weekday, Next week, Later and No day, each with a count and a bar in the day-column colours (red overdue, blue today, fading grey after). Clicking an entry filters the tree to tasks scheduled then; clicking it again clears the filter.
 
 Works with either layout and pairs naturally with the one-outliner layout.
+
+## Cut and paste tasks
+
+Ctrl+X on a selected task cuts it (with its subtree); Ctrl+V pastes it as the next sibling of the selected task, or as its first child with a modifier. The cut task stays visible, dimmed, until pasted, and Esc cancels the cut. Nothing is removed until the paste, so it's really a keyboard "move to here".
+
+This is the planned answer for moving a task far across the tree. In V1, Mod+↑↓ moves one slot at a time and dragging covers longer distances. Browsers let pages use Ctrl+X / Ctrl+V, so it works in the browser version too.

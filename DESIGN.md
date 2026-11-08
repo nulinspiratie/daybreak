@@ -44,7 +44,7 @@ All text meets 4.5:1 contrast, including the palest day labels. Keep it that way
 - Custom title bar, 40 px: app icon (blue rounded square with a tick), app name, today's date, an "Add to My Day" button showing Ctrl+Alt+Space, a "Morning review" button, then Windows-style minimise / maximise / close (46 × 40 each).
 - Body: **tree on the left (~60%)**, **My Day on the right (~40%)**.
 - **Task detail opens in place of My Day**, so the tree never shrinks. Esc returns to My Day.
-- A bar of key hints sits under the tree: Enter Edit · N New · Tab Indent · Alt+↑↓ Move · T Today · D Day · B Backlog · S Doing · W Worked on · Space Done · X Cancel · Del Delete · Ctrl+O Details. It shows the edit-mode hints (Enter New below · Tab Indent · Esc Done) while a title is being edited.
+- A bar of key hints sits under the tree: Enter Edit · N New · Tab Indent · Ctrl+↑↓ Move · Ctrl+←→ Fold · M My Day · T Today · D Day · B Backlog · S Doing · W Worked on · Space Done · X Cancel · Del Delete · Ctrl+O Details. It shows the edit-mode hints (Enter New below · Tab Indent · Esc Done) while a title is being edited.
 
 ### Tree
 
@@ -144,6 +144,10 @@ Opens inside the current card (about 620 × 330) on D in the review, or from D i
 
 The bar: as good as an outliner like Logseq without touching the mouse. One letter means the same thing on every screen.
 
+### The modifier key
+
+**Mod** is Ctrl on Windows and Option (Alt) on macOS. Ctrl+arrows have no browser meaning on Windows, and on macOS Cmd+← is browser Back while Option+arrows are free. V1 targets Windows; the Mac mapping just keeps development on other machines natural. Decide the platform once at startup; the key map refers to Mod everywhere.
+
 ### Two modes in the tree and My Day
 
 - **Navigate mode** (default): one row is selected (grey fill, accent ring). Single letters are commands, so typing a letter never starts editing.
@@ -153,12 +157,14 @@ The bar: as good as an outliner like Logseq without touching the mouse. One lett
 
 | Key | Action |
 | --- | --- |
-| ↑ ↓ | Move selection (↓ on an expanded parent goes to its first child) |
-| ← → | Switch pane: → to My Day, ← to the tree |
-| Alt+← / Alt+→ | Collapse / expand |
-| Alt+Shift+← | Go to parent |
-| Alt+↑ / Alt+↓ | Reorder among siblings, children travel along. In My Day: reorder the day |
-| Tab / Shift+Tab | Indent / outdent (tree only) |
+| ↑ ↓ | Previous / next visible row, regardless of hierarchy |
+| ← | Go to parent (tree only) |
+| → | Go to first child; on a collapsed parent, expand it first (tree only) |
+| Home / End | First / last row |
+| Mod+← / Mod+→ | Collapse / expand (tree only) |
+| Mod+↑ / Mod+↓ | Move up / down, children travel along (see "Moving with Mod+↑↓"). In My Day: reorder the day |
+| Tab / Shift+Tab | Indent / outdent (tree only; nothing in Inbox, which is flat) |
+| M | Jump between the tree and My Day (keeps each pane's last selection) |
 | Enter or F2 | Edit title |
 | N | New task below the selected one (tree) / focus the add field (My Day) |
 | T | Schedule today (append to the end of My Day) |
@@ -166,26 +172,39 @@ The bar: as good as an outliner like Logseq without touching the mouse. One lett
 | B | Backlog: clear the scheduled day (in My Day: take it off today) |
 | S | Doing (only one at a time; the previous one becomes Worked on) |
 | W | Worked on |
-| Space | Done / undone |
-| X | Cancel / reopen |
+| Space | Done / undone. On a task with open subtasks, see "Closing a parent" |
+| X | Cancel / reopen. Same double-press rule as Space |
 | Del | Delete the task and its subtree (undo toast) |
 | Ctrl+O | Open the detail panel |
 | O | Open the task's link |
 | Esc | Close detail panel, cancel drag, clear selection |
 | Ctrl+Z | Undo last change (stretch goal) |
 
-Ctrl+N and Ctrl+1–9 are deliberately not used: browsers keep them for new window and tab switching, and the MVP runs in a browser tab. Ctrl+N can be added as an alias in the Tauri shell.
+Plain letters (T, D, B, S, W, X, N, M, O) and Space work the same in the tree and My Day. Ctrl+N and Ctrl+1–9 are deliberately not used: browsers keep them for new window and tab switching, and the MVP runs in a browser tab. Ctrl+N can be added as an alias in the Tauri shell.
 
 ### Edit mode
 
 | Key | Action |
 | --- | --- |
 | Enter | Save, create a new sibling below and edit it (type a list without stopping) |
+| ↑ / ↓ | Save and edit the previous / next row |
 | Tab / Shift+Tab | Indent / outdent while typing |
 | Backspace on an empty title | Delete that row and edit the row above |
-| Alt+↑ / Alt+↓ | Reorder, staying in edit mode |
+| Mod+↑ / Mod+↓ | Move the task, staying in edit mode |
 | Esc | Save and return to navigate mode |
-| ← → Del | Normal text editing |
+| ← → Ctrl+← Ctrl+→ Home End Del | Normal text editing (so collapse / expand only work in navigate mode) |
+
+### Moving with Mod+↑↓
+
+Logseq-style: the task (with its subtree) moves one slot at a time and keeps its depth.
+- Normally it swaps with its previous / next sibling.
+- At the edge of its siblings it carries on into the neighbouring branch at the same depth: moving up from a first child makes it the last child of the parent's previous sibling; moving down from a last child makes it the first child of the parent's next sibling. If there's no such branch, it doesn't move.
+- Between sections: moving the first top-level project up puts it at the end of Inbox, and moving the last Inbox task down makes it the first top-level project. A task with subtasks can't go into Inbox (Inbox is flat), so it stops there.
+- Depth changes only with Tab / Shift+Tab. Moving far away is a job for cut and paste, later (`docs/future-ideas.md`).
+
+### Closing a parent
+
+Space (or X) on a task with open subtasks doesn't act straight away. The first press shows an inline note under the row: "4 open subtasks. Press Space again to close them all." A second press within about 4 seconds closes the task and all its open subtasks; any other key or the timeout dismisses the note. The toast then says "Done 'Milestone 2' and 4 subtasks". Pressing Space again on that task reopens it and exactly the subtasks closed with it. Finishing the last open child never closes the parent automatically. Clicking a parent's checkbox follows the same rule: the first click shows the note, the second closes.
 
 ### Delete toast
 

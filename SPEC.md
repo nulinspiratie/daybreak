@@ -80,6 +80,7 @@ Exactly one at a time:
 - Scheduling a parent for today puts only the parent in My Day, not its children (it shows its `done/total`). May be revisited after real use.
 - S (Doing) or W (Worked on) on a task not scheduled today also schedules it today, appended to My Day: you're working on it today, so it belongs there, and if it's still open tomorrow it comes back in the review as "Continue today?". *(Builder's call.)*
 - Inbox is flat: Tab does nothing on an Inbox task. To give it subtasks, move it into Projects first. *(Builder's call.)*
+- Moving with the keyboard (Mod+↑↓) is Logseq-style: one slot at a time at the same depth, crossing into neighbouring branches and between Inbox and Projects. Exact rules in DESIGN.md, "Moving with Mod+↑↓". Core implements this as `moveUp` / `moveDown` operations with unit tests for every boundary case.
 - Deleting a task deletes its whole subtree. It disappears from every view, the API and the CLI, and from logs written afterwards. A toast offers Undo (Z) for about 8 seconds, which brings the subtree back exactly where it was.
 
 ## 4. The morning review
@@ -273,7 +274,7 @@ Linked Markdown docs (long task descriptions) keep their own done/open state so 
 
 Each phase should be usable on its own. Use seed data from the design (fictional lab tasks) on dev machines.
 
-1. **Core and data.** Schema, migrations, tree operations (create, move with subtree, indent, outdent, reorder, soft delete and restore), scheduling, statuses and marks (one Doing at a time), completed-visibility rules, events. Unit tests for all of it. Seed script.
+1. **Core and data.** Schema, migrations, tree operations (create, move with subtree, indent, outdent, Logseq-style move up/down, close with subtree and reopen, soft delete and restore), scheduling, statuses and marks (one Doing at a time), completed-visibility rules, events. Unit tests for all of it. Seed script.
 2. **Server.** Hono API above, token check, SSE. Integration tests against a temp DB.
 3. **Main window in the browser.** Tree with the full keyboard model (navigate and edit modes, DESIGN.md "Keyboard map"), day column, drag to reorder and indent, My Day with its own order, drag from tree to My Day, inline add in My Day, delete with undo toast, task detail panel, show completed, light and dark themes. README section on running it on Windows.
 4. **Morning review.** Running list, T/D/B/X/Z, day picker, suggestions, start the day, skip.
@@ -293,8 +294,9 @@ Settled on 2026-11-08:
 4. Keys are consistent across screens: T today, D pick a day, B backlog, X cancel, S doing, W worked on, Space done, Z undo. The review uses T/D/B/X/Z.
 5. The review doesn't include tasks already scheduled for today (e.g. added the night before).
 7. Delete exists (Del), as a soft delete with an undo toast; see section 3.
+8. Keyboard model: plain arrows only navigate (↑↓ visible rows, ← parent, → first child); one modifier (Mod = Ctrl on Windows, Option on macOS) for collapse/expand and move; Tab for depth; M switches panes. Avoids browser-reserved keys such as Alt+← (Back) and Ctrl+N.
+9. A parent with open subtasks closes only on a second Space / X, and then closes them too.
 
 Still open:
 
 6. Suggestions rule (section 4) is a first guess. Tune after a week.
-8. Check on the work laptop that the browser lets the page take Alt+← / Alt+→ (normally Back / Forward) once it has focus. If not, pick other collapse/expand keys.
