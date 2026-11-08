@@ -2,9 +2,9 @@ process.env.TZ = 'Europe/Copenhagen'
 
 import { defineConfig } from 'vitest/config'
 
-// Add `packages/server` and `apps/web` here when those packages exist.
+// Add `apps/web` here when that package exists.
 export default defineConfig({
   test: {
-    projects: ['packages/core'],
+    projects: ['packages/core', 'packages/server'],
   },
 })

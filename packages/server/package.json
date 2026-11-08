@@ -1,0 +1,14 @@
+{
+  "name": "@daybreak/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/app.ts",
+    "./paths": "./src/paths.ts"
+  },
+  "dependencies": {
+    "@daybreak/core": "workspace:*",
+    "hono": "^4.13.17"
+  }
+}
