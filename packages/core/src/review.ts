@@ -106,7 +106,7 @@ function candidates(
   return [...out, ...oldInbox]
 }
 
-function lastReviewDate(ctx: Ctx): string | null {
+export function lastReviewDate(ctx: Ctx): string | null {
   return ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_review_date'")?.value ?? null
 }
 

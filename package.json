@@ -5,6 +5,7 @@
   "workspaces": ["packages/*", "apps/*"],
   "scripts": {
     "test": "vitest run",
+    "seed": "bun scripts/seed.ts",
     "test:bun": "bun test ./packages/core/test/sqlite-bun.smoke.ts",
     "typecheck": "tsc --noEmit -p packages/core"
   },
