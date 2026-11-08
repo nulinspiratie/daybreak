@@ -6,10 +6,19 @@ import { rowToTask, TASK_COLUMNS, type TaskRow } from './rows'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/**
+ * The 'recent' rule: a closed task is hidden once it was closed more than 24 h
+ * before `nowMs`, unless something open is still below it.
+ */
+export function isRecentlyHidden(task: Task, hasOpenDescendant: boolean, nowMs: number): boolean {
+  if (task.status === 'open' || hasOpenDescendant || task.closedAt === null) return false
+  return new Date(task.closedAt).getTime() < nowMs - DAY_MS
+}
+
 export function treeView(ctx: Ctx, completed: 'recent' | 'all' | 'none'): TreeView {
   const date = today(ctx)
   const marks = marksOn(ctx, date)
-  const cutoff = new Date(nowIso(ctx)).getTime() - DAY_MS
+  const nowMs = new Date(nowIso(ctx)).getTime()
 
   const tasks = ctx.db
     .all<TaskRow>(`SELECT ${TASK_COLUMNS} FROM tasks WHERE deleted_at IS NULL ORDER BY position, id`)
@@ -53,7 +62,7 @@ export function treeView(ctx: Ctx, completed: 'recent' | 'all' | 'none'): TreeVi
     if (t.status === 'open' || completed === 'all') return false
     if (stats.get(t.id)!.openBelow) return false
     if (completed === 'none') return true
-    return t.closedAt !== null && new Date(t.closedAt).getTime() < cutoff
+    return isRecentlyHidden(t, false, nowMs)
   }
 
   let hiddenCompletedCount = 0

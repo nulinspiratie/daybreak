@@ -46,3 +46,10 @@ export interface TreeView {
   projects: TreeNode[]
   hiddenCompletedCount: number
 }
+
+export interface MoveTarget {
+  parentId: string | null
+  section: Section
+  afterId?: string
+  beforeId?: string
+}
