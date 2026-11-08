@@ -2,7 +2,6 @@
 import type { TreeNode } from '@daybreak/core'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { toggleDoneStatus } from '../src/tree/RowCheckbox'
 import { TreeRow } from '../src/tree/TreeRow'
 import type { FlatRow } from '../src/tree/flatten'
 import { node } from './helpers'
@@ -143,12 +142,6 @@ describe('TreeRow', () => {
     expect(onSelect).toHaveBeenCalledWith('t1')
     fireEvent.click(screen.getByRole('button', { name: 'Tick off' }))
     expect(onToggleDone).toHaveBeenCalledWith('t1')
-  })
-
-  it('a cancelled row reopens, a done row reopens, an open row closes', () => {
-    expect(toggleDoneStatus('cancelled')).toBe('open')
-    expect(toggleDoneStatus('done')).toBe('open')
-    expect(toggleDoneStatus('open')).toBe('done')
   })
 
   it('only Done rows are dimmed; Cancelled is struck in the muted colour', () => {

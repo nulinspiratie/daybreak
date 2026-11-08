@@ -24,6 +24,9 @@ export interface UiState {
   set: (patch: Partial<Omit<UiState, 'set' | 'focusDayAdd'>>) => void
 }
 
+/** The store's actions; `UiState` already carries them, this names them for CommandEnv. */
+export type UiActions = Pick<UiState, 'set' | 'focusDayAdd'>
+
 export const useUi = create<UiState>((set) => ({
   pane: 'tree',
   treeSel: null,

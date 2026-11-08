@@ -1,11 +1,13 @@
 import type { TreeNode } from '@daybreak/core'
-import { useCallback, useMemo, useRef } from 'react'
-import { api, ApiError } from '../api/client'
+import { Fragment, useCallback, useMemo, useRef } from 'react'
+import { api } from '../api/client'
 import { useMutate, useStatus, useTree } from '../api/hooks'
+import type { Command } from '../keyboard/keymap'
+import { useCommandRunner } from '../keyboard/useKeyboard'
+import { ConfirmNote } from '../shell/ConfirmNote'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
 import { DRAFT_ID, flatten, type FlatRow } from './flatten'
-import { toggleDoneStatus } from './RowCheckbox'
 import { TreeRow } from './TreeRow'
 
 function expandedParents(nodes: TreeNode[], out: string[] = []): string[] {
@@ -31,39 +33,40 @@ export function TreePane() {
   const showCompleted = useUi((s) => s.showCompleted)
   const treeSel = useUi((s) => s.treeSel)
   const draft = useUi((s) => s.draft)
+  const confirmId = useUi((s) => (s.pane === 'tree' ? s.confirm?.id : undefined))
   const setUi = useUi((s) => s.set)
   const { data: tree, isError } = useTree(showCompleted ? 'all' : 'recent')
   const { data: status } = useStatus()
   const mutate = useMutate()
+  const runCommand = useCommandRunner()
   const today = status?.today ?? tree?.today ?? ''
 
   const rows = useMemo(() => (tree ? flatten(tree, draft) : []), [tree, draft])
 
   const run = useCallback(
     (fn: () => Promise<unknown>) => {
-      mutate(fn).catch((e: unknown) => {
-        // 409 needs_confirmation (open subtasks): Task 16's double-press rule handles it.
-        if (e instanceof ApiError && e.status === 409) return
-        console.error(e)
-      })
+      mutate(fn).catch((e: unknown) => console.error(e))
     },
     [mutate],
   )
 
-  // Handlers read the latest rows and date through refs so their identity never changes
+  // Handlers read the latest rows through a ref so their identity never changes
   // and memoised rows are not re-rendered by selection changes.
-  const latest = useRef({ rows, today })
-  latest.current = { rows, today }
+  const latest = useRef({ rows })
+  latest.current = { rows }
   const find = (id: string): TreeNode | undefined => latest.current.rows.find((r) => r.id === id)?.node
 
   const onSelect = useCallback((id: string) => setUi({ treeSel: id, pane: 'tree' }), [setUi])
-  const onToggleDone = useCallback(
-    (id: string) => {
-      const n = find(id)
-      if (n) run(() => api.send('PATCH', `/api/tasks/${id}`, { status: toggleDoneStatus(n.status) }))
+  // Clicks on a row's checkbox and quick actions select the row and run the same command as
+  // the key, so a click follows the same rules (e.g. the double press on a parent).
+  const onRowCommand = useCallback(
+    (id: string, cmd: Command) => {
+      setUi({ treeSel: id, pane: 'tree' })
+      runCommand(cmd)
     },
-    [run],
+    [setUi, runCommand],
   )
+  const onToggleDone = useCallback((id: string) => onRowCommand(id, 'status.done'), [onRowCommand])
   const onToggleCollapse = useCallback(
     (id: string) => {
       const collapsed = find(id)?.collapsed === true
@@ -71,19 +74,10 @@ export function TreePane() {
     },
     [run],
   )
-  const onScheduleToday = useCallback(
-    (id: string) => run(() => api.send('POST', `/api/tasks/${id}/schedule`, { date: latest.current.today })),
-    [run],
-  )
-  const onDoing = useCallback(
-    (id: string) => {
-      const doing = find(id)?.mark === 'doing'
-      run(() => api.send('POST', `/api/tasks/${id}/mark`, { mark: doing ? null : 'doing' }))
-    },
-    [run],
-  )
+  const onScheduleToday = useCallback((id: string) => onRowCommand(id, 'schedule.today'), [onRowCommand])
+  const onDoing = useCallback((id: string) => onRowCommand(id, 'mark.doing'), [onRowCommand])
   const onPickDay = useCallback((_id: string) => {}, []) // Task 19
-  const onNewTask = useCallback(() => {}, []) // Task 16/17 wires the draft and edit row
+  const onNewTask = useCallback(() => {}, []) // Task 17 wires the draft and edit row
   const collapseAll = () => {
     if (!tree) return
     for (const id of expandedParents([...tree.inbox, ...tree.projects])) {
@@ -102,18 +96,20 @@ export function TreePane() {
         <span className="row__title row__title--placeholder">New task</span>
       </div>
     ) : (
-      <TreeRow
-        key={r.id}
-        row={r}
-        today={today}
-        selected={treeSel === r.id}
-        onSelect={onSelect}
-        onToggleCollapse={onToggleCollapse}
-        onToggleDone={onToggleDone}
-        onScheduleToday={onScheduleToday}
-        onDoing={onDoing}
-        onPickDay={onPickDay}
-      />
+      <Fragment key={r.id}>
+        <TreeRow
+          row={r}
+          today={today}
+          selected={treeSel === r.id}
+          onSelect={onSelect}
+          onToggleCollapse={onToggleCollapse}
+          onToggleDone={onToggleDone}
+          onScheduleToday={onScheduleToday}
+          onDoing={onDoing}
+          onPickDay={onPickDay}
+        />
+        {confirmId === r.id && <ConfirmNote depth={r.depth} />}
+      </Fragment>
     )
 
   const firstProject = rows.findIndex((r) => r.section === 'projects')

@@ -18,7 +18,7 @@ export const useTree = (completed: CompletedMode) =>
   useQuery({ queryKey: ['tree', completed], queryFn: () => api.get<TreeView>(`/api/tree?completed=${completed}`) })
 
 export const useDay = (date: string) =>
-  useQuery({ queryKey: ['day', date], queryFn: () => api.get<DayView>(`/api/day/${date}`) })
+  useQuery({ queryKey: ['day', date], queryFn: () => api.get<DayView>(`/api/day/${date}`), enabled: date !== '' })
 
 export const useReview = (date: string) =>
   useQuery({ queryKey: ['review', date], queryFn: () => api.get<ReviewView>(`/api/review/${date}`) })

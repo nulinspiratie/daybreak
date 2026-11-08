@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import type { FlatRow } from './flatten'
 import { DayCell } from './DayCell'
 import { RowCheckbox, type RowState } from './RowCheckbox'
@@ -38,10 +38,15 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
   const rowCls = ['row', selected && 'row--selected', state === 'doing' && 'row--doing', state === 'done' && 'row--done']
   const titleCls = ['row__title', strong && 'row__title--strong', closed && 'row__title--struck', state === 'cancelled' && 'row__title--cancelled']
   const collapsed = row.hasChildren && node.collapsed
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (selected) ref.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [selected])
 
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handling arrives with the key map (Task 16)
+    // biome-ignore lint/a11y/useKeyWithClickEvents: keys are handled by the one global listener (useKeyboard)
     <div
+      ref={ref}
       role="treeitem"
       aria-level={depth + 1}
       aria-selected={selected}

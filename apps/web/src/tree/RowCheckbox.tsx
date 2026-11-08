@@ -1,8 +1,5 @@
 export type RowState = 'open' | 'doing' | 'worked' | 'done' | 'cancelled'
 
-/** Ticking an open task closes it; anything else (done, cancelled) reopens it. */
-export const toggleDoneStatus = (status: 'open' | 'done' | 'cancelled'): 'open' | 'done' => (status === 'open' ? 'done' : 'open')
-
 const LABEL: Record<RowState, string> = {
   open: 'Tick off',
   worked: 'Tick off',
