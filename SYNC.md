@@ -24,3 +24,10 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   that project doesn't offer another one in the same review. To change a
   decision, press Z (undo) and decide again.
 - "Worked on Monday" in the review also counts a task left as Doing that day.
+- Toasts appear only where the design asks for them: after a delete
+  ("Deleted … · Undo (Z)") and after closing a task together with its
+  subtasks. Ticking off a single task shows no toast, so it can't push a
+  pending delete-undo off screen. Tell me if you'd like a toast for every
+  close.
+- X on a Done task cancels it, and X on a cancelled task reopens it (Space
+  works the same way for Done).
