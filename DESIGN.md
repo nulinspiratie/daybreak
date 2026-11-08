@@ -1,6 +1,6 @@
 # Daybreak: design spec
 
-Taken from the design canvas (https://claude.ai/artifact/VQCavjAkzp3vyn4wKeLoYv). The canvas still says "Work Planner"; the app is now **Daybreak**. Where this file and the canvas disagree, this file wins. The mock-ups' source files are in [`design/`](design/). Ideas that came up and were left out of V1 are in [`docs/future-ideas.md`](docs/future-ideas.md).
+Taken from the design canvas (https://claude.ai/artifact/VQCavjAkzp3vyn4wKeLoYv). The canvas still says "Work Planner"; the app is now **Daybreak**. Where this file and the canvas disagree, this file wins. In particular the canvas still shows the old review keys (A/S/D/F) and "Drop"; the keys below replace them. The mock-ups' source files are in [`design/`](design/). Ideas that came up and were left out of V1 are in [`docs/future-ideas.md`](docs/future-ideas.md).
 
 ## Feel
 
@@ -34,7 +34,7 @@ Font: `'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', Inter, system-
 | done | #757575 | #9C9C9C | Done title |
 | chip | #EFEFEF | #343434 | Neutral chip |
 
-Review outcome tints (light): today #E3EEFA / #005FB8, another day #EFE8F8 / #6B3FA0, backlog #EDEDED / #4D4D4D, not today #F1F1F1 / #4D4D4D, dropped #FBE9E7 / #B3261E.
+Review outcome tints (light): today #E3EEFA / #005FB8, another day #EFE8F8 / #6B3FA0, backlog #EDEDED / #4D4D4D, not today #F1F1F1 / #4D4D4D, cancelled #FBE9E7 / #B3261E.
 
 All text meets 4.5:1 contrast, including the palest day labels. Keep it that way.
 
@@ -44,11 +44,11 @@ All text meets 4.5:1 contrast, including the palest day labels. Keep it that way
 - Custom title bar, 40 px: app icon (blue rounded square with a tick), app name, today's date, an "Add to My Day" button showing Ctrl+Alt+Space, a "Morning review" button, then Windows-style minimise / maximise / close (46 × 40 each).
 - Body: **tree on the left (~60%)**, **My Day on the right (~40%)**.
 - **Task detail opens in place of My Day**, so the tree never shrinks. Esc returns to My Day.
-- A bar of key hints sits under the tree: Enter New · Tab Indent · Alt+↑↓ Move · T Today · D Day · S Doing · W Worked on · Space Done · X Cancel · Ctrl+O Open.
+- A bar of key hints sits under the tree: Enter Edit · N New · Tab Indent · Alt+↑↓ Move · T Today · D Day · B Backlog · S Doing · W Worked on · Space Done · X Cancel · Del Delete · Ctrl+O Details. It shows the edit-mode hints (Enter New below · Tab Indent · Esc Done) while a title is being edited.
 
 ### Tree
 
-- Header: "Tasks", a "Show completed" toggle with the count of hidden done tasks, "New task" (Ctrl+N), collapse all.
+- Header: "Tasks", a "Show completed" toggle with the count of hidden done tasks, "New task" (N), collapse all.
 - Two section headers: **INBOX** (with open count) and **PROJECTS** (with count). 11 px, semibold, uppercase, 0.04em letter spacing, text2.
 - **Rows are 26 px tall**, about 30 visible at 900 px. 22 px per nesting level, drawn with faint vertical guide lines (1 px `line` colour every 22 px).
 - Row anatomy, left to right: day column, drag handle (visible on hover), indent, chevron (if it has children), 16 px square checkbox (4 px radius), title, then on hover the quick actions with their keys (S, T, D), plus small icons if it has notes or a link. Collapsed parents show `done/total`.
@@ -115,15 +115,15 @@ The source row stays in the tree. My Day shows an insertion line; a dashed "Toda
 - Full window, same title bar with "Morning review" and a "Skip for today" link.
 - Centre column, 820 px wide. Above it: "Good morning — Tuesday 10 November" (12 px, text3) and the heading "Plan today, top to bottom" (24 px, semibold), with "x of y done" on the right.
 - Sections: "LEFT OVER FROM MONDAY · x of y sorted", then "ANYTHING ELSE FOR TODAY? · Suggestions from your tree and Inbox", then the end row.
-- **Decided rows:** 36 px, tinted by outcome, a small white circle with a tick in the outcome colour, the title (struck through if dropped), and an outcome chip ("Today", "Wed", "Backlog", "Dropped", "Not today").
-- **Current item:** a white card, 12 px radius, 2 px accent ring, soft shadow. Path on top with "3 of 7" (or "Suggestion") on the right, the title at 20 px semibold, an optional "Worked on Monday · Continue today?" chip, an optional note, then the action buttons, each with its key cap (A Today / S Another day / D Backlog / F Drop). The first button is primary blue. Drop text is red.
+- **Decided rows:** 36 px, tinted by outcome, a small white circle with a tick in the outcome colour, the title (struck through if cancelled), and an outcome chip ("Today", "Wed", "Backlog", "Cancelled", "Not today").
+- **Current item:** a white card, 12 px radius, 2 px accent ring, soft shadow. Path on top with "3 of 7" (or "Suggestion") on the right, the title at 20 px semibold, an optional "Worked on Monday · Continue today?" chip, an optional note, then the action buttons, each with its key cap (T Today / D Another day / B Backlog / X Cancel; on a suggestion B reads "Not today"). The first button is primary blue. Cancel text is red.
 - **Upcoming rows:** 38 px, empty round checkbox, title, short project name on the right.
 - **End row:** "N tasks for today" with a "Start the day · Space" button; it turns blue once everything is sorted.
-- **Key legend** on the right (220 px): four key caps A S D F labelled "Today", "Another day", "Backlog / not today", "Drop", then: "After S: 1–9 pick today up to 8 days out, or move with the arrows and press Enter. Z undoes the last choice." The screen never changes during the review; the list just runs on.
+- **Key legend** on the right (220 px): four key caps T D B X labelled "Today", "Another day", "Backlog / not today", "Cancel", then: "After D: 1–9 pick today up to 8 days out, or move with the arrows and press Enter. Z undoes the last choice." The screen never changes during the review; the list just runs on.
 
 ### Day picker
 
-Opens inside the current card (about 620 × 330) on S, or from D in the tree. A calendar grid starting today, where each day shows how many tasks are already on it, so you can spread the load. Keys: 1–9 for today up to 8 days out, arrows to move (←→ one day, ↑↓ one week), Enter to pick, Esc to close. In the tree's version there's also "No day" to clear. It should also accept typed input like "fri", "tomorrow" or "20 nov".
+Opens inside the current card (about 620 × 330) on D in the review, or from D in the tree. A calendar grid starting today, where each day shows how many tasks are already on it, so you can spread the load. Keys: 1–9 for today up to 8 days out, arrows to move (←→ one day, ↑↓ one week), Enter to pick, Esc to close. In the tree's version there's also "No day" to clear. It should also accept typed input like "fri", "tomorrow" or "20 nov".
 
 ## My Day pop-up
 
@@ -142,31 +142,58 @@ Opens inside the current card (about 620 × 330) on S, or from D in the tree. A 
 
 ## Keyboard map
 
-### Tree and My Day
+The bar: as good as an outliner like Logseq without touching the mouse. One letter means the same thing on every screen.
+
+### Two modes in the tree and My Day
+
+- **Navigate mode** (default): one row is selected (grey fill, accent ring). Single letters are commands, so typing a letter never starts editing.
+- **Edit mode**: the caret is in a row's title. Letters type. Changes save on Enter, Esc, Tab or leaving the row.
+
+### Navigate mode
 
 | Key | Action |
 | --- | --- |
-| ↑ ↓ | Move selection |
-| ← → | Collapse / expand, or go to parent / first child |
-| Enter | New task below (when editing) / open detail (Ctrl+O also opens) |
-| F2 or typing | Edit title inline |
-| Tab / Shift+Tab | Indent / outdent |
-| Alt+↑ / Alt+↓ | Move up / down, with children |
-| Ctrl+. | Collapse / expand |
-| T | Schedule today (append to My Day) |
+| ↑ ↓ | Move selection (↓ on an expanded parent goes to its first child) |
+| ← → | Switch pane: → to My Day, ← to the tree |
+| Alt+← / Alt+→ | Collapse / expand |
+| Alt+Shift+← | Go to parent |
+| Alt+↑ / Alt+↓ | Reorder among siblings, children travel along. In My Day: reorder the day |
+| Tab / Shift+Tab | Indent / outdent (tree only) |
+| Enter or F2 | Edit title |
+| N | New task below the selected one (tree) / focus the add field (My Day) |
+| T | Schedule today (append to the end of My Day) |
 | D | Pick a day |
-| S | Doing |
+| B | Backlog: clear the scheduled day (in My Day: take it off today) |
+| S | Doing (only one at a time; the previous one becomes Worked on) |
 | W | Worked on |
 | Space | Done / undone |
 | X | Cancel / reopen |
-| N | Focus the add field in My Day |
-| Ctrl+N | New task |
+| Del | Delete the task and its subtree (undo toast) |
+| Ctrl+O | Open the detail panel |
+| O | Open the task's link |
 | Esc | Close detail panel, cancel drag, clear selection |
 | Ctrl+Z | Undo last change (stretch goal) |
 
+Ctrl+N and Ctrl+1–9 are deliberately not used: browsers keep them for new window and tab switching, and the MVP runs in a browser tab. Ctrl+N can be added as an alias in the Tauri shell.
+
+### Edit mode
+
+| Key | Action |
+| --- | --- |
+| Enter | Save, create a new sibling below and edit it (type a list without stopping) |
+| Tab / Shift+Tab | Indent / outdent while typing |
+| Backspace on an empty title | Delete that row and edit the row above |
+| Alt+↑ / Alt+↓ | Reorder, staying in edit mode |
+| Esc | Save and return to navigate mode |
+| ← → Del | Normal text editing |
+
+### Delete toast
+
+Dark toast at the bottom of the window, same style as the quick-add toast: "Deleted 'Port fit routines' and 6 subtasks · Undo (Z)". Stays about 8 seconds; Z or clicking Undo restores the subtree exactly where it was. A newer delete replaces the toast, and Z then undoes the newest one.
+
 ### Morning review
 
-A Today · S Another day · D Backlog (Not today for suggestions) · F Drop · Z Undo · Space Start the day (once sorted). In the day picker: 1–9, arrows, Enter, Esc.
+T Today · D Another day · B Backlog (Not today for suggestions) · X Cancel · Z Undo · Space Start the day (once sorted). In the day picker: 1–9, arrows, Enter, Esc.
 
 ### Global
 
