@@ -107,14 +107,29 @@ describe('task routes', () => {
     expect(out.task.status).toBe('done')
     expect(out.changedIds.length).toBe(body.details.openCount + 1)
   })
-  it('PATCH applies fields before status in one request', async () => {
+  it('PATCH status alone returns {task, changedIds}; status mixed with fields gives 400 and changes nothing', async () => {
     const h = await testApp({ seed: true })
     const t = byTitle(h, INBOX_TASK)
-    const res = await h.req(`/api/tasks/${t.id}`, patch({ title: 'Both', status: 'cancelled' }))
+    const mixed = await h.req(`/api/tasks/${t.id}`, patch({ title: 'Both', status: 'cancelled' }))
+    expect(mixed.status).toBe(400)
+    const body = (await mixed.json()) as { error: string; message: string }
+    expect(body).toMatchObject({ error: 'invalid', message: 'Send status on its own' })
+    expect(h.daybreak.getTask(t.id)).toMatchObject({ title: INBOX_TASK, status: 'open' })
+    const res = await h.req(`/api/tasks/${t.id}`, patch({ status: 'cancelled' }))
     const out = (await res.json()) as { task: Task; changedIds: string[] }
-    expect(out.task).toMatchObject({ title: 'Both', status: 'cancelled' })
+    expect(out.task.status).toBe('cancelled')
     expect(out.changedIds).toEqual([t.id])
     expect((await h.req(`/api/tasks/${t.id}`, patch({ status: 'weird' }))).status).toBe(400)
+  })
+  it('rejects non-object bodies, empty bodies and unknown-only fields with 400', async () => {
+    const h = await testApp({ seed: true })
+    const t = byTitle(h, INBOX_TASK)
+    for (const raw of ['[]', 'null', '"x"']) {
+      const res = await h.req(`/api/tasks/${t.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: raw })
+      expect(res.status, raw).toBe(400)
+    }
+    expect((await h.req(`/api/tasks/${t.id}`, { method: 'PATCH' })).status).toBe(400)
+    expect((await h.req(`/api/tasks/${t.id}`, patch({ colour: 'red' }))).status).toBe(400)
   })
   it('POST move', async () => {
     const h = await testApp({ seed: true })

@@ -44,10 +44,11 @@ export function taskRoutes(d: Daybreak, openLink: (link: string) => void = realO
     const withOpenDescendants = maybe(b, 'withOpenDescendants', isBoolean, 'a boolean')
     if (Object.keys(fields).length === 0 && status === undefined) throw invalid('Nothing to update')
 
-    // Fields first, then status. Two core calls, so a refused status leaves the field edits in place.
-    const updated = Object.keys(fields).length > 0 ? d.update(id, fields) : d.getTask(id)
-    if (status === undefined) return c.json(updated)
-    return c.json(d.setStatus(id, status, { withOpenDescendants }))
+    if (status !== undefined) {
+      if (Object.keys(fields).length > 0) throw invalid('Send status on its own')
+      return c.json(d.setStatus(id, status, { withOpenDescendants }))
+    }
+    return c.json(d.update(id, fields))
   })
 
   app.post('/:id/move', async (c) => {

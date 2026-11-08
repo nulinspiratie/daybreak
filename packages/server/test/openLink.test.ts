@@ -25,10 +25,27 @@ describe('openLink', () => {
     openLink('/x', 'linux', b.fn)
     expect(b.calls[0]![0]).toBe('xdg-open')
   })
-  it('a spawn error event does not throw', () => {
+  it('a spawn error event does not throw and logs one line to stderr', () => {
     const s = fakeSpawn()
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
     openLink('/x', 'linux', s.fn)
     expect(() => s.child.emit('error', new Error('ENOENT'))).not.toThrow()
+    expect(err).toHaveBeenCalledOnce()
+    expect(String(err.mock.calls[0]![0])).toContain('ENOENT')
+    err.mockRestore()
+  })
+  it('rejects NUL bytes and leading dashes as invalid without spawning', () => {
+    const s = fakeSpawn()
+    for (const bad of ['a\0b', '-rf', '--help']) {
+      expect(() => openLink(bad, 'linux', s.fn)).toThrow(expect.objectContaining({ code: 'invalid' }))
+    }
+    expect(s.calls).toEqual([])
+  })
+  it('a synchronous spawn throw becomes invalid', () => {
+    const boom = (() => {
+      throw new Error('spawn exploded')
+    }) as unknown as typeof spawn
+    expect(() => openLink('/x', 'linux', boom)).toThrow(expect.objectContaining({ code: 'invalid' }))
   })
   it('an empty or null link throws invalid', () => {
     const s = fakeSpawn()
