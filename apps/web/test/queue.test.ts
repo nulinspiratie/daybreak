@@ -81,4 +81,19 @@ describe('mutation queue', () => {
     await q.idle()
     expect(drains).toBe(1)
   })
+
+  it('a throwing drain listener does not halt the queue or hide later listeners', async () => {
+    const q = createMutationQueue()
+    const log: string[] = []
+    q.onDrain(() => {
+      log.push('bad')
+      throw new Error('listener boom')
+    })
+    q.onDrain(() => log.push('good'))
+    await q.enqueue(async () => 'a')
+    await q.idle()
+    await expect(q.enqueue(async () => 'b')).resolves.toBe('b')
+    await q.idle()
+    expect(log).toEqual(['bad', 'good', 'bad', 'good'])
+  })
 })

@@ -16,7 +16,14 @@ export function createMutationQueue(): {
       const ws = waiters
       waiters = []
       for (const w of ws) w()
-      for (const cb of [...drainListeners]) cb()
+      for (const cb of [...drainListeners]) {
+        // A throwing listener must not reject `tail`, which would halt the queue.
+        try {
+          cb()
+        } catch (e) {
+          console.error('mutation queue: drain listener threw', e)
+        }
+      }
     }
   }
 
