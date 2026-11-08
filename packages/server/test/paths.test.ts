@@ -117,3 +117,19 @@ describe('loadOrCreateToken', () => {
     expect(statSync(join(dir, 'token')).mode & 0o777).toBe(0o600)
   })
 })
+
+describe('carry-ins', () => {
+  it('assertOutsideRepo: <repo>/..data is inside the repo, not a parent escape', () => {
+    const base = scratch()
+    const repo = join(base, 'repo')
+    mkdirSync(repo)
+    expect(() => assertOutsideRepo(join(repo, '..data'), repo)).toThrow(/inside the repo/)
+  })
+  it('loadConfig rejects null port and null dayStartsAt', () => {
+    for (const body of ['{"port": null}', '{"dayStartsAt": null}']) {
+      const dir = scratch()
+      writeFileSync(join(dir, 'config.json'), body)
+      expect(() => loadConfig(dir), body).toThrow(/config.json/)
+    }
+  })
+})

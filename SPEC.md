@@ -230,19 +230,24 @@ Key decisions:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| GET | /api/status | `{today, needsReview, dayStartsAt}` *(new)* |
 | GET | /api/tree?completed=recent\|all\|none | Whole tree with statuses and today's marks |
 | GET | /api/day/:date | My Day for a date, in day order, with paths |
+| GET | /api/days?from=&to= | Task counts per day in a range *(new)* |
 | POST | /api/tasks | Create `{title, section, parentId?, after?, scheduledOn?}` |
 | PATCH | /api/tasks/:id | Title, notes, link, status, collapsed, tags |
 | DELETE | /api/tasks/:id | Soft-delete the task and its subtree; returns the deleted ids |
 | POST | /api/tasks/:id/restore | Undo a delete (restores the same set of ids) |
 | POST | /api/tasks/:id/move | `{parentId, section, beforeId?, afterId?}` |
+| POST | /api/tasks/:id/nudge | `{direction: 'up' \| 'down' \| 'indent' \| 'outdent'}` *(new)* |
 | POST | /api/tasks/:id/schedule | `{date \| null, beforeId?, afterId?}` (date order) |
 | POST | /api/tasks/:id/mark | `{mark: 'doing' \| 'worked' \| null}` for today |
+| POST | /api/tasks/:id/open-link | Open the task's link or path with the OS; 204 *(new)* |
 | GET | /api/review/:date | Leftovers, suggestions, decisions so far |
 | POST | /api/review/:date/decide | `{taskId, choice: 'today' \| 'day' \| 'backlog' \| 'cancel', date?}` |
 | POST | /api/review/:date/undo | Undo last decision |
 | POST | /api/review/:date/skip | Skip the review today |
+| POST | /api/review/:date/finish | Mark the review finished *(new)* |
 | GET | /api/projects/:id/export.md | Project as a Markdown outline with ids (for agents) |
 | GET | /events/stream | SSE change feed |
 

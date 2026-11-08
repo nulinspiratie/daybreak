@@ -1,7 +1,7 @@
 // Only node: built-ins here: Vite's config loader imports this file (SPEC R5).
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
-import { dirname, isAbsolute, join, relative, resolve, win32 } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep, win32 } from 'node:path'
 
 export interface ServerConfig {
   port: number
@@ -35,7 +35,9 @@ export function assertOutsideRepo(dataDir: string, repoRoot: string): void {
   const dir = realpathLoose(dataDir)
   const repo = realpathLoose(repoRoot)
   const rel = relative(repo, dir)
-  if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) {
+  // An absolute `rel` means a different drive on Windows: outside the repo.
+  const escapes = rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)
+  if (!escapes) {
     throw new Error(
       `Refusing to use ${dir}: it is inside the repository (${repo}). Work data never goes in the repo.`,
     )
@@ -61,11 +63,11 @@ export function loadConfig(dataDir: string): ServerConfig {
     throw new Error(`config.json (${file}) must be a JSON object`)
   }
   const obj = raw as Record<string, unknown>
-  const port = obj.port ?? DEFAULT_CONFIG.port
+  const port = obj.port === undefined ? DEFAULT_CONFIG.port : obj.port
   if (typeof port !== 'number' || !Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(`config.json (${file}): "port" must be an integer from 1 to 65535, got ${JSON.stringify(port)}`)
   }
-  const dayStartsAt = obj.dayStartsAt ?? DEFAULT_CONFIG.dayStartsAt
+  const dayStartsAt = obj.dayStartsAt === undefined ? DEFAULT_CONFIG.dayStartsAt : obj.dayStartsAt
   if (typeof dayStartsAt !== 'string' || !HHMM.test(dayStartsAt)) {
     throw new Error(
       `config.json (${file}): "dayStartsAt" must be HH:MM from 00:00 to 23:59, got ${JSON.stringify(dayStartsAt)}`,

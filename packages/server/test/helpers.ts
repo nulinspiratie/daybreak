@@ -6,7 +6,7 @@ import { createApp } from '../src/app'
 export const TEST_TOKEN = 'a'.repeat(64)
 export const TEST_PORT = 47815
 
-export async function testApp(opts: { now?: string; seed?: boolean } = {}): Promise<{
+export async function testApp(opts: { now?: string; seed?: boolean; openLink?: (link: string) => void } = {}): Promise<{
   app: Hono
   daybreak: Daybreak
   clock: ReturnType<typeof fixedClock>
@@ -17,7 +17,13 @@ export async function testApp(opts: { now?: string; seed?: boolean } = {}): Prom
   const clock = fixedClock(opts.now ?? '2026-11-10T09:00:00Z')
   const daybreak = createDaybreak({ db, clock, config: { dayStartsAt: '04:00' } })
   if (opts.seed) seed(daybreak)
-  const app = createApp({ daybreak, token: TEST_TOKEN, port: TEST_PORT })
+  const app = createApp({
+    daybreak,
+    token: TEST_TOKEN,
+    port: TEST_PORT,
+    dayStartsAt: '04:00',
+    openLink: opts.openLink ?? (() => {}),
+  })
   const req = (path: string, init: RequestInit = {}) => {
     const headers = new Headers({ Host: `127.0.0.1:${TEST_PORT}`, Authorization: `Bearer ${TEST_TOKEN}` })
     new Headers(init.headers).forEach((value, key) => headers.set(key, value))

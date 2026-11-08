@@ -5,11 +5,19 @@ import { Hono } from 'hono'
 import { setCookie } from 'hono/cookie'
 import { COOKIE_NAME, hostGuard, tokenGuard } from './auth'
 import { errorResponse } from './errors'
+import { openLink } from './openLink'
+import { dayRoutes } from './routes/day'
+import { miscRoutes } from './routes/misc'
+import { reviewRoutes } from './routes/review'
+import { taskRoutes } from './routes/tasks'
 
 export interface AppDeps {
   daybreak: Daybreak
   token: string
   port: number
+  dayStartsAt: string
+  /** Defaults to the real OS opener; tests inject a spy. */
+  openLink?: (link: string) => void
   webDist?: string
 }
 
@@ -26,6 +34,11 @@ export function createApp(deps: AppDeps): Hono {
   app.use('/events/*', host, token)
 
   app.get('/api/ping', (c) => c.json({ ok: true }))
+
+  app.route('/api', miscRoutes(deps.daybreak, deps.dayStartsAt))
+  app.route('/api', dayRoutes(deps.daybreak))
+  app.route('/api/tasks', taskRoutes(deps.daybreak, deps.openLink ?? openLink))
+  app.route('/api/review', reviewRoutes(deps.daybreak))
 
   app.get('/', host, (c) => {
     setCookie(c, COOKIE_NAME, deps.token, { httpOnly: true, sameSite: 'Strict', path: '/' })

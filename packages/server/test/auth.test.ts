@@ -48,7 +48,7 @@ describe('auth', () => {
   })
   it('DaybreakError maps to status and JSON body', async () => {
     const { daybreak } = await testApp()
-    const app = createApp({ daybreak, token: TEST_TOKEN, port: TEST_PORT })
+    const app = createApp({ daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00' })
     const mapped = [
       ['not_found', 404],
       ['invalid', 400],
