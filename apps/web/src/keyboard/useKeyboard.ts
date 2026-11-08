@@ -1,8 +1,10 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { api } from '../api/client'
 import { useDay, useMutate, useStatus, useTree } from '../api/hooks'
 import { toast } from '../shell/toastStore'
 import { flatten } from '../tree/flatten'
+import { treeCache } from '../tree/optimistic'
 import { useUi } from '../ui/store'
 import { runCommand } from './commands'
 import { type Command, resolveKey } from './keymap'
@@ -18,6 +20,8 @@ export function useCommandRunner(): (cmd: Command) => void {
   const today = useStatus().data?.today ?? ''
   const { data: day } = useDay(today)
   const mutate = useMutate()
+  const qc = useQueryClient()
+  const cache = useMemo(() => treeCache(qc), [qc])
   const rows = useMemo(() => (tree ? flatten(tree, draft) : []), [tree, draft])
 
   const latest = useRef({ rows, dayItems: day?.items ?? [], today })
@@ -25,11 +29,11 @@ export function useCommandRunner(): (cmd: Command) => void {
 
   return useCallback(
     (cmd: Command) => {
-      const env = { ...latest.current, ui: useUi.getState(), api, mutate, now: Date.now, toast }
+      const env = { ...latest.current, ui: useUi.getState(), api, cache, mutate, now: Date.now, toast }
       if (env.today === '') return // status not loaded yet
       runCommand(cmd, env).catch((e: unknown) => console.error(e))
     },
-    [mutate],
+    [mutate, cache],
   )
 }
 
@@ -42,7 +46,7 @@ const repeats = (cmd: Command) => cmd.startsWith('nav.') || cmd.startsWith('move
 
 /**
  * The keydown handler for the tree and My Day. It stands aside for the review, IME composition,
- * and text fields other than a row's title editor (marked `data-title-editor`, Task 17). A focused
+ * and text fields other than a row's title editor (marked `data-title-editor`). A focused
  * button or link keeps its native Space and Enter (row controls drop focus after a mouse click,
  * so after a click these keys reach the selected row).
  */

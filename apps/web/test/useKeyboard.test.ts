@@ -80,7 +80,7 @@ describe('the global keydown filter', () => {
     }
     expect(run).not.toHaveBeenCalled()
 
-    useUi.getState().set({ editing: { id: 't1', initial: 'a' } })
+    useUi.getState().set({ editing: { id: 't1', initial: 'a', text: 'a' } })
     const editor = add('input', { 'data-title-editor': '' })
     press(editor, 'Escape')
     press(editor, 'x')
@@ -88,7 +88,7 @@ describe('the global keydown filter', () => {
   })
 
   it('a row title editor with an empty value resolves Backspace to edit.deleteEmpty', () => {
-    useUi.getState().set({ editing: { id: 't1', initial: '' } })
+    useUi.getState().set({ editing: { id: 't1', initial: '', text: '' } })
     const editor = add('input', { 'data-title-editor': '' })
     press(editor, 'Backspace')
     ;(editor as HTMLInputElement).value = 'abc'

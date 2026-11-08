@@ -3,6 +3,7 @@ import type { FlatRow } from './flatten'
 import { DayCell } from './DayCell'
 import { RowCheckbox, type RowState } from './RowCheckbox'
 import { rowControlClick } from './rowControlClick'
+import { TitleEditor } from './TitleEditor'
 
 export interface TreeRowProps {
   row: FlatRow
@@ -18,14 +19,19 @@ export interface TreeRowProps {
   onPickDay: (id: string) => void
   /** Id of the confirm note shown under this row, if any. */
   describedBy?: string
+  /** The title is being edited (always so for the draft row). */
+  editing?: boolean
+  /** The user left the title editor: save and return to navigate mode. */
+  onLeaveEdit?: (id: string) => void
 }
-
 
 function stateOf(row: FlatRow): RowState {
   const { status, mark } = row.node
   if (status !== 'open') return status
   return mark ?? 'open'
 }
+
+const noop = () => {}
 
 const GUIDE_DOTS = (
   <svg width="8" height="12" viewBox="0 0 8 12" aria-hidden="true">
@@ -39,7 +45,9 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
   const state = stateOf(row)
   const closed = state === 'done' || state === 'cancelled'
   const strong = state === 'doing' || (row.section === 'projects' && depth === 0)
-  const rowCls = ['row', selected && 'row--selected', state === 'doing' && 'row--doing', state === 'done' && 'row--done']
+  const draft = row.isDraft === true
+  const editing = p.editing === true
+  const rowCls = ['row', selected && 'row--selected', editing && 'row--editing', state === 'doing' && 'row--doing', state === 'done' && 'row--done']
   const titleCls = ['row__title', strong && 'row__title--strong', closed && 'row__title--struck', state === 'cancelled' && 'row__title--cancelled']
   const collapsed = row.hasChildren && node.collapsed
   const ref = useRef<HTMLDivElement>(null)
@@ -54,7 +62,8 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
       role="treeitem"
       aria-level={depth + 1}
       aria-selected={selected}
-      aria-labelledby={`title-${row.id}`}
+      aria-labelledby={editing ? undefined : `title-${row.id}`}
+      aria-label={editing ? node.title || 'New task' : undefined}
       aria-describedby={p.describedBy}
       aria-expanded={row.hasChildren ? !collapsed : undefined}
       className={rowCls.filter(Boolean).join(' ')}
@@ -79,7 +88,11 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
       ) : (
         <span className="row__chev-gap" aria-hidden="true" />
       )}
-      <RowCheckbox state={state} onToggle={() => p.onToggleDone(row.id)} />
+      {draft ? (
+        <span className="cb cb--open" aria-hidden="true" />
+      ) : (
+        <RowCheckbox state={state} onToggle={() => p.onToggleDone(row.id)} />
+      )}
       {state === 'worked' && (
         <span className="row__worked" data-testid="worked-mark" role="img" aria-label="Worked on today">
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14">
@@ -88,7 +101,11 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
           </svg>
         </span>
       )}
-      <span id={`title-${row.id}`} className={titleCls.filter(Boolean).join(' ')}>{node.title}</span>
+      {editing ? (
+        <TitleEditor id={row.id} strong={strong} placeholder={draft ? 'New task' : undefined} onLeave={p.onLeaveEdit ?? noop} />
+      ) : (
+        <span id={`title-${row.id}`} className={titleCls.filter(Boolean).join(' ')}>{node.title}</span>
+      )}
       {node.notes.trim() !== '' && (
         <svg role="img" aria-label="Has notes" className="row__icon" width="12" height="12" viewBox="0 0 16 16">
           <path d="M3 4h10M3 8h10M3 12h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -101,7 +118,7 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
       )}
       {collapsed && <span className="row__count">{node.doneCount}/{node.totalCount}</span>}
       <span className="row__spacer" />
-      {!closed && (
+      {!closed && !editing && (
         <span className="row__actions">
           <button type="button" className="qa" aria-label="Doing now (S)" onClick={(e) => rowControlClick(e, () => p.onDoing(row.id))}>
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>

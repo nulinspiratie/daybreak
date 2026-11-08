@@ -2,8 +2,9 @@ import type { DayItem, DayView, ISODate, Task } from '@daybreak/core'
 import { ApiError, type api } from '../api/client'
 import type { useMutate } from '../api/hooks'
 import type { ToastApi } from '../shell/toastStore'
-import type { FlatRow } from '../tree/flatten'
-import type { UiActions, UiState } from '../ui/store'
+import { blankNode, DRAFT_ID, type FlatRow } from '../tree/flatten'
+import { pendingId, resolveId, settlePendingId, type TreeCache } from '../tree/optimistic'
+import type { Draft, UiActions, UiState } from '../ui/store'
 import type { Command } from './keymap'
 
 /** How long the "Press Space again" note waits for the second press. */
@@ -15,6 +16,8 @@ export interface CommandEnv {
   /** A snapshot taken when the key was pressed; writes go through `ui.set`. */
   ui: UiState & UiActions
   api: typeof api
+  /** Shows new tasks and titles before the server's answer is refetched. */
+  cache: TreeCache
   mutate: ReturnType<typeof useMutate>
   today: ISODate
   now: () => number
@@ -43,7 +46,7 @@ interface Target {
   row?: FlatRow
 }
 
-// The draft row only exists in edit mode (Task 17); navigate-mode commands skip it.
+// The draft row only exists in edit mode; navigate-mode commands skip it.
 const treeRows = (env: CommandEnv) => env.rows.filter((r) => !r.isDraft)
 
 function paneIds(env: CommandEnv): string[] {
@@ -83,7 +86,8 @@ function neighbourAfterRemoval(env: CommandEnv, t: Target): string | null {
   return ids[i + 1] ?? ids[i - 1] ?? null
 }
 
-const taskPath = (id: string, action = '') => `/api/tasks/${id}${action}`
+// Built inside each queued write, so a placeholder id from a draft is already the real id.
+const taskPath = (id: string, action = '') => `/api/tasks/${resolveId(id)}${action}`
 
 function navigate(env: CommandEnv, cmd: 'nav.up' | 'nav.down' | 'nav.first' | 'nav.last'): void {
   const ids = paneIds(env)
@@ -138,11 +142,199 @@ async function toggleClosed(env: CommandEnv, t: Target, want: Closed): Promise<v
   }
 }
 
-/** Runs a navigate-mode command. Edit-mode commands, edit.start and new.below arrive with Task 17. */
+/** Deletes the task and its subtree and shows the undo toast. The caller has already moved the selection. */
+async function deleteWithToast(env: CommandEnv, t: Target): Promise<void> {
+  // Where the task was listed, so undo reselects it only in a pane it comes back to.
+  const restoreIn: Pane[] = []
+  if (treeRows(env).some((r) => r.id === t.id)) restoreIn.push('tree')
+  if (env.dayItems.some((i) => i.task.id === t.id)) restoreIn.push('day')
+  if (env.ui.detailId === t.id) env.ui.set({ detailId: null })
+  const res = await env.mutate(() => env.api.send<{ deletedIds: string[] }>('DELETE', taskPath(t.id)))
+  env.toast.show({
+    message: `Deleted '${t.task.title}'${andSubtasks(Math.max(0, res.deletedIds.length - 1))}`,
+    restoreId: t.id,
+    restoreIn,
+  })
+}
+
+// ---- Edit mode (tree only; My Day's editing is Task 18) ----
+
+type Editing = NonNullable<UiState['editing']>
+
+const blank = (text: string) => text.trim() === ''
+
+function openDraft(env: CommandEnv, draft: Draft): void {
+  env.ui.set({ draft, editing: { id: DRAFT_ID, initial: '', text: '' }, treeSel: DRAFT_ID })
+}
+
+function editRow(env: CommandEnv, row: FlatRow): void {
+  env.ui.set({ draft: null, editing: { id: row.id, initial: row.node.title, text: row.node.title }, treeSel: row.id })
+}
+
+function leaveEdit(env: CommandEnv, selected: string | null): void {
+  env.ui.set({ draft: null, editing: null, treeSel: selected })
+}
+
+/** Where the selection goes when a draft is dropped: the task it was opened after, else its parent. */
+const draftAnchor = (d: Draft) => d.afterId ?? d.parentId ?? null
+
+/**
+ * PATCHes the title only if it changed. An emptied title reverts instead: the server rejects an
+ * empty one, and Backspace is how a row is deleted. Returns the write, or null if nothing was sent.
+ */
+function saveTitle(env: CommandEnv, ed: Editing): Promise<unknown> | null {
+  if (ed.id === DRAFT_ID || blank(ed.text) || ed.text === ed.initial) return null
+  env.cache.update(ed.id, { title: ed.text })
+  return env.mutate(() => env.api.send('PATCH', taskPath(ed.id), { title: ed.text }))
+}
+
+/**
+ * Creates the draft's task, shown at once under a placeholder id that becomes the real id (in the
+ * cache, the selection, editing and any later draft) as soon as the server answers.
+ */
+function createDraft(env: CommandEnv, d: Draft, title: string): { id: string; done: Promise<void> } {
+  const id = pendingId()
+  env.cache.insert({ ...blankNode(id, d.section, d.parentId), title }, d)
+  const done = env.mutate(async () => {
+    // Resolved now, inside the queue: the anchor may be a task whose create was only just answered.
+    const body: Record<string, unknown> = { title, section: d.section }
+    if (d.parentId !== null) body.parentId = resolveId(d.parentId)
+    if (d.afterId !== undefined) body.afterId = resolveId(d.afterId)
+    if (d.beforeId !== undefined) body.beforeId = resolveId(d.beforeId)
+    const task = await env.api.send<Task>('POST', '/api/tasks', body)
+    env.cache.update(id, task)
+    settlePendingId(id, task.id)
+    env.ui.replaceId(id, task.id)
+  })
+  return { id, done }
+}
+
+/** The row just above `rows[i]` at its depth and under the same parent, if any. */
+function previousSibling(rows: FlatRow[], i: number): FlatRow | undefined {
+  const { depth, section } = rows[i]!
+  for (let j = i - 1; j >= 0; j--) {
+    const r = rows[j]!
+    if (r.depth < depth || r.section !== section) return undefined
+    if (r.depth === depth) return r
+  }
+  return undefined
+}
+
+async function editDraft(cmd: Command, env: CommandEnv, d: Draft, text: string): Promise<void> {
+  const { rows } = env
+  const i = rows.findIndex((r) => r.isDraft)
+  switch (cmd) {
+    case 'edit.commitNew': {
+      if (blank(text)) return leaveEdit(env, draftAnchor(d)) // Enter twice ends a list
+      const created = createDraft(env, d, text)
+      openDraft(env, { section: d.section, parentId: d.parentId, afterId: created.id })
+      return created.done
+    }
+    case 'edit.exit': {
+      if (blank(text)) return leaveEdit(env, draftAnchor(d))
+      const created = createDraft(env, d, text)
+      leaveEdit(env, created.id)
+      return created.done
+    }
+    case 'edit.prev':
+    case 'edit.next': {
+      const next = rows[cmd === 'edit.prev' ? i - 1 : i + 1]
+      if (i < 0 || !next) return
+      const created = blank(text) ? null : createDraft(env, d, text)
+      editRow(env, next)
+      return created?.done
+    }
+    case 'edit.deleteEmpty': {
+      const above = rows[i - 1]
+      if (above) return editRow(env, above)
+      return leaveEdit(env, rows[i + 1]?.id ?? null)
+    }
+    case 'indent': {
+      // Inbox is flat. The draft becomes the last child of its previous sibling, expanded to show it.
+      const prev = i < 0 || d.section === 'inbox' ? undefined : previousSibling(rows, i)
+      if (!prev) return
+      openDraft(env, { section: 'projects', parentId: prev.id })
+      if (!prev.node.collapsed) return
+      env.cache.update(prev.id, { collapsed: false })
+      await env.mutate(() => env.api.send('PATCH', taskPath(prev.id), { collapsed: false }))
+      return
+    }
+    case 'outdent': {
+      const parent = d.parentId === null ? undefined : rows.find((r) => r.id === d.parentId)
+      if (!parent) return
+      openDraft(env, { section: d.section, parentId: parent.parentId, afterId: parent.id })
+      return
+    }
+    default:
+      return // Mod+↑↓ and anything else: a draft has nothing to move yet
+  }
+}
+
+async function editTask(cmd: Command, env: CommandEnv, ed: Editing): Promise<void> {
+  const { rows } = env
+  const i = rows.findIndex((r) => r.id === ed.id)
+  const row = rows[i]
+  /** Saves, then keeps editing the same task, which the server is about to move. */
+  const saveAndNudge = (direction: 'up' | 'down' | 'indent' | 'outdent') => {
+    const saved = saveTitle(env, ed)
+    if (saved) env.ui.set({ editing: { ...ed, initial: ed.text } })
+    return env.mutate(() => env.api.send('POST', taskPath(ed.id, '/nudge'), { direction }))
+  }
+  switch (cmd) {
+    case 'edit.commitNew': {
+      const saved = saveTitle(env, ed)
+      if (row) openDraft(env, { section: row.section, parentId: row.parentId, afterId: row.id })
+      else leaveEdit(env, ed.id)
+      await saved
+      return
+    }
+    case 'edit.exit': {
+      const saved = saveTitle(env, ed)
+      leaveEdit(env, ed.id)
+      await saved
+      return
+    }
+    case 'edit.prev':
+    case 'edit.next': {
+      const next = rows[cmd === 'edit.prev' ? i - 1 : i + 1]
+      if (i < 0 || !next) return
+      const saved = saveTitle(env, ed)
+      editRow(env, next)
+      await saved
+      return
+    }
+    case 'edit.deleteEmpty': {
+      if (!row || ed.text !== '') return
+      const t: Target = { id: row.id, task: row.node, row }
+      const above = rows[i - 1]
+      if (above) editRow(env, above)
+      else leaveEdit(env, neighbourAfterRemoval(env, t))
+      return deleteWithToast(env, t)
+    }
+    case 'indent':
+    case 'outdent':
+      await saveAndNudge(cmd)
+      return
+    case 'move.up':
+    case 'move.down':
+      await saveAndNudge(cmd === 'move.up' ? 'up' : 'down')
+      return
+    default:
+      return
+  }
+}
+
+/** Runs a command: edit-mode ones while a title is being edited, navigate-mode ones otherwise. */
 export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
   const { ui, api, mutate } = env
   // Any command other than Space/X dismisses the "Press Space again" note.
   if (ui.confirm && cmd !== 'status.done' && cmd !== 'status.cancel') ui.set({ confirm: null })
+
+  if (ui.editing) {
+    if (ui.editing.id !== DRAFT_ID) return editTask(cmd, env, ui.editing)
+    if (ui.draft) return editDraft(cmd, env, ui.draft, ui.editing.text)
+    return leaveEdit(env, null) // editing a draft that is gone: nothing to save
+  }
 
   switch (cmd) {
     case 'nav.up':
@@ -165,8 +357,12 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       if (shown.restoreIn?.includes(ui.pane)) select(env, id)
       return
     }
-    case 'edit.start':
-    case 'new.below':
+    case 'new.below': {
+      if (ui.pane === 'day') return ui.focusDayAdd()
+      // After the selected task's subtree at its level; with no selection, at the end of Inbox.
+      const row = target(env)?.row
+      return openDraft(env, row ? { section: row.section, parentId: row.parentId, afterId: row.id } : { section: 'inbox', parentId: null })
+    }
     case 'edit.commitNew':
     case 'edit.prev':
     case 'edit.next':
@@ -181,6 +377,9 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
   const { row } = t
 
   switch (cmd) {
+    case 'edit.start':
+      if (row) editRow(env, row) // editing in My Day is Task 18
+      return
     case 'nav.parent':
       if (row?.parentId && treeRows(env).some((r) => r.id === row.parentId)) select(env, row.parentId)
       return
@@ -230,21 +429,9 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       return toggleClosed(env, t, 'done')
     case 'status.cancel':
       return toggleClosed(env, t, 'cancelled')
-    case 'delete': {
-      // Where the task was listed, so undo reselects it only in a pane it comes back to.
-      const restoreIn: Pane[] = []
-      if (treeRows(env).some((r) => r.id === t.id)) restoreIn.push('tree')
-      if (env.dayItems.some((i) => i.task.id === t.id)) restoreIn.push('day')
+    case 'delete':
       select(env, neighbourAfterRemoval(env, t))
-      if (ui.detailId === t.id) ui.set({ detailId: null })
-      const res = await mutate(() => api.send<{ deletedIds: string[] }>('DELETE', taskPath(t.id)))
-      env.toast.show({
-        message: `Deleted '${t.task.title}'${andSubtasks(Math.max(0, res.deletedIds.length - 1))}`,
-        restoreId: t.id,
-        restoreIn,
-      })
-      return
-    }
+      return deleteWithToast(env, t)
     case 'detail.open':
       return ui.set({ detailId: t.id })
     case 'link.open':

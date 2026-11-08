@@ -1,12 +1,13 @@
 import type { DayItem, TreeNode, TreeView } from '@daybreak/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, type api } from '../src/api/client'
+import { ApiError } from '../src/api/client'
 import { createMutationQueue } from '../src/api/queue'
 import { type CommandEnv, confirmNoteText, runCommand } from '../src/keyboard/commands'
 import { TOAST_MS, toast, toastText, useToastStore } from '../src/shell/toastStore'
 import { flatten } from '../src/tree/flatten'
+import type { TreeCache } from '../src/tree/optimistic'
 import { useUi } from '../src/ui/store'
-import { node } from './helpers'
+import { createFakeApi, node } from './helpers'
 
 const TODAY = '2026-11-09'
 
@@ -33,30 +34,20 @@ const DAY: DayItem[] = [
   dayItem(node('d3', [], { scheduledOn: TODAY, title: 'Day three' })),
 ]
 
-type Call = [method: string, path: string, body?: unknown]
-let calls: Call[]
 let clock: number
-let reply: (method: string, path: string, body?: unknown) => unknown
+const fake = createFakeApi()
+const { calls } = fake
 const queue = () => createMutationQueue()
 let q = queue()
-
-const fakeApi = {
-  get: vi.fn(async (path: string) => {
-    calls.push(['GET', path])
-    return reply('GET', path)
-  }),
-  send: vi.fn(async (method: string, path: string, body?: unknown) => {
-    calls.push([method, path, body])
-    return reply(method, path, body)
-  }),
-} as unknown as typeof api
+const noCache: TreeCache = { insert: () => {}, update: () => {} }
 
 function env(over: Partial<CommandEnv> = {}): CommandEnv {
   return {
     rows: flatten(view()),
     dayItems: DAY,
     ui: useUi.getState(),
-    api: fakeApi,
+    api: fake.api,
+    cache: noCache,
     mutate: (fn) => q.enqueue(fn),
     today: TODAY,
     now: () => clock,
@@ -73,17 +64,17 @@ const needsConfirmation = (openCount: number) =>
   new ApiError(409, 'needs_confirmation', `has ${openCount} open subtasks`, { openCount })
 
 beforeEach(() => {
-  calls = []
+  calls.length = 0
   clock = 1_000_000
   q = queue()
-  reply = () => undefined
+  fake.reply = () => undefined
   ui().set({ pane: 'tree', treeSel: null, daySel: null, confirm: null, detailId: null, editing: null, draft: null })
   toast.dismiss()
 })
 
 describe('closing a parent: the double-press rule', () => {
   beforeEach(() => {
-    reply = (method, _path, body) => {
+    fake.reply = (method, _path, body) => {
       const b = body as { status?: string; withOpenDescendants?: boolean } | undefined
       if (method === 'PATCH' && b?.status === 'done' && !b.withOpenDescendants) throw needsConfirmation(4)
       return { task: node('m2', [], { status: 'done' }), changedIds: ['m2', 'c1', 'c2', 'c3', 'c4'] }
@@ -129,7 +120,7 @@ describe('closing a parent: the double-press rule', () => {
   })
 
   it('X uses the same rule with cancel wording', async () => {
-    reply = (_m, _p, body) => {
+    fake.reply = (_m, _p, body) => {
       if (!(body as { withOpenDescendants?: boolean }).withOpenDescendants) throw needsConfirmation(1)
       return { task: node('m2', [], { status: 'cancelled' }), changedIds: ['m2', 'c1'] }
     }
@@ -154,7 +145,7 @@ describe('closing a parent: the double-press rule', () => {
   })
 
   it('a leaf closes at once with no toast (R27)', async () => {
-    reply = () => ({ task: node('c1'), changedIds: ['c1'] })
+    fake.reply = () => ({ task: node('c1'), changedIds: ['c1'] })
     select('c1')
     await run('status.done')
     await run('status.cancel')
@@ -166,7 +157,7 @@ describe('closing a parent: the double-press rule', () => {
   })
 
   it('a delete toast survives closing a task', async () => {
-    reply = (method) => (method === 'DELETE' ? { deletedIds: ['p3'] } : { task: node('c1'), changedIds: ['c1'] })
+    fake.reply = (method) => (method === 'DELETE' ? { deletedIds: ['p3'] } : { task: node('c1'), changedIds: ['c1'] })
     select('p3')
     await run('delete')
     select('c1')
@@ -175,7 +166,7 @@ describe('closing a parent: the double-press rule', () => {
   })
 
   it('R26: Space toggles done, X toggles cancelled; the other closed status is switched, not reopened', async () => {
-    reply = () => ({ task: node('c1'), changedIds: ['c1'] })
+    fake.reply = () => ({ task: node('c1'), changedIds: ['c1'] })
     select('c1')
     const withStatus = (status: 'done' | 'cancelled') =>
       flatten(view()).map((r) => (r.id === 'c1' ? { ...r, node: { ...r.node, status } } : r))
@@ -195,7 +186,7 @@ describe('closing a parent: the double-press rule', () => {
 
 describe('delete and undo', () => {
   it('delete shows the toast "Deleted \'Port fit routines\' and 6 subtasks · Undo (Z)"', async () => {
-    reply = (method) => (method === 'DELETE' ? { deletedIds: ['p1', 'm2', 'c1', 'c2', 'c3', 'c4', 'c5'] } : { restoredIds: [] })
+    fake.reply = (method) => (method === 'DELETE' ? { deletedIds: ['p1', 'm2', 'c1', 'c2', 'c3', 'c4', 'c5'] } : { restoredIds: [] })
     select('p1')
     await run('delete')
     expect(calls).toEqual([['DELETE', '/api/tasks/p1', undefined]])
@@ -209,7 +200,7 @@ describe('delete and undo', () => {
   })
 
   it('a leaf delete has no count; the last row selects the previous one', async () => {
-    reply = () => ({ deletedIds: ['p3'] })
+    fake.reply = () => ({ deletedIds: ['p3'] })
     select('p3')
     await run('delete')
     expect(toastText(toast.current()!)).toBe("Deleted 'p3' · Undo (Z)")
@@ -217,7 +208,7 @@ describe('delete and undo', () => {
   })
 
   it('a newer delete replaces the toast and Z undoes the newest', async () => {
-    reply = (_m, path) => ({ deletedIds: [path.split('/')[3]] })
+    fake.reply = (_m, path) => ({ deletedIds: [path.split('/')[3]] })
     select('c5')
     await run('delete')
     select('p3')
@@ -227,7 +218,7 @@ describe('delete and undo', () => {
   })
 
   it('toast.undo selects the restored task only in a pane it belongs to', async () => {
-    reply = (method) => (method === 'DELETE' ? { deletedIds: ['c5'] } : { restoredIds: ['c5'] })
+    fake.reply = (method) => (method === 'DELETE' ? { deletedIds: ['c5'] } : { restoredIds: ['c5'] })
     ui().set({ daySel: 'd1' })
     select('c5')
     await run('delete')
@@ -237,7 +228,7 @@ describe('delete and undo', () => {
     expect(ui()).toMatchObject({ pane: 'day', daySel: 'd1', treeSel: 'p2' })
 
     // A My Day item deleted from My Day is reselected there.
-    reply = (method) => (method === 'DELETE' ? { deletedIds: ['d2'] } : { restoredIds: ['d2'] })
+    fake.reply = (method) => (method === 'DELETE' ? { deletedIds: ['d2'] } : { restoredIds: ['d2'] })
     select('d2', 'day')
     await run('delete')
     expect(ui().daySel).toBe('d3')
@@ -246,7 +237,7 @@ describe('delete and undo', () => {
   })
 
   it('toast.undo keeps the toast when the restore fails, so Z can be tried again', async () => {
-    reply = (method) => {
+    fake.reply = (method) => {
       if (method === 'DELETE') return { deletedIds: ['p3'] }
       throw new ApiError(500, 'internal', 'boom')
     }
@@ -268,7 +259,7 @@ describe('moves', () => {
     const log: string[] = []
     let n = 0
     let delay = 25
-    reply = () => {
+    fake.reply = () => {
       const k = ++n
       log.push(`start ${k}`)
       return new Promise((r) =>
@@ -295,7 +286,7 @@ describe('moves', () => {
   })
 
   it('My Day move reorders the day against a fresh day view', async () => {
-    reply = (method) => (method === 'GET' ? { items: DAY } : node('d2'))
+    fake.reply = (method) => (method === 'GET' ? { items: DAY } : node('d2'))
     select('d2', 'day')
     await run('move.up')
     await run('move.down')
@@ -309,7 +300,7 @@ describe('moves', () => {
   })
 
   it('moving the first My Day item up does nothing', async () => {
-    reply = () => ({ items: DAY })
+    fake.reply = () => ({ items: DAY })
     select('d1', 'day')
     await run('move.up')
     expect(calls).toEqual([['GET', `/api/day/${TODAY}`]])
@@ -456,15 +447,6 @@ describe('scheduling, marks, detail and link', () => {
       await run(cmd)
     }
     expect(calls).toEqual([])
-  })
-
-  it('edit-mode commands, edit.start and new.below are no-ops for now', async () => {
-    select('c1')
-    for (const cmd of ['edit.start', 'new.below', 'edit.commitNew', 'edit.prev', 'edit.next', 'edit.deleteEmpty', 'edit.exit'] as const) {
-      await run(cmd)
-    }
-    expect(calls).toEqual([])
-    expect(ui()).toMatchObject({ treeSel: 'c1', editing: null, draft: null })
   })
 })
 

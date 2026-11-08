@@ -7,7 +7,7 @@ import { useCommandRunner } from '../keyboard/useKeyboard'
 import { CONFIRM_NOTE_ID, ConfirmNote } from '../shell/ConfirmNote'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
-import { DRAFT_ID, flatten, type FlatRow } from './flatten'
+import { flatten, type FlatRow } from './flatten'
 import { TreeRow } from './TreeRow'
 
 function expandedParents(nodes: TreeNode[], out: string[] = []): string[] {
@@ -33,6 +33,7 @@ export function TreePane() {
   const showCompleted = useUi((s) => s.showCompleted)
   const treeSel = useUi((s) => s.treeSel)
   const draft = useUi((s) => s.draft)
+  const editingId = useUi((s) => s.editing?.id)
   const confirmId = useUi((s) => (s.pane === 'tree' ? s.confirm?.id : undefined))
   const setUi = useUi((s) => s.set)
   const { data: tree, isError } = useTree(showCompleted ? 'all' : 'recent')
@@ -77,7 +78,18 @@ export function TreePane() {
   const onScheduleToday = useCallback((id: string) => onRowCommand(id, 'schedule.today'), [onRowCommand])
   const onDoing = useCallback((id: string) => onRowCommand(id, 'mark.doing'), [onRowCommand])
   const onPickDay = useCallback((_id: string) => {}, []) // Task 19
-  const onNewTask = useCallback(() => {}, []) // Task 17 wires the draft and edit row
+  // Same as N: a draft after the selected task's subtree, or at the end of Inbox.
+  const onNewTask = useCallback(() => {
+    setUi({ pane: 'tree' })
+    runCommand('new.below')
+  }, [setUi, runCommand])
+  // Blur from the title editor; one that comes after editing moved elsewhere is ignored.
+  const onLeaveEdit = useCallback(
+    (id: string) => {
+      if (useUi.getState().editing?.id === id) runCommand('edit.exit')
+    },
+    [runCommand],
+  )
   const collapseAll = () => {
     if (!tree) return
     for (const id of expandedParents([...tree.inbox, ...tree.projects])) {
@@ -86,32 +98,25 @@ export function TreePane() {
   }
 
   const inboxOpen = tree ? tree.inbox.filter((n) => n.status === 'open').length : 0
-  const renderRow = (r: FlatRow) =>
-    r.id === DRAFT_ID ? (
-      <div key={r.id} role="treeitem" aria-level={r.depth + 1} aria-selected="false" className="row row--draft">
-        <span className="day" />
-        <span className="row__handle" />
-        <span className="row__indent" style={{ width: r.depth * 22 }} />
-        <span className="row__chev-gap" />
-        <span className="row__title row__title--placeholder">New task</span>
-      </div>
-    ) : (
-      <Fragment key={r.id}>
-        <TreeRow
-          row={r}
-          today={today}
-          selected={treeSel === r.id}
-          onSelect={onSelect}
-          onToggleCollapse={onToggleCollapse}
-          onToggleDone={onToggleDone}
-          onScheduleToday={onScheduleToday}
-          onDoing={onDoing}
-          onPickDay={onPickDay}
-          describedBy={confirmId === r.id ? CONFIRM_NOTE_ID : undefined}
-        />
-        {confirmId === r.id && <ConfirmNote depth={r.depth} />}
-      </Fragment>
-    )
+  const renderRow = (r: FlatRow) => (
+    <Fragment key={r.id}>
+      <TreeRow
+        row={r}
+        today={today}
+        selected={treeSel === r.id}
+        onSelect={onSelect}
+        onToggleCollapse={onToggleCollapse}
+        onToggleDone={onToggleDone}
+        onScheduleToday={onScheduleToday}
+        onDoing={onDoing}
+        onPickDay={onPickDay}
+        describedBy={confirmId === r.id ? CONFIRM_NOTE_ID : undefined}
+        editing={editingId === r.id}
+        onLeaveEdit={onLeaveEdit}
+      />
+      {confirmId === r.id && <ConfirmNote depth={r.depth} />}
+    </Fragment>
+  )
 
   const firstProject = rows.findIndex((r) => r.section === 'projects')
   const projectsAt = firstProject < 0 ? rows.length : firstProject

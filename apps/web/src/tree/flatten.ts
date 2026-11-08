@@ -28,12 +28,17 @@ function afterSubtree(rows: FlatRow[], i: number): number {
   return j
 }
 
-function draftRow(draft: Draft, depth: number): FlatRow {
-  const node: TreeNode = {
-    id: DRAFT_ID, parentId: draft.parentId, section: draft.section, position: '', title: '', notes: '',
-    link: null, scheduledOn: null, dayPosition: null, status: 'open', closedAt: null, deletedAt: null,
-    collapsed: false, tags: [], createdAt: '', updatedAt: '', children: [], mark: null, doneCount: 0, totalCount: 0,
+/** A task with no title, children or schedule: the draft row, or a new task the server has not answered for yet. */
+export function blankNode(id: string, section: Section, parentId: string | null): TreeNode {
+  return {
+    id, parentId, section, position: '', title: '', notes: '', link: null, scheduledOn: null, dayPosition: null,
+    status: 'open', closedAt: null, deletedAt: null, collapsed: false, tags: [], createdAt: '', updatedAt: '',
+    children: [], mark: null, doneCount: 0, totalCount: 0,
   }
+}
+
+function draftRow(draft: Draft, depth: number): FlatRow {
+  const node = blankNode(DRAFT_ID, draft.section, draft.parentId)
   return { id: DRAFT_ID, node, depth, section: draft.section, parentId: draft.parentId, hasChildren: false, isDraft: true }
 }
 
