@@ -1,0 +1,91 @@
+import type { Ctx } from '../ctx'
+import { nowIso, today } from '../ctx'
+import type { Task, TreeNode, TreeView } from '../types'
+import { marksOn } from './marks'
+import { rowToTask, TASK_COLUMNS, type TaskRow } from './rows'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+export function treeView(ctx: Ctx, completed: 'recent' | 'all' | 'none'): TreeView {
+  const date = today(ctx)
+  const marks = marksOn(ctx, date)
+  const cutoff = new Date(nowIso(ctx)).getTime() - DAY_MS
+
+  const tasks = ctx.db
+    .all<TaskRow>(`SELECT ${TASK_COLUMNS} FROM tasks WHERE deleted_at IS NULL ORDER BY position, id`)
+    .map(rowToTask)
+  const kids = new Map<string | null, Task[]>()
+  for (const t of tasks) {
+    const list = kids.get(t.parentId)
+    if (list) list.push(t)
+    else kids.set(t.parentId, [t])
+  }
+
+  // Per task: counts over all live descendants, and whether any is open.
+  interface Stat {
+    done: number
+    total: number
+    size: number
+    openBelow: boolean
+  }
+  const stats = new Map<string, Stat>()
+  const measure = (t: Task): Stat => {
+    let done = 0
+    let total = 0
+    let size = 0
+    let openBelow = false
+    for (const c of kids.get(t.id) ?? []) {
+      const s = measure(c)
+      size += 1 + s.size
+      done += s.done
+      total += s.total
+      openBelow ||= s.openBelow
+      if (c.status === 'open') openBelow = true
+      if (c.status !== 'cancelled') total += 1
+      if (c.status === 'done') done += 1
+    }
+    const result: Stat = { done, total, size, openBelow }
+    stats.set(t.id, result)
+    return result
+  }
+
+  const isHidden = (t: Task): boolean => {
+    if (t.status === 'open' || completed === 'all') return false
+    if (stats.get(t.id)!.openBelow) return false
+    if (completed === 'none') return true
+    return t.closedAt !== null && new Date(t.closedAt).getTime() < cutoff
+  }
+
+  let hiddenCompletedCount = 0
+  const build = (t: Task): TreeNode | null => {
+    if (isHidden(t)) {
+      hiddenCompletedCount += 1 + stats.get(t.id)!.size
+      return null
+    }
+    const s = stats.get(t.id)!
+    const children: TreeNode[] = []
+    for (const c of kids.get(t.id) ?? []) {
+      const node = build(c)
+      if (node) children.push(node)
+    }
+    return { ...t, children, mark: marks.get(t.id) ?? null, doneCount: s.done, totalCount: s.total }
+  }
+
+  const roots = (section: Task['section']) => {
+    const out: TreeNode[] = []
+    for (const t of kids.get(null) ?? []) {
+      if (t.section !== section) continue
+      measure(t)
+    }
+    for (const t of kids.get(null) ?? []) {
+      if (t.section !== section) continue
+      const node = build(t)
+      if (node) out.push(node)
+    }
+    return out
+  }
+
+  const inbox = roots('inbox')
+  const projects = roots('projects')
+  return { today: date, inbox, projects, hiddenCompletedCount }
+}

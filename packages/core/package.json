@@ -8,6 +8,7 @@
     "./dates": "./src/dates.ts"
   },
   "dependencies": {
+    "fractional-indexing": "^4.0.0",
     "nanoid": "^6.0.2"
   }
 }

@@ -32,3 +32,17 @@ export interface Task {
 export interface Config {
   dayStartsAt: string
 }
+
+export interface TreeNode extends Task {
+  children: TreeNode[]
+  mark: Mark | null
+  doneCount: number
+  totalCount: number
+}
+
+export interface TreeView {
+  today: ISODate
+  inbox: TreeNode[]
+  projects: TreeNode[]
+  hiddenCompletedCount: number
+}
