@@ -20,3 +20,7 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   (closed more than a day ago), so a key press never seems to do nothing.
   Side effect: with "Show completed" on, a move can hop over an old
   completed task.
+- Morning review suggestions: once you've decided on a project's suggestion,
+  that project doesn't offer another one in the same review. To change a
+  decision, press Z (undo) and decide again.
+- "Worked on Monday" in the review also counts a task left as Doing that day.
