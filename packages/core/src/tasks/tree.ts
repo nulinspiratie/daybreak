@@ -15,11 +15,16 @@ export function isRecentlyHidden(task: Task, hasOpenDescendant: boolean, nowMs: 
   return new Date(task.closedAt).getTime() < nowMs - DAY_MS
 }
 
-export function treeView(ctx: Ctx, completed: 'recent' | 'all' | 'none'): TreeView {
-  const date = today(ctx)
-  const marks = marksOn(ctx, date)
-  const nowMs = new Date(nowIso(ctx)).getTime()
+/** Per task: counts over all live descendants, and whether any is open. */
+export interface SubtreeStat {
+  done: number
+  total: number
+  size: number
+  openBelow: boolean
+}
 
+/** Every live task grouped by parent id (null = top level), ordered by position, id. */
+export function liveKids(ctx: Ctx): Map<string | null, Task[]> {
   const tasks = ctx.db
     .all<TaskRow>(`SELECT ${TASK_COLUMNS} FROM tasks WHERE deleted_at IS NULL ORDER BY position, id`)
     .map(rowToTask)
@@ -29,16 +34,13 @@ export function treeView(ctx: Ctx, completed: 'recent' | 'all' | 'none'): TreeVi
     if (list) list.push(t)
     else kids.set(t.parentId, [t])
   }
+  return kids
+}
 
-  // Per task: counts over all live descendants, and whether any is open.
-  interface Stat {
-    done: number
-    total: number
-    size: number
-    openBelow: boolean
-  }
-  const stats = new Map<string, Stat>()
-  const measure = (t: Task): Stat => {
+/** Descendant stats for every live task. Cancelled tasks are excluded from `total`. */
+export function subtreeStats(kids: Map<string | null, Task[]>): Map<string, SubtreeStat> {
+  const stats = new Map<string, SubtreeStat>()
+  const measure = (t: Task): SubtreeStat => {
     let done = 0
     let total = 0
     let size = 0
@@ -53,10 +55,22 @@ export function treeView(ctx: Ctx, completed: 'recent' | 'all' | 'none'): TreeVi
       if (c.status !== 'cancelled') total += 1
       if (c.status === 'done') done += 1
     }
-    const result: Stat = { done, total, size, openBelow }
+    const result: SubtreeStat = { done, total, size, openBelow }
     stats.set(t.id, result)
     return result
   }
+  for (const t of kids.get(null) ?? []) measure(t)
+  return stats
+}
+
+export function treeView(ctx: Ctx, completed: 'recent' | 'all' | 'none'): TreeView {
+  const date = today(ctx)
+  const marks = marksOn(ctx, date)
+  const nowMs = new Date(nowIso(ctx)).getTime()
+
+  const kids = liveKids(ctx)
+
+  const stats = subtreeStats(kids)
 
   const isHidden = (t: Task): boolean => {
     if (t.status === 'open' || completed === 'all') return false
@@ -82,10 +96,6 @@ export function treeView(ctx: Ctx, completed: 'recent' | 'all' | 'none'): TreeVi
 
   const roots = (section: Task['section']) => {
     const out: TreeNode[] = []
-    for (const t of kids.get(null) ?? []) {
-      if (t.section !== section) continue
-      measure(t)
-    }
     for (const t of kids.get(null) ?? []) {
       if (t.section !== section) continue
       const node = build(t)

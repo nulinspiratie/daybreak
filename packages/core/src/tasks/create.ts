@@ -7,7 +7,8 @@ import { recordEvent } from '../events'
 import { newId } from '../ids'
 import type { Section, Task } from '../types'
 import { positionFor } from './positions'
-import { getTask, liveChildren, rowToTask, TASK_COLUMNS, type TaskRow } from './rows'
+import { getTask, liveChildren } from './rows'
+import { dayPositionFor } from './schedule'
 
 export function normalizeTitle(raw: string): string {
   return raw.replace(/[\r\n\t]+/g, ' ').trim()
@@ -48,14 +49,7 @@ export function createTask(ctx: Ctx, input: CreateInput): Task {
     const scheduledOn = input.scheduledOn ?? null
     let dayPosition: string | null = null
     if (scheduledOn !== null) {
-      const day = ctx.db
-        .all<TaskRow>(
-          `SELECT ${TASK_COLUMNS} FROM tasks
-           WHERE scheduled_on = ? AND deleted_at IS NULL ORDER BY day_position, id`,
-          scheduledOn,
-        )
-        .map(rowToTask)
-      dayPosition = positionFor(day, {}, (t) => t.dayPosition)
+      dayPosition = dayPositionFor(ctx, scheduledOn, {})
     }
     const id = newId()
     const now = nowIso(ctx)

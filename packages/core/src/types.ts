@@ -53,3 +53,18 @@ export interface MoveTarget {
   afterId?: string
   beforeId?: string
 }
+
+export interface DayItem {
+  task: Task
+  path: string[]
+  mark: Mark | null
+  doneCount: number
+  totalCount: number
+}
+
+export interface DayView {
+  date: ISODate
+  items: DayItem[]
+  doneCount: number
+  totalCount: number
+}
