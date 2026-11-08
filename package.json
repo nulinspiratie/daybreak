@@ -10,7 +10,7 @@
     "test": "vitest run",
     "seed": "bun scripts/seed.ts",
     "test:bun": "bun test ./packages/core/test/sqlite-bun.smoke.ts",
-    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/server && tsc --noEmit -p scripts",
+    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/server && tsc --noEmit -p scripts && tsc --noEmit -p apps/web",
     "start": "bun run --cwd apps/web build && bun packages/server/src/main.ts",
     "dev": "bun packages/server/src/main.ts --dev"
   },

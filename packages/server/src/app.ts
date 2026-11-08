@@ -11,6 +11,7 @@ import { miscRoutes } from './routes/misc'
 import { reviewRoutes } from './routes/review'
 import { taskRoutes } from './routes/tasks'
 import { type ChangeBroker, eventRoutes } from './sse'
+import { readStatic } from './static'
 
 export interface AppDeps {
   daybreak: Daybreak
@@ -50,6 +51,16 @@ export function createApp(deps: AppDeps): Hono {
     const index = deps.webDist ? join(deps.webDist, 'index.html') : undefined
     return c.html(index && existsSync(index) ? readFileSync(index, 'utf8') : PLACEHOLDER)
   })
+
+  // Built web assets need no token (the Host check still applies).
+  const webDist = deps.webDist
+  if (webDist) {
+    app.get('/*', host, (c) => {
+      const file = readStatic(webDist, c.req.path)
+      if (!file) return c.notFound()
+      return c.body(new Uint8Array(file.body), 200, { 'Content-Type': file.type })
+    })
+  }
 
   return app
 }

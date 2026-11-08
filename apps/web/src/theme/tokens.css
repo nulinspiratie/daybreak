@@ -1,0 +1,65 @@
+:root {
+  --font: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif;
+  --mono: Consolas, 'Cascadia Mono', monospace;
+
+  --win: #f3f3f3;
+  --pane: #ffffff;
+  --pane2: #fafafa;
+  --line: #e5e5e5;
+  --line2: #c8c8c8;
+  --cb: #8a8a8a;
+  --text: #1b1b1b;
+  --text2: #5c5c5c;
+  --text3: #6b6b6b;
+  --accent: #005fb8;
+  --onAccent: #ffffff;
+  --accentSoft: #e3eefa;
+  --doing: #dceaf9;
+  --overdue: #c42b1c;
+  --near: #2b2b2b;
+  --far: #767676;
+  --hover: #f3f3f3;
+  --worked: #a85400;
+  --workedSoft: #fbeee2;
+  --done: #757575;
+  --chip: #efefef;
+
+  /* Review outcome tints (light only in DESIGN.md): background / foreground */
+  --rv-today-bg: #e3eefa;
+  --rv-today-fg: #005fb8;
+  --rv-day-bg: #efe8f8;
+  --rv-day-fg: #6b3fa0;
+  --rv-backlog-bg: #ededed;
+  --rv-backlog-fg: #4d4d4d;
+  --rv-not-today-bg: #f1f1f1;
+  --rv-not-today-fg: #4d4d4d;
+  --rv-cancelled-bg: #fbe9e7;
+  --rv-cancelled-fg: #b3261e;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --win: #1c1c1c;
+  --pane: #272727;
+  --pane2: #232323;
+  --line: #383838;
+  --line2: #555555;
+  --cb: #9a9a9a;
+  --text: #f2f2f2;
+  --text2: #c4c4c4;
+  --text3: #a8a8a8;
+  --accent: #5cc2f5;
+  --onAccent: #0a1a24;
+  --accentSoft: #1b3647;
+  --doing: #1b3647;
+  --overdue: #ff99a4;
+  --near: #ededed;
+  --far: #8e8e8e;
+  --hover: #303030;
+  --worked: #f0a35e;
+  --workedSoft: #3b2b1d;
+  --done: #9c9c9c;
+  --chip: #343434;
+  color-scheme: dark;
+}
