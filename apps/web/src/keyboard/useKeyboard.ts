@@ -37,36 +37,47 @@ function isTextField(el: HTMLElement): boolean {
   return el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'
 }
 
+/** Only these repeat while a key is held; one-shot commands (Space, X, Del, letters…) fire once per press. */
+const repeats = (cmd: Command) => cmd.startsWith('nav.') || cmd.startsWith('move.')
+
 /**
- * The one keydown listener for the tree and My Day. It stands aside for the review, IME
- * composition and text fields other than a row's title editor (marked `data-title-editor`,
- * Task 17), and lets buttons outside the rows keep Space and Enter.
+ * The keydown handler for the tree and My Day. It stands aside for the review, IME composition,
+ * and text fields other than a row's title editor (marked `data-title-editor`, Task 17). A focused
+ * button or link keeps its native Space and Enter (row controls drop focus after a mouse click,
+ * so after a click these keys reach the selected row).
  */
+export function createKeyHandler(run: (cmd: Command) => void): (e: KeyboardEvent) => void {
+  return (e) => {
+    if (e.isComposing || e.defaultPrevented) return
+    const ui = useUi.getState()
+    if (ui.reviewOpen) return
+    const el = e.target instanceof HTMLElement ? e.target : null
+    if (el && isTextField(el) && !el.closest('[data-title-editor]')) return
+    if (el && (e.key === ' ' || e.key === 'Enter') && el.closest('button, a')) return
+
+    const mode = ui.editing ? 'edit' : 'navigate'
+    const titleEmpty = el instanceof HTMLInputElement && el.value === ''
+    const cmd = resolveKey(e, { mode, pane: ui.pane, isMac: IS_MAC, titleEmpty })
+    if (cmd === null) {
+      // Any other key dismisses the "Press Space again" note.
+      if (ui.confirm && !MODIFIERS.has(e.key)) ui.set({ confirm: null })
+      return
+    }
+    // With nothing selected, Tab moves focus as usual.
+    const selected = ui.pane === 'tree' ? ui.treeSel : ui.daySel
+    if ((cmd === 'indent' || cmd === 'outdent') && selected === null) return
+    e.preventDefault()
+    // A held Space must not count as the second press of a parent close, nor a held Del delete row after row.
+    if (e.repeat && !repeats(cmd)) return
+    run(cmd)
+  }
+}
+
+/** Attaches the one window keydown listener. Mounted once, in App. */
 export function useKeyboard(): void {
   const run = useCommandRunner()
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.isComposing || e.defaultPrevented) return
-      const ui = useUi.getState()
-      if (ui.reviewOpen) return
-      const el = e.target instanceof HTMLElement ? e.target : null
-      if (el && isTextField(el) && !el.closest('[data-title-editor]')) return
-      if (el && (e.key === ' ' || e.key === 'Enter') && el.closest('button, a') && !el.closest('[role="treeitem"]')) return
-
-      const mode = ui.editing ? 'edit' : 'navigate'
-      const titleEmpty = el instanceof HTMLInputElement && el.value === ''
-      const cmd = resolveKey(e, { mode, pane: ui.pane, isMac: IS_MAC, titleEmpty })
-      if (cmd === null) {
-        // Any other key dismisses the "Press Space again" note.
-        if (ui.confirm && !MODIFIERS.has(e.key)) ui.set({ confirm: null })
-        return
-      }
-      // With nothing selected, Tab moves focus as usual.
-      const selected = ui.pane === 'tree' ? ui.treeSel : ui.daySel
-      if ((cmd === 'indent' || cmd === 'outdent') && selected === null) return
-      e.preventDefault()
-      run(cmd)
-    }
+    const onKeyDown = createKeyHandler(run)
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [run])

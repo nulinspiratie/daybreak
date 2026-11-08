@@ -1,5 +1,6 @@
 import { useDrainInvalidation, useLiveUpdates } from './api/hooks'
 import { useKeyboard } from './keyboard/useKeyboard'
+import { ConfirmLive } from './shell/ConfirmNote'
 import { TitleBar } from './shell/TitleBar'
 import { Toast } from './shell/Toast'
 import { TreePane } from './tree/TreePane'
@@ -18,6 +19,7 @@ export function App() {
         </section>
       </div>
       <Toast />
+      <ConfirmLive />
     </div>
   )
 }

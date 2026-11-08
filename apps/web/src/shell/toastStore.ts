@@ -4,6 +4,8 @@ export interface ToastInput {
   message: string
   /** Set on a delete toast: Z or the Undo button restores this task's subtree. */
   restoreId?: string
+  /** The panes the deleted task was listed in; undo reselects it only there. */
+  restoreIn?: Array<'tree' | 'day'>
 }
 export interface Toast extends ToastInput {
   id: number

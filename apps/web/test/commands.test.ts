@@ -141,27 +141,53 @@ describe('closing a parent: the double-press rule', () => {
     await run('status.cancel')
     await run('status.cancel')
     expect(calls.at(-1)).toEqual(['PATCH', '/api/tasks/m2', { status: 'cancelled', withOpenDescendants: true }])
-    expect(toastText(toast.current()!)).toBe("Cancelled 'Milestone 2' and 1 subtask")
+    // No Cancel toast: DESIGN only has the Done toast after a subtree close (R27).
+    expect(toast.current()).toBeNull()
   })
 
-  it('a leaf closes at once with a plain toast; a done or cancelled task reopens on Space or X', async () => {
+  it('a confirm for one task does not confirm another: a press on a different task starts over', async () => {
+    await run('status.done')
+    select('p1')
+    await run('status.done')
+    expect(calls.map((c) => c[2])).toEqual([{ status: 'done' }, { status: 'done' }])
+    expect(ui().confirm?.id).toBe('p1')
+  })
+
+  it('a leaf closes at once with no toast (R27)', async () => {
     reply = () => ({ task: node('c1'), changedIds: ['c1'] })
     select('c1')
     await run('status.done')
-    expect(calls).toEqual([['PATCH', '/api/tasks/c1', { status: 'done' }]])
-    expect(toastText(toast.current()!)).toBe("Done 'c1'")
+    await run('status.cancel')
+    expect(calls).toEqual([
+      ['PATCH', '/api/tasks/c1', { status: 'done' }],
+      ['PATCH', '/api/tasks/c1', { status: 'cancelled' }],
+    ])
+    expect(toast.current()).toBeNull()
+  })
 
-    toast.dismiss()
-    const rows = flatten(view())
-    const done = rows.map((r) => (r.id === 'c1' ? { ...r, node: { ...r.node, status: 'done' as const } } : r))
-    await run('status.done', { rows: done })
-    await run('status.cancel', { rows: done })
-    const cancelled = rows.map((r) => (r.id === 'c1' ? { ...r, node: { ...r.node, status: 'cancelled' as const } } : r))
-    await run('status.done', { rows: cancelled })
-    expect(calls.slice(1)).toEqual([
-      ['PATCH', '/api/tasks/c1', { status: 'open' }],
-      ['PATCH', '/api/tasks/c1', { status: 'open' }],
-      ['PATCH', '/api/tasks/c1', { status: 'open' }],
+  it('a delete toast survives closing a task', async () => {
+    reply = (method) => (method === 'DELETE' ? { deletedIds: ['p3'] } : { task: node('c1'), changedIds: ['c1'] })
+    select('p3')
+    await run('delete')
+    select('c1')
+    await run('status.done')
+    expect(toast.current()?.restoreId).toBe('p3')
+  })
+
+  it('R26: Space toggles done, X toggles cancelled; the other closed status is switched, not reopened', async () => {
+    reply = () => ({ task: node('c1'), changedIds: ['c1'] })
+    select('c1')
+    const withStatus = (status: 'done' | 'cancelled') =>
+      flatten(view()).map((r) => (r.id === 'c1' ? { ...r, node: { ...r.node, status } } : r))
+    await run('status.done', { rows: withStatus('done') })
+    await run('status.cancel', { rows: withStatus('done') })
+    await run('status.cancel', { rows: withStatus('cancelled') })
+    await run('status.done', { rows: withStatus('cancelled') })
+    expect(calls.map((c) => c[2])).toEqual([
+      { status: 'open' },
+      { status: 'cancelled' },
+      { status: 'open' },
+      { status: 'done' },
     ])
     expect(toast.current()).toBeNull()
   })
@@ -200,6 +226,36 @@ describe('delete and undo', () => {
     expect(calls.at(-1)).toEqual(['POST', '/api/tasks/p3/restore', undefined])
   })
 
+  it('toast.undo selects the restored task only in a pane it belongs to', async () => {
+    reply = (method) => (method === 'DELETE' ? { deletedIds: ['c5'] } : { restoredIds: ['c5'] })
+    ui().set({ daySel: 'd1' })
+    select('c5')
+    await run('delete')
+    await run('pane.toggle') // to My Day, where c5 is not scheduled
+    await run('toast.undo')
+    expect(calls.at(-1)).toEqual(['POST', '/api/tasks/c5/restore', undefined])
+    expect(ui()).toMatchObject({ pane: 'day', daySel: 'd1', treeSel: 'p2' })
+
+    // A My Day item deleted from My Day is reselected there.
+    reply = (method) => (method === 'DELETE' ? { deletedIds: ['d2'] } : { restoredIds: ['d2'] })
+    select('d2', 'day')
+    await run('delete')
+    expect(ui().daySel).toBe('d3')
+    await run('toast.undo')
+    expect(ui().daySel).toBe('d2')
+  })
+
+  it('toast.undo keeps the toast when the restore fails, so Z can be tried again', async () => {
+    reply = (method) => {
+      if (method === 'DELETE') return { deletedIds: ['p3'] }
+      throw new ApiError(500, 'internal', 'boom')
+    }
+    select('p3')
+    await run('delete')
+    await expect(run('toast.undo')).rejects.toThrow('boom')
+    expect(toast.current()?.restoreId).toBe('p3')
+  })
+
   it('toast.undo with no toast does nothing', async () => {
     await run('toast.undo')
     expect(calls).toEqual([])
@@ -208,11 +264,24 @@ describe('delete and undo', () => {
 
 describe('moves', () => {
   it('move.down ×5 sends five nudges in order and selection stays on the task', async () => {
+    // Each nudge finishes before the next starts, although earlier ones take longer.
+    const log: string[] = []
+    let n = 0
     let delay = 25
-    reply = () => new Promise((r) => setTimeout(() => r(node('c2')), (delay -= 5)))
+    reply = () => {
+      const k = ++n
+      log.push(`start ${k}`)
+      return new Promise((r) =>
+        setTimeout(() => {
+          log.push(`end ${k}`)
+          r(node('c2'))
+        }, (delay -= 5)),
+      )
+    }
     select('c2')
     await Promise.all([1, 2, 3, 4, 5].map(() => run('move.down')))
     expect(calls).toEqual(Array(5).fill(['POST', '/api/tasks/c2/nudge', { direction: 'down' }]))
+    expect(log).toEqual([1, 2, 3, 4, 5].flatMap((k) => [`start ${k}`, `end ${k}`]))
     expect(ui().treeSel).toBe('c2')
   })
 

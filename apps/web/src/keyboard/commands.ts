@@ -22,6 +22,7 @@ export interface CommandEnv {
 }
 
 type Confirm = NonNullable<UiState['confirm']>
+type Pane = UiState['pane']
 type Closed = Confirm['status']
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
@@ -107,9 +108,13 @@ async function moveInDay(env: CommandEnv, id: string, dir: 'up' | 'down'): Promi
   })
 }
 
-async function closeOrReopen(env: CommandEnv, t: Target, want: Closed): Promise<void> {
+/**
+ * Space: done, or reopen if already done. X: cancel, or reopen if already cancelled (R26).
+ * Closing an open parent needs a second press within 4 s (core answers 409 needs_confirmation).
+ */
+async function toggleClosed(env: CommandEnv, t: Target, want: Closed): Promise<void> {
   const { ui, api, mutate } = env
-  if (t.task.status !== 'open') {
+  if (t.task.status === want) {
     ui.set({ confirm: null })
     await mutate(() => api.send('PATCH', taskPath(t.id), { status: 'open' }))
     return
@@ -120,8 +125,9 @@ async function closeOrReopen(env: CommandEnv, t: Target, want: Closed): Promise<
   try {
     const res = await mutate(() => api.send<{ changedIds: string[] }>('PATCH', taskPath(t.id), body))
     ui.set({ confirm: null })
-    const verb = want === 'done' ? 'Done' : 'Cancelled'
-    env.toast.show({ message: `${verb} '${t.task.title}'${andSubtasks(Math.max(0, res.changedIds.length - 1))}` })
+    // DESIGN has one close toast: Done after closing a subtree (R27). No leaf or Cancel toasts.
+    const subtasks = res.changedIds.length - 1
+    if (want === 'done' && subtasks > 0) env.toast.show({ message: `Done '${t.task.title}'${andSubtasks(subtasks)}` })
   } catch (e) {
     if (e instanceof ApiError && e.status === 409 && e.code === 'needs_confirmation') {
       const openCount = Number(e.details?.openCount ?? 0)
@@ -153,9 +159,10 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       const shown = env.toast.current()
       if (!shown?.restoreId) return
       const id = shown.restoreId
-      env.toast.dismiss()
-      select(env, id)
+      // Dismiss only once the restore worked, so a failed one can be retried with Z.
       await mutate(() => api.send('POST', taskPath(id, '/restore')))
+      if (env.toast.current()?.id === shown.id) env.toast.dismiss()
+      if (shown.restoreIn?.includes(ui.pane)) select(env, id)
       return
     }
     case 'edit.start':
@@ -220,16 +227,21 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       await mutate(() => api.send('POST', taskPath(t.id, '/mark'), { mark: cmd === 'mark.doing' ? 'doing' : 'worked' }))
       return
     case 'status.done':
-      return closeOrReopen(env, t, 'done')
+      return toggleClosed(env, t, 'done')
     case 'status.cancel':
-      return closeOrReopen(env, t, 'cancelled')
+      return toggleClosed(env, t, 'cancelled')
     case 'delete': {
+      // Where the task was listed, so undo reselects it only in a pane it comes back to.
+      const restoreIn: Pane[] = []
+      if (treeRows(env).some((r) => r.id === t.id)) restoreIn.push('tree')
+      if (env.dayItems.some((i) => i.task.id === t.id)) restoreIn.push('day')
       select(env, neighbourAfterRemoval(env, t))
       if (ui.detailId === t.id) ui.set({ detailId: null })
       const res = await mutate(() => api.send<{ deletedIds: string[] }>('DELETE', taskPath(t.id)))
       env.toast.show({
         message: `Deleted '${t.task.title}'${andSubtasks(Math.max(0, res.deletedIds.length - 1))}`,
         restoreId: t.id,
+        restoreIn,
       })
       return
     }

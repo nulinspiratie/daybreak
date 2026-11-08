@@ -2,8 +2,29 @@ import { useEffect } from 'react'
 import { confirmNoteText } from '../keyboard/commands'
 import { useUi } from '../ui/store'
 
-/** "4 open subtasks. Press Space again to close them all." under a row; gone after 4 s. */
+export const CONFIRM_NOTE_ID = 'confirm-note'
+
+/**
+ * The visible "4 open subtasks. Press Space again to close them all." under a row. It sits
+ * between treeitems, so it is hidden from the accessibility tree; the row points at it with
+ * aria-describedby and ConfirmLive announces it.
+ */
 export function ConfirmNote({ depth }: { depth: number }) {
+  const confirm = useUi((s) => s.confirm)
+  if (!confirm) return null
+  return (
+    <div className="row-note" aria-hidden="true">
+      <span className="day" />
+      <span className="row__handle" />
+      <span className="row__indent" style={{ width: depth * 22 }} />
+      <span className="row__chev-gap" />
+      <span className="row-note__text" id={CONFIRM_NOTE_ID}>{confirmNoteText(confirm)}</span>
+    </div>
+  )
+}
+
+/** Announces the confirm note (outside the tree) and dismisses it when its 4 s are up. Mounted once, in App. */
+export function ConfirmLive() {
   const confirm = useUi((s) => s.confirm)
   useEffect(() => {
     if (!confirm) return
@@ -13,14 +34,9 @@ export function ConfirmNote({ depth }: { depth: number }) {
     }, Math.max(0, confirm.until - Date.now()))
     return () => clearTimeout(timer)
   }, [confirm])
-  if (!confirm) return null
   return (
-    <div className="row-note" role="status">
-      <span className="day" />
-      <span className="row__handle" />
-      <span className="row__indent" style={{ width: depth * 22 }} />
-      <span className="row__chev-gap" />
-      <span className="row-note__text">{confirmNoteText(confirm)}</span>
+    <div className="sr-only" role="status" aria-live="polite">
+      {confirm ? confirmNoteText(confirm) : ''}
     </div>
   )
 }

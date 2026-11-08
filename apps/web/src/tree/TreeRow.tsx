@@ -2,6 +2,7 @@ import { memo, useEffect, useRef } from 'react'
 import type { FlatRow } from './flatten'
 import { DayCell } from './DayCell'
 import { RowCheckbox, type RowState } from './RowCheckbox'
+import { rowControlClick } from './rowControlClick'
 
 export interface TreeRowProps {
   row: FlatRow
@@ -15,7 +16,10 @@ export interface TreeRowProps {
   onDoing: (id: string) => void
   /** D: day picker (no-op until Task 19). */
   onPickDay: (id: string) => void
+  /** Id of the confirm note shown under this row, if any. */
+  describedBy?: string
 }
+
 
 function stateOf(row: FlatRow): RowState {
   const { status, mark } = row.node
@@ -51,6 +55,7 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
       aria-level={depth + 1}
       aria-selected={selected}
       aria-labelledby={`title-${row.id}`}
+      aria-describedby={p.describedBy}
       aria-expanded={row.hasChildren ? !collapsed : undefined}
       className={rowCls.filter(Boolean).join(' ')}
       data-state={state}
@@ -65,10 +70,7 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
           type="button"
           className="row__chev"
           aria-label={collapsed ? 'Expand' : 'Collapse'}
-          onClick={(e) => {
-            e.stopPropagation()
-            p.onToggleCollapse(row.id)
-          }}
+          onClick={(e) => rowControlClick(e, () => p.onToggleCollapse(row.id))}
         >
           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style={{ transform: `rotate(${collapsed ? 0 : 90}deg)` }}>
             <path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -101,18 +103,18 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
       <span className="row__spacer" />
       {!closed && (
         <span className="row__actions">
-          <button type="button" className="qa" aria-label="Doing now (S)" onClick={(e) => { e.stopPropagation(); p.onDoing(row.id) }}>
+          <button type="button" className="qa" aria-label="Doing now (S)" onClick={(e) => rowControlClick(e, () => p.onDoing(row.id))}>
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
             <span className="qa__key">S</span>
           </button>
-          <button type="button" className="qa" aria-label="Schedule for today (T)" onClick={(e) => { e.stopPropagation(); p.onScheduleToday(row.id) }}>
+          <button type="button" className="qa" aria-label="Schedule for today (T)" onClick={(e) => rowControlClick(e, () => p.onScheduleToday(row.id))}>
             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16">
               <circle cx="8" cy="8" r="2.8" fill="none" stroke="currentColor" strokeWidth="1.3" />
               <path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
             <span className="qa__key">T</span>
           </button>
-          <button type="button" className="qa" aria-label="Pick a day (D)" onClick={(e) => { e.stopPropagation(); p.onPickDay(row.id) }}>
+          <button type="button" className="qa" aria-label="Pick a day (D)" onClick={(e) => rowControlClick(e, () => p.onPickDay(row.id))}>
             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16">
               <rect x="2.5" y="3.5" width="11" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.3" />
               <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />

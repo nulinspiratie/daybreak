@@ -158,4 +158,31 @@ describe('TreeRow', () => {
     expect(item().getAttribute('aria-labelledby')).toBe(title().id)
     expect(screen.getByRole('treeitem', { name: 't1' })).toBeTruthy()
   })
+
+  it('row controls let go of focus after a mouse click, so Space and Enter reach the selected row', () => {
+    show(row({ children: [node('c')] }))
+    const controls = [
+      screen.getByRole('button', { name: 'Tick off' }),
+      screen.getByRole('button', { name: 'Collapse' }),
+      screen.getByRole('button', { name: 'Doing now (S)' }),
+      screen.getByRole('button', { name: 'Schedule for today (T)' }),
+      screen.getByRole('button', { name: 'Pick a day (D)' }),
+    ]
+    for (const b of controls) {
+      b.focus()
+      fireEvent.click(b, { detail: 1 }) // a mouse click
+      expect(document.activeElement).not.toBe(b)
+      b.focus()
+      fireEvent.click(b, { detail: 0 }) // keyboard activation of a tabbed-to button
+      expect(document.activeElement).toBe(b)
+    }
+  })
+
+  it('points aria-describedby at the confirm note when it shows', () => {
+    const { unmount } = show(row())
+    expect(item().getAttribute('aria-describedby')).toBeNull()
+    unmount()
+    show(row(), true, { describedBy: 'confirm-note' })
+    expect(item().getAttribute('aria-describedby')).toBe('confirm-note')
+  })
 })

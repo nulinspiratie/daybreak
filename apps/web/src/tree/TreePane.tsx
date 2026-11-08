@@ -4,7 +4,7 @@ import { api } from '../api/client'
 import { useMutate, useStatus, useTree } from '../api/hooks'
 import type { Command } from '../keyboard/keymap'
 import { useCommandRunner } from '../keyboard/useKeyboard'
-import { ConfirmNote } from '../shell/ConfirmNote'
+import { CONFIRM_NOTE_ID, ConfirmNote } from '../shell/ConfirmNote'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
 import { DRAFT_ID, flatten, type FlatRow } from './flatten'
@@ -107,6 +107,7 @@ export function TreePane() {
           onScheduleToday={onScheduleToday}
           onDoing={onDoing}
           onPickDay={onPickDay}
+          describedBy={confirmId === r.id ? CONFIRM_NOTE_ID : undefined}
         />
         {confirmId === r.id && <ConfirmNote depth={r.depth} />}
       </Fragment>

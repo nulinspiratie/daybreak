@@ -1,3 +1,5 @@
+import { rowControlClick } from './rowControlClick'
+
 export type RowState = 'open' | 'doing' | 'worked' | 'done' | 'cancelled'
 
 const LABEL: Record<RowState, string> = {
@@ -15,10 +17,7 @@ export function RowCheckbox({ state, onToggle }: { state: RowState; onToggle: ()
       type="button"
       className={`cb cb--${cls}`}
       aria-label={LABEL[state]}
-      onClick={(e) => {
-        e.stopPropagation()
-        onToggle()
-      }}
+      onClick={(e) => rowControlClick(e, onToggle)}
     >
       {state === 'done' && (
         <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
