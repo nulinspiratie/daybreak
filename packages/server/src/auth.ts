@@ -11,13 +11,13 @@ export function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(ha, hb)
 }
 
-export function hostAllowed(host: string | undefined, port: number): boolean {
-  return host === `127.0.0.1:${port}` || host === `localhost:${port}`
+export function hostAllowed(host: string | undefined, port: number, extraHosts: string[] = []): boolean {
+  return host === `127.0.0.1:${port}` || host === `localhost:${port}` || (host !== undefined && extraHosts.includes(host))
 }
 
-export function hostGuard(port: number): MiddlewareHandler {
+export function hostGuard(port: number, extraHosts: string[] = []): MiddlewareHandler {
   return async (c, next) => {
-    if (!hostAllowed(c.req.header('host'), port)) return c.json({ error: 'forbidden', message: 'Bad Host header' }, 403)
+    if (!hostAllowed(c.req.header('host'), port, extraHosts)) return c.json({ error: 'forbidden', message: 'Bad Host header' }, 403)
     await next()
   }
 }

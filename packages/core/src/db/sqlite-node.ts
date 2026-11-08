@@ -21,6 +21,7 @@ export async function open(path: string): Promise<Db> {
   const { DatabaseSync } = await loadNodeSqlite()
   const raw: DatabaseSync = new DatabaseSync(path)
   if (path !== ':memory:') raw.exec('PRAGMA journal_mode = WAL')
+  raw.exec('PRAGMA busy_timeout = 5000')
   raw.exec('PRAGMA foreign_keys = ON')
   return {
     exec: (sql) => raw.exec(sql),

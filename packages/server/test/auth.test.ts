@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DaybreakError } from '@daybreak/core'
 import { createApp } from '../src/app'
+import { ChangeBroker } from '../src/sse'
 import { TEST_PORT, TEST_TOKEN, testApp } from './helpers'
 
 describe('auth', () => {
@@ -48,7 +49,7 @@ describe('auth', () => {
   })
   it('DaybreakError maps to status and JSON body', async () => {
     const { daybreak } = await testApp()
-    const app = createApp({ daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00' })
+    const app = createApp({ daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00', broker: new ChangeBroker() })
     const mapped = [
       ['not_found', 404],
       ['invalid', 400],

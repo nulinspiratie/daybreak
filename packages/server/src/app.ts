@@ -10,12 +10,16 @@ import { dayRoutes } from './routes/day'
 import { miscRoutes } from './routes/misc'
 import { reviewRoutes } from './routes/review'
 import { taskRoutes } from './routes/tasks'
+import { type ChangeBroker, eventRoutes } from './sse'
 
 export interface AppDeps {
   daybreak: Daybreak
   token: string
   port: number
   dayStartsAt: string
+  broker: ChangeBroker
+  /** Extra allowed Host values (the Vite dev server). */
+  extraHosts?: string[]
   /** Defaults to the real OS opener; tests inject a spy. */
   openLink?: (link: string) => void
   webDist?: string
@@ -25,7 +29,7 @@ const PLACEHOLDER = '<!doctype html><meta charset="utf-8"><title>Daybreak</title
 
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono()
-  const host = hostGuard(deps.port)
+  const host = hostGuard(deps.port, deps.extraHosts)
   const token = tokenGuard(deps.token)
 
   app.onError(errorResponse)
@@ -39,6 +43,7 @@ export function createApp(deps: AppDeps): Hono {
   app.route('/api', dayRoutes(deps.daybreak))
   app.route('/api/tasks', taskRoutes(deps.daybreak, deps.openLink ?? openLink))
   app.route('/api/review', reviewRoutes(deps.daybreak))
+  app.route('/events', eventRoutes(deps.broker))
 
   app.get('/', host, (c) => {
     setCookie(c, COOKIE_NAME, deps.token, { httpOnly: true, sameSite: 'Strict', path: '/' })
