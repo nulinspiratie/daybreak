@@ -42,7 +42,8 @@ export function eventRoutes(broker: ChangeBroker): Hono {
           resolve()
         }
         stream.onAbort(done)
-        c.req.raw.signal.addEventListener('abort', done, { once: true })
+        if (c.req.raw.signal.aborted) done()
+        else c.req.raw.signal.addEventListener('abort', done, { once: true })
       })
       await closed
     }),

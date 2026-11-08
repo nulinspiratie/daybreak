@@ -3,8 +3,10 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDaybreak, migrate, openDatabase, systemClock } from '@daybreak/core'
+import type { Daybreak, Db } from '@daybreak/core'
 import { createApp } from './app'
 import { assertOutsideRepo, loadConfig, loadOrCreateToken, resolveDataDir } from './paths'
+import type { ServerConfig } from './paths'
 import { startRollover } from './rollover'
 import { ChangeBroker } from './sse'
 
@@ -19,17 +21,31 @@ try {
   process.exit(1)
 }
 
-const config = loadConfig(dataDir)
-const token = loadOrCreateToken(dataDir)
-const logsDir = join(dataDir, 'logs')
-mkdirSync(logsDir, { recursive: true })
+function fail(message: string): never {
+  console.error(`Daybreak could not start: ${message}`)
+  process.exit(1)
+}
 
-const db = await openDatabase(join(dataDir, 'daybreak.db'))
-migrate(db)
-const daybreak = createDaybreak({ db, clock: systemClock, config: { dayStartsAt: config.dayStartsAt }, logsDir })
-daybreak.autoFinishEmptyReview()
-
+let db: Db | undefined
+let config: ServerConfig
+let token: string
+let daybreak: Daybreak
 const broker = new ChangeBroker()
+try {
+  config = loadConfig(dataDir)
+  token = loadOrCreateToken(dataDir)
+  const logsDir = join(dataDir, 'logs')
+  mkdirSync(logsDir, { recursive: true })
+  db = await openDatabase(join(dataDir, 'daybreak.db'))
+  migrate(db)
+  daybreak = createDaybreak({ db, clock: systemClock, config: { dayStartsAt: config.dayStartsAt }, logsDir })
+  daybreak.autoFinishEmptyReview()
+} catch (e) {
+  db?.close()
+  fail((e as Error).message)
+}
+const openDb = db
+
 daybreak.onChange(() => broker.publish('changed', {}))
 const stopRollover = startRollover(daybreak, broker)
 
@@ -48,7 +64,7 @@ try {
   server = Bun.serve({ hostname: '127.0.0.1', port: config.port, fetch: app.fetch, idleTimeout: 0 })
 } catch (e) {
   stopRollover()
-  db.close()
+  openDb.close()
   if ((e as { code?: string }).code === 'EADDRINUSE') {
     console.error(`Daybreak is already running on port ${config.port}`)
     process.exit(1)
@@ -61,7 +77,7 @@ console.log(`Daybreak running at http://127.0.0.1:${config.port}`)
 function shutdown(): void {
   stopRollover()
   void server.stop(true)
-  db.close()
+  openDb.close()
   process.exit(0)
 }
 process.on('SIGINT', shutdown)

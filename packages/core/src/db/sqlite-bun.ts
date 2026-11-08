@@ -3,8 +3,8 @@ import type { Db, SqlValue } from './adapter'
 
 export async function open(path: string): Promise<Db> {
   const raw = new Database(path)
-  if (path !== ':memory:') raw.exec('PRAGMA journal_mode = WAL')
   raw.exec('PRAGMA busy_timeout = 5000')
+  if (path !== ':memory:') raw.exec('PRAGMA journal_mode = WAL')
   raw.exec('PRAGMA foreign_keys = ON')
   return {
     exec: (sql) => raw.exec(sql),

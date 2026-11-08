@@ -47,6 +47,16 @@ describe('auth', () => {
     expect(cookie).toMatch(/SameSite=Strict/i)
     expect(cookie).toMatch(/Path=\//)
   })
+  it('extraHosts are accepted only when configured', async () => {
+    const { daybreak } = await testApp()
+    const base = { daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00', broker: new ChangeBroker() }
+    const headers = { Host: 'localhost:5173', Authorization: `Bearer ${TEST_TOKEN}` }
+    const without = createApp(base)
+    expect((await without.request('http://x/api/ping', { headers })).status).toBe(403)
+    const withDev = createApp({ ...base, extraHosts: ['localhost:5173', '127.0.0.1:5173'] })
+    expect((await withDev.request('http://x/api/ping', { headers })).status).toBe(200)
+    expect((await withDev.request('http://x/api/ping', { headers: { ...headers, Host: 'evil.example:5173' } })).status).toBe(403)
+  })
   it('DaybreakError maps to status and JSON body', async () => {
     const { daybreak } = await testApp()
     const app = createApp({ daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00', broker: new ChangeBroker() })

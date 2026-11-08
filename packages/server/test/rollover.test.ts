@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createRolloverTick } from '../src/rollover'
 import { ChangeBroker } from '../src/sse'
 import { testApp } from './helpers'
@@ -40,5 +40,25 @@ describe('rollover', () => {
     clock.set('2026-11-10T03:10:00Z')
     tick()
     expect(daybreak.needsReview()).toBe(false)
+  })
+
+  it('survives autoFinishEmptyReview throwing and still publishes day_changed once', async () => {
+    const { daybreak, clock } = await testApp({ now: '2026-11-10T02:50:00Z' })
+    const broker = new ChangeBroker()
+    const seen: object[] = []
+    broker.subscribe((e, data) => {
+      if (e === 'day_changed') seen.push(data)
+    })
+    vi.spyOn(daybreak, 'autoFinishEmptyReview').mockImplementation(() => {
+      throw new Error('database is locked')
+    })
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const tick = createRolloverTick(daybreak, broker)
+    clock.set('2026-11-10T03:10:00Z')
+    expect(() => tick()).not.toThrow()
+    tick()
+    expect(seen).toEqual([{ today: '2026-11-10' }])
+    expect(err).toHaveBeenCalledTimes(1)
+    err.mockRestore()
   })
 })

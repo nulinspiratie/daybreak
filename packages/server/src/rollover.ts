@@ -5,11 +5,19 @@ import type { ChangeBroker } from './sse'
 export function createRolloverTick(d: Daybreak, broker: ChangeBroker): () => void {
   let last = d.today()
   return () => {
-    const today = d.today()
-    if (today === last) return
-    last = today
-    d.autoFinishEmptyReview()
-    broker.publish('day_changed', { today })
+    try {
+      const today = d.today()
+      if (today === last) return
+      try {
+        d.autoFinishEmptyReview()
+      } catch (e) {
+        console.error(`Daybreak: auto-finishing the review failed: ${(e as Error).message}`)
+      }
+      broker.publish('day_changed', { today })
+      last = today
+    } catch (e) {
+      console.error(`Daybreak: day rollover check failed: ${(e as Error).message}`)
+    }
   }
 }
 
