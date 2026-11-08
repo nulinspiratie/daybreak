@@ -229,6 +229,20 @@ describe('undoDecision', () => {
     expect(getTask(ctx, ids.c!).status).toBe('open')
   })
 
+  it('undoing a "not today" on a suggestion records the undo but leaves the task row alone', async () => {
+    const ctx = await makeCtx(NOW)
+    const ids = build(ctx, 'projects:\n  P\n    s')
+    decide(ctx, D, ids.s!, 'backlog')
+    at(ctx, '2026-11-10T09:00:00Z', () => schedule(ctx, ids.s!, '2026-11-20'))
+    const edited = getTask(ctx, ids.s!)
+    const view = at(ctx, '2026-11-10T10:00:00Z', () => undoDecision(ctx, D))
+    expect(getTask(ctx, ids.s!)).toEqual(edited)
+    expect(view.sortedCount).toBe(0)
+    const undo = reviewEvents(ctx).filter((e) => e.kind === 'review_undo')
+    expect(undo).toHaveLength(1)
+    expect(undo[0]!.taskId).toBe(ids.s)
+  })
+
   it('undo survives a new service instance on the same db', async () => {
     const { ctx, ids } = await decided()
     const ctx2: Ctx = { db: ctx.db, clock: fixedClock(NOW), config: ctx.config }
@@ -317,6 +331,18 @@ describe('suggestions', () => {
     }
     build(ctx, 'projects:\n  P\n    p1')
     expect(titles(reviewView(ctx, D).suggestions)).toEqual(['p1', 'i1', 'i2', 'i3', 'i4'])
+  })
+
+  it('review events are not activity: a dismissed suggestion does not keep its project active', async () => {
+    const ctx = await makeCtx(NOW)
+    const ids = at(ctx, '2026-11-01T08:00:00Z', () => build(ctx, 'projects:\n  P\n    s'))
+    // Review of 2026-11-05: P was active on 11-01, so s is offered and dismissed.
+    at(ctx, '2026-11-05T08:00:00Z', () => {
+      expect(titles(reviewView(ctx, '2026-11-05').suggestions)).toEqual(['s'])
+      decide(ctx, '2026-11-05', ids.s!, 'backlog')
+    })
+    // 2026-11-10: the last real activity (11-01) is 9 days old; the review_backlog of 11-05 does not count.
+    expect(titles(reviewView(ctx, D).suggestions)).toEqual([])
   })
 
   it('suggestions never include leftovers', async () => {

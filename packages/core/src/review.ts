@@ -77,7 +77,9 @@ function candidates(
   const active = new Set(
     ctx.db
       .all<{ task_id: string }>(
-        'SELECT DISTINCT task_id FROM events WHERE task_id IS NOT NULL AND date BETWEEN ? AND ?',
+        // The review's own events are not activity (Ruling R11).
+        `SELECT DISTINCT task_id FROM events
+         WHERE task_id IS NOT NULL AND date BETWEEN ? AND ? AND substr(kind, 1, 7) != 'review_'`,
         addDays(date, -RECENT_DAYS),
         date,
       )
@@ -232,16 +234,20 @@ export function undoDecision(ctx: Ctx, date: ISODate): ReviewView {
     if (last) {
       const p = last.previous
       const now = nowIso(ctx)
-      ctx.db.run(
-        `UPDATE tasks SET scheduled_on = ?, day_position = ?, status = ?, closed_at = ?, updated_at = ?
-         WHERE id = ?`,
-        p.scheduledOn,
-        p.dayPosition,
-        p.status,
-        p.closedAt,
-        now,
-        last.taskId,
-      )
+      // "Not today" on a suggestion changed no task data, so undo writes no row (Ruling R12).
+      const changedTask = !(last.choice === 'backlog' && last.group === 'suggestion')
+      if (changedTask) {
+        ctx.db.run(
+          `UPDATE tasks SET scheduled_on = ?, day_position = ?, status = ?, closed_at = ?, updated_at = ?
+           WHERE id = ?`,
+          p.scheduledOn,
+          p.dayPosition,
+          p.status,
+          p.closedAt,
+          now,
+          last.taskId,
+        )
+      }
       // A cancel closed the open subtree with it; reopen exactly those (Ruling R4).
       for (const id of last.closedIds ?? []) {
         if (id === last.taskId) continue
