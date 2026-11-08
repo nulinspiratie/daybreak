@@ -47,4 +47,38 @@ describe('mutation queue', () => {
     await q.idle()
     expect(done).toBe(2)
   })
+
+  it('onDrain fires once after a burst', async () => {
+    const q = createMutationQueue()
+    let drains = 0
+    q.onDrain(() => drains++)
+    void q.enqueue(async () => sleep(5))
+    void q.enqueue(async () => sleep(5))
+    void q.enqueue(async () => sleep(5))
+    await q.idle()
+    expect(drains).toBe(1)
+  })
+
+  it('onDrain fires again after b when b is enqueued right after awaiting a', async () => {
+    const q = createMutationQueue()
+    const log: string[] = []
+    q.onDrain(() => log.push('drain'))
+    await q.enqueue(async () => { log.push('a') })
+    const b = q.enqueue(async () => { await sleep(10); log.push('b') })
+    await b
+    await q.idle()
+    expect(log).toEqual(['a', 'drain', 'b', 'drain'])
+  })
+
+  it('onDrain unsubscribe works', async () => {
+    const q = createMutationQueue()
+    let drains = 0
+    const off = q.onDrain(() => drains++)
+    await q.enqueue(async () => 1)
+    await q.idle()
+    off()
+    await q.enqueue(async () => 2)
+    await q.idle()
+    expect(drains).toBe(1)
+  })
 })

@@ -30,26 +30,17 @@ export const useDayCounts = (from: string, to: string) =>
   })
 
 // One queue for the whole app: every write goes through it, strictly in order.
-const queue = createMutationQueue()
-let drainWatched = false
+export const queue = createMutationQueue()
 
-/** Enqueue a write; once the queue drains, refetch everything (not after each item). */
+/** Enqueue a write; all queries are refetched once the queue drains (see useDrainInvalidation). */
 export function useMutate(): <T>(fn: () => Promise<T>) => Promise<T> {
+  return useCallback(<T>(fn: () => Promise<T>) => queue.enqueue(fn), [])
+}
+
+/** Invalidates every query each time the mutation queue drains. Mounted once, in App. */
+export function useDrainInvalidation(): void {
   const qc = useQueryClient()
-  return useCallback(
-    <T>(fn: () => Promise<T>) => {
-      const result = queue.enqueue(fn)
-      if (!drainWatched) {
-        drainWatched = true
-        void queue.idle().then(() => {
-          drainWatched = false
-          return qc.invalidateQueries()
-        })
-      }
-      return result
-    },
-    [qc],
-  )
+  useEffect(() => queue.onDrain(() => void qc.invalidateQueries()), [qc])
 }
 
 const CHANGED_DEBOUNCE_MS = 100
@@ -64,7 +55,7 @@ export function useLiveUpdates(): void {
         clearTimeout(timer.current)
         timer.current = setTimeout(() => void qc.invalidateQueries(), CHANGED_DEBOUNCE_MS)
       },
-      () => void qc.invalidateQueries({ queryKey: ['status'] }),
+      () => void qc.invalidateQueries(),
     )
     return () => {
       clearTimeout(timer.current)

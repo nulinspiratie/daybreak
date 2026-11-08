@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { createDaybreak, fixedClock, migrate, openDatabase } from '@daybreak/core'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app'
+import { readStatic } from '../src/static'
 import { ChangeBroker } from '../src/sse'
 import { TEST_PORT, TEST_TOKEN } from './helpers'
 
@@ -56,5 +57,44 @@ describe('static web app', () => {
     expect((await request('/assets/nope.js')).status).toBe(404)
     expect((await request('/assets/..%2f..%2fdaybreak-secret.txt')).status).toBe(404)
     expect((await request('/../daybreak-secret.txt')).status).toBe(404)
+  })
+
+  it('readStatic rejects traversal, including encoded forms', () => {
+    expect(readStatic(dist, '/../daybreak-secret.txt')).toBeNull()
+    expect(readStatic(dist, '/%2e%2e/daybreak-secret.txt')).toBeNull()
+    expect(readStatic(dist, '/assets/..%2f..%2fdaybreak-secret.txt')).toBeNull()
+    expect(readStatic(dist, '/assets/app.js')).not.toBeNull()
+  })
+})
+
+describe('placeholder', () => {
+  async function rootBody(webDist?: string): Promise<string> {
+    const db = await openDatabase(':memory:')
+    migrate(db)
+    const daybreak = createDaybreak({ db, clock: fixedClock('2026-11-10T09:00:00Z'), config: { dayStartsAt: '04:00' } })
+    const app = createApp({
+      daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00', broker: new ChangeBroker(), webDist,
+    })
+    const res = await app.request(`http://127.0.0.1:${TEST_PORT}/`, { headers: { Host: `127.0.0.1:${TEST_PORT}` } })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('set-cookie')).toContain('daybreak_token=')
+    return res.text()
+  }
+
+  it('is served when webDist is unset', async () => {
+    expect(await rootBody()).toContain('Daybreak server is running')
+  })
+
+  it('is served when webDist does not exist', async () => {
+    expect(await rootBody(join(tmpdir(), 'daybreak-no-such-dist'))).toContain('Daybreak server is running')
+  })
+
+  it('is served when index.html is missing from webDist', async () => {
+    const empty = mkdtempSync(join(tmpdir(), 'daybreak-empty-'))
+    try {
+      expect(await rootBody(empty)).toContain('Daybreak server is running')
+    } finally {
+      rmSync(empty, { recursive: true, force: true })
+    }
   })
 })

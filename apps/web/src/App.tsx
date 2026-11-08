@@ -1,8 +1,9 @@
-import { useLiveUpdates } from './api/hooks'
+import { useDrainInvalidation, useLiveUpdates } from './api/hooks'
 import { TitleBar } from './shell/TitleBar'
 
 export function App() {
   useLiveUpdates()
+  useDrainInvalidation()
   return (
     <div className="app">
       <TitleBar />

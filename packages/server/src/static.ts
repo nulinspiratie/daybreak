@@ -16,6 +16,8 @@ const TYPES: Record<string, string> = {
 
 /** Reads a file under `root` for a URL path; null when missing or outside `root`. */
 export function readStatic(root: string, urlPath: string): { body: Buffer; type: string } | null {
+  // Hono's c.req.path leaves %2F and %2e escapes encoded, so this decode is still needed;
+  // the containment check below runs on the decoded result.
   let rel: string
   try {
     rel = decodeURIComponent(urlPath)
