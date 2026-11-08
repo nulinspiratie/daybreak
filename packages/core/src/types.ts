@@ -68,3 +68,25 @@ export interface DayView {
   doneCount: number
   totalCount: number
 }
+
+export type ReviewChoice = 'today' | 'day' | 'backlog' | 'cancel'
+
+export interface ReviewItem {
+  task: Task
+  path: string[]
+  group: 'leftover' | 'suggestion'
+  decision: { choice: ReviewChoice; date?: ISODate } | null
+  workedOn: ISODate | null
+  scheduledOn: ISODate | null
+}
+
+export interface ReviewView {
+  date: ISODate
+  leftovers: ReviewItem[]
+  suggestions: ReviewItem[]
+  sortedCount: number
+  totalCount: number
+  todayCount: number
+  finished: boolean
+  skipped: boolean
+}

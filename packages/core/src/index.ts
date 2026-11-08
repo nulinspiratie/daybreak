@@ -8,6 +8,7 @@ export { localDate, addDays, daysBetween, weekdayName, dayLabel, parseDayInput }
 export type { ISODate } from './dates'
 export type {
   Task, Section, Status, Mark, EventKind, Config, TreeNode, TreeView, MoveTarget, DayItem, DayView,
+  ReviewChoice, ReviewItem, ReviewView,
 } from './types'
 export type { Ctx } from './ctx'
 export { today, nowIso } from './ctx'
@@ -26,3 +27,4 @@ export { marksOn, setMark, lastWorkedBefore } from './tasks/marks'
 export { setStatus } from './tasks/status'
 export { schedule, scheduleToday, dayView, dayCounts } from './tasks/schedule'
 export { softDelete, restore } from './tasks/delete'
+export { reviewView, decide, undoDecision, skipReview, finishReview, needsReview } from './review'
