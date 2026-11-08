@@ -1,10 +1,11 @@
 import type { TreeNode } from '@daybreak/core'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { api, ApiError } from '../api/client'
 import { useMutate, useStatus, useTree } from '../api/hooks'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
 import { DRAFT_ID, flatten, type FlatRow } from './flatten'
+import { toggleDoneStatus } from './RowCheckbox'
 import { TreeRow } from './TreeRow'
 
 function expandedParents(nodes: TreeNode[], out: string[] = []): string[] {
@@ -49,17 +50,40 @@ export function TreePane() {
     [mutate],
   )
 
-  const find = (id: string): TreeNode | undefined => rows.find((r) => r.id === id)?.node
+  // Handlers read the latest rows and date through refs so their identity never changes
+  // and memoised rows are not re-rendered by selection changes.
+  const latest = useRef({ rows, today })
+  latest.current = { rows, today }
+  const find = (id: string): TreeNode | undefined => latest.current.rows.find((r) => r.id === id)?.node
 
-  const toggleDone = (id: string) => {
-    const done = find(id)?.status === 'done'
-    run(() => api.send('PATCH', `/api/tasks/${id}`, { status: done ? 'open' : 'done' }))
-  }
-  const toggleCollapse = (id: string) => {
-    const collapsed = find(id)?.collapsed === true
-    run(() => api.send('PATCH', `/api/tasks/${id}`, { collapsed: !collapsed }))
-  }
-  const scheduleToday = (id: string) => run(() => api.send('POST', `/api/tasks/${id}/schedule`, { date: today }))
+  const onSelect = useCallback((id: string) => setUi({ treeSel: id, pane: 'tree' }), [setUi])
+  const onToggleDone = useCallback(
+    (id: string) => {
+      const n = find(id)
+      if (n) run(() => api.send('PATCH', `/api/tasks/${id}`, { status: toggleDoneStatus(n.status) }))
+    },
+    [run],
+  )
+  const onToggleCollapse = useCallback(
+    (id: string) => {
+      const collapsed = find(id)?.collapsed === true
+      run(() => api.send('PATCH', `/api/tasks/${id}`, { collapsed: !collapsed }))
+    },
+    [run],
+  )
+  const onScheduleToday = useCallback(
+    (id: string) => run(() => api.send('POST', `/api/tasks/${id}/schedule`, { date: latest.current.today })),
+    [run],
+  )
+  const onDoing = useCallback(
+    (id: string) => {
+      const doing = find(id)?.mark === 'doing'
+      run(() => api.send('POST', `/api/tasks/${id}/mark`, { mark: doing ? null : 'doing' }))
+    },
+    [run],
+  )
+  const onPickDay = useCallback((_id: string) => {}, []) // Task 19
+  const onNewTask = useCallback(() => {}, []) // Task 16/17 wires the draft and edit row
   const collapseAll = () => {
     if (!tree) return
     for (const id of expandedParents([...tree.inbox, ...tree.projects])) {
@@ -83,12 +107,12 @@ export function TreePane() {
         row={r}
         today={today}
         selected={treeSel === r.id}
-        onSelect={(id) => setUi({ treeSel: id, pane: 'tree' })}
-        onToggleCollapse={toggleCollapse}
-        onToggleDone={toggleDone}
-        onScheduleToday={scheduleToday}
-        onDoing={() => {}}
-        onOpenDetail={(id) => setUi({ treeSel: id, detailId: id })}
+        onSelect={onSelect}
+        onToggleCollapse={onToggleCollapse}
+        onToggleDone={onToggleDone}
+        onScheduleToday={onScheduleToday}
+        onDoing={onDoing}
+        onPickDay={onPickDay}
       />
     )
 
@@ -120,7 +144,7 @@ export function TreePane() {
         <button
           type="button"
           className="btn btn--primary"
-          onClick={() => setUi({ draft: { section: 'inbox', parentId: null }, editing: { id: 'draft', initial: '' } })}
+          onClick={onNewTask}
         >
           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
             <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

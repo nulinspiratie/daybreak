@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { FlatRow } from './flatten'
 import { DayCell } from './DayCell'
 import { RowCheckbox, type RowState } from './RowCheckbox'
@@ -10,10 +11,10 @@ export interface TreeRowProps {
   onToggleCollapse: (id: string) => void
   onToggleDone: (id: string) => void
   onScheduleToday: (id: string) => void
-  /** S: start doing. Wired in a later task. */
+  /** S: toggle the Doing mark. */
   onDoing: (id: string) => void
-  /** D: opens the detail panel, which hosts the day picker. */
-  onOpenDetail: (id: string) => void
+  /** D: day picker (no-op until Task 19). */
+  onPickDay: (id: string) => void
 }
 
 function stateOf(row: FlatRow): RowState {
@@ -28,13 +29,13 @@ const GUIDE_DOTS = (
   </svg>
 )
 
-export function TreeRow(p: TreeRowProps) {
+export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
   const { row, selected } = p
   const { node, depth } = row
   const state = stateOf(row)
   const closed = state === 'done' || state === 'cancelled'
   const strong = state === 'doing' || (row.section === 'projects' && depth === 0)
-  const rowCls = ['row', selected && 'row--selected', state === 'doing' && 'row--doing', closed && 'row--closed']
+  const rowCls = ['row', selected && 'row--selected', state === 'doing' && 'row--doing', state === 'done' && 'row--done']
   const titleCls = ['row__title', strong && 'row__title--strong', closed && 'row__title--struck', state === 'cancelled' && 'row__title--cancelled']
   const collapsed = row.hasChildren && node.collapsed
 
@@ -44,6 +45,7 @@ export function TreeRow(p: TreeRowProps) {
       role="treeitem"
       aria-level={depth + 1}
       aria-selected={selected}
+      aria-labelledby={`title-${row.id}`}
       aria-expanded={row.hasChildren ? !collapsed : undefined}
       className={rowCls.filter(Boolean).join(' ')}
       data-state={state}
@@ -79,7 +81,7 @@ export function TreeRow(p: TreeRowProps) {
           </svg>
         </span>
       )}
-      <span className={titleCls.filter(Boolean).join(' ')}>{node.title}</span>
+      <span id={`title-${row.id}`} className={titleCls.filter(Boolean).join(' ')}>{node.title}</span>
       {node.notes.trim() !== '' && (
         <svg role="img" aria-label="Has notes" className="row__icon" width="12" height="12" viewBox="0 0 16 16">
           <path d="M3 4h10M3 8h10M3 12h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -105,7 +107,7 @@ export function TreeRow(p: TreeRowProps) {
             </svg>
             <span className="qa__key">T</span>
           </button>
-          <button type="button" className="qa" aria-label="Pick a day (D)" onClick={(e) => { e.stopPropagation(); p.onOpenDetail(row.id) }}>
+          <button type="button" className="qa" aria-label="Pick a day (D)" onClick={(e) => { e.stopPropagation(); p.onPickDay(row.id) }}>
             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16">
               <rect x="2.5" y="3.5" width="11" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.3" />
               <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -116,4 +118,4 @@ export function TreeRow(p: TreeRowProps) {
       )}
     </div>
   )
-}
+})

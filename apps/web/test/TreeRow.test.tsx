@@ -2,6 +2,7 @@
 import type { TreeNode } from '@daybreak/core'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { toggleDoneStatus } from '../src/tree/RowCheckbox'
 import { TreeRow } from '../src/tree/TreeRow'
 import type { FlatRow } from '../src/tree/flatten'
 import { node } from './helpers'
@@ -19,7 +20,7 @@ const noop = () => {}
 function show(r: FlatRow, selected = false, handlers: Partial<Parameters<typeof TreeRow>[0]> = {}) {
   return render(
     <TreeRow row={r} today={TODAY} selected={selected} onSelect={noop} onToggleCollapse={noop}
-      onToggleDone={noop} onScheduleToday={noop} onDoing={noop} onOpenDetail={noop} {...handlers} />,
+      onToggleDone={noop} onScheduleToday={noop} onDoing={noop} onPickDay={noop} {...handlers} />,
   )
 }
 const item = () => screen.getByRole('treeitem')
@@ -121,14 +122,14 @@ describe('TreeRow', () => {
   it('quick actions S, T, D are labelled; closed rows have none', () => {
     const onScheduleToday = vi.fn()
     const onDoing = vi.fn()
-    const onOpenDetail = vi.fn()
-    const { unmount } = show(row(), false, { onScheduleToday, onDoing, onOpenDetail })
+    const onPickDay = vi.fn()
+    const { unmount } = show(row(), false, { onScheduleToday, onDoing, onPickDay })
     fireEvent.click(screen.getByRole('button', { name: 'Schedule for today (T)' }))
     fireEvent.click(screen.getByRole('button', { name: 'Doing now (S)' }))
     fireEvent.click(screen.getByRole('button', { name: 'Pick a day (D)' }))
     expect(onScheduleToday).toHaveBeenCalledWith('t1')
     expect(onDoing).toHaveBeenCalledWith('t1')
-    expect(onOpenDetail).toHaveBeenCalledWith('t1')
+    expect(onPickDay).toHaveBeenCalledWith('t1')
     unmount()
     show(row({ status: 'done' }))
     expect(screen.queryByRole('button', { name: /\(T\)/ })).toBeNull()
@@ -142,5 +143,26 @@ describe('TreeRow', () => {
     expect(onSelect).toHaveBeenCalledWith('t1')
     fireEvent.click(screen.getByRole('button', { name: 'Tick off' }))
     expect(onToggleDone).toHaveBeenCalledWith('t1')
+  })
+
+  it('a cancelled row reopens, a done row reopens, an open row closes', () => {
+    expect(toggleDoneStatus('cancelled')).toBe('open')
+    expect(toggleDoneStatus('done')).toBe('open')
+    expect(toggleDoneStatus('open')).toBe('done')
+  })
+
+  it('only Done rows are dimmed; Cancelled is struck in the muted colour', () => {
+    const { unmount } = show(row({ status: 'done' }))
+    expect(item().className).toContain('row--done')
+    unmount()
+    show(row({ status: 'cancelled' }))
+    expect(item().className).not.toContain('row--done')
+    expect(title().className).toContain('row__title--cancelled')
+  })
+
+  it('the treeitem is labelled by its title', () => {
+    show(row())
+    expect(item().getAttribute('aria-labelledby')).toBe(title().id)
+    expect(screen.getByRole('treeitem', { name: 't1' })).toBeTruthy()
   })
 })

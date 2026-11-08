@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createMutationQueue } from '../src/api/queue'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -83,6 +83,7 @@ describe('mutation queue', () => {
   })
 
   it('a throwing drain listener does not halt the queue or hide later listeners', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
     const q = createMutationQueue()
     const log: string[] = []
     q.onDrain(() => {
@@ -95,5 +96,7 @@ describe('mutation queue', () => {
     await expect(q.enqueue(async () => 'b')).resolves.toBe('b')
     await q.idle()
     expect(log).toEqual(['bad', 'good', 'bad', 'good'])
+    expect(err).toHaveBeenCalledTimes(2)
+    err.mockRestore()
   })
 })
