@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Work Planner — quick add</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 960px; height: 560px; overflow: hidden; background: #BCC7D1; color: #1B1B1B; font-family: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif; font-size: 13px">
+
+  <div style="position: absolute; left: 32px; top: 28px; width: 300px; display: flex; flex-direction: column; gap: 6px; color: #1E2A35">
+    <span style="font-size: 13px; font-weight: 600">From anywhere in Windows</span>
+    <span style="font-size: 12px; line-height: 18px">Ctrl+Alt+Space opens this bar over whatever you are doing. Type, press Enter, and you are back where you were.</span>
+  </div>
+
+  <section aria-label="Quick add" style="position: absolute; left: 170px; top: 150px; width: 620px; box-sizing: border-box; background: #FBFBFB; border: 1px solid #D4D4D4; border-radius: 12px; box-shadow: 0 20px 48px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.08); overflow: hidden">
+    <label style="display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 18px; border-bottom: 1px solid #E5E5E5">
+      <span aria-hidden="true" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 10px; border: 1.5px solid #8A8A8A"></span>
+      <input type="text" aria-label="New task" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" placeholder="Add to My Day…" style="flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: 18px; color: #1B1B1B">
+      <span style="font-size: 10.5px; color: #6B6B6B; border: 1px solid #C8C8C8; border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; background: #FFFFFF">Enter</span>
+    </label>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 18px">
+      <button type="button" aria-pressed="{{toToday}}" onClick="{{toggleToday}}" style="{{todayStyle}}">
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+        My Day
+        <span style="font-size: 10px; opacity: 0.8">Alt+T</span>
+      </button>
+      <button type="button" style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 14px; border: 1px solid #D1D1D1; background: #FFFFFF; color: #1B1B1B; font: inherit; font-size: 12px">
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16"><path d="M2.5 9.5 4 3.5h8l1.5 6v3h-11zM2.5 9.5H6l.8 1.5h2.4l.8-1.5h3.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+        {{where}}
+        <span style="font-size: 10px; color: #6B6B6B">Tab</span>
+      </button>
+      <span style="flex: 1"></span>
+      <span style="font-size: 11px; color: #6B6B6B">Shift+Enter adds and keeps the bar open · Esc closes</span>
+    </div>
+
+    <div style="padding: 0 10px 10px; display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #5C5C5C; padding: 4px 8px">File under (Tab to move, Enter to choose)</span>
+      <sc-for list="{{targets}}" as="g" hint-placeholder-count="4">
+        <button type="button" onClick="{{g.pick}}" style="{{g.style}}">
+          <span style="font-size: 13px">{{g.title}}</span>
+          <span style="font-size: 11px; color: #6B6B6B">{{g.path}}</span>
+        </button>
+      </sc-for>
+    </div>
+  </section>
+
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div role="status" style="position: absolute; left: 330px; top: 486px; width: 300px; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; background: #1B1B1B; color: #FFFFFF; font-size: 12px">
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{toast}}</span>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":560}}'>
+var TARGETS = [
+  { title:'Inbox', path:'No project' },
+  { title:'Install TWPA on the mixing chamber plate', path:'Fridge 3 readout upgrade  ›  Milestone 2' },
+  { title:'Milestone 2 — Install and cooldown', path:'Fridge 3 readout upgrade' },
+  { title:'Port fit routines to the new data format', path:'Parity-readout calibration pipeline' }
+];
+class Component extends DCLogic {
+  st() { return this.state || {}; }
+  renderVals() {
+    var self = this;
+    var s = this.st();
+    var draft = s.draft === undefined ? 'Order a spare SMA torque wrench' : s.draft;
+    var toToday = s.toToday === undefined ? true : s.toToday;
+    var target = s.target === undefined ? 1 : s.target;
+    return {
+      draft:draft, toToday:toToday, where: TARGETS[target].title === 'Inbox' ? 'Inbox' : TARGETS[target].title,
+      todayStyle:'height:28px;display:flex;align-items:center;gap:6px;padding:0 10px;border-radius:14px;font:inherit;font-size:12px;font-weight:600;border:1px solid ' + (toToday ? '#005FB8' : '#D1D1D1') + ';background:' + (toToday ? '#E3EEFA' : '#FFFFFF') + ';color:' + (toToday ? '#005FB8' : '#5C5C5C') + ';',
+      toggleToday: function () { self.setState({ toToday: !toToday }); },
+      targets: TARGETS.map(function (g, i) {
+        return { title:g.title, path:g.path, pick: function () { self.setState({ target:i }); },
+          style:'height:44px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;padding:0 10px;border-radius:7px;border:0;font:inherit;text-align:left;color:#1B1B1B;background:' + (i === target ? '#E3EEFA' : 'transparent') + ';' + (i === target ? 'box-shadow:inset 0 0 0 1px #005FB8;' : '') };
+      }),
+      hasToast: !!s.toast, toast: s.toast || '',
+      onDraft: function (e) { self.setState({ draft: e.target.value }); },
+      onKey: function (e) {
+        if (e.key === 'Tab') { e.preventDefault(); self.setState({ target: (target + (e.shiftKey ? TARGETS.length - 1 : 1)) % TARGETS.length }); return; }
+        if (e.key === 'Enter') {
+          var t = (draft || '').trim();
+          if (!t) return;
+          self.setState({ draft:'', toast: 'Added “' + t + '”' + (toToday ? ' to My Day' : '') + ' · ' + TARGETS[target].title });
+        }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Work Planner — taskbar pop-up</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 800px; height: 760px; overflow: hidden; background: #CBD5DE; color: #1B1B1B; font-family: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif; font-size: 13px">
+
+  <!-- Pop-up -->
+  <section aria-label="My Day pop-up" style="position: absolute; left: 254px; bottom: 60px; width: 380px; height: 560px; box-sizing: border-box; display: flex; flex-direction: column; background: #F9F9F9; border: 1px solid #D9D9D9; border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.08); overflow: hidden">
+    <div style="padding: 16px 18px 12px; display: flex; align-items: flex-end; gap: 10px">
+      <div style="display: flex; flex-direction: column; gap: 1px">
+        <h2 style="margin: 0; font-size: 17px; font-weight: 600">My Day</h2>
+        <span style="font-size: 12px; color: #5C5C5C">Monday 9 November</span>
+      </div>
+      <span style="flex: 1"></span>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px">
+        <span style="font-size: 12px; color: #5C5C5C; font-variant-numeric: tabular-nums">{{doneCount}} of {{total}} done</span>
+        <div style="width: 84px; height: 4px; border-radius: 2px; background: #E5E5E5; overflow: hidden"><div style="{{progressStyle}}"></div></div>
+      </div>
+    </div>
+
+    <div style="flex: 1; min-height: 0; overflow: auto; padding: 0 8px; display: flex; flex-direction: column; gap: 1px">
+      <sc-for list="{{items}}" as="it" hint-placeholder-count="7">
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 3px 10px; border-radius: 6px">
+          <button type="button" aria-label="Tick off" aria-pressed="{{it.done}}" onClick="{{it.toggle}}" style="{{it.cbStyle}}">
+            <sc-if value="{{it.done}}" hint-placeholder-val="{{false}}">
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </sc-if>
+          </button>
+          <div style="display: flex; flex-direction: column; min-width: 0; flex: 1">
+            <span style="font-size: 10.5px; color: #6B6B6B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.path}}</span>
+            <span style="{{it.titleStyle}}">{{it.title}}</span>
+          </div>
+          <sc-if value="{{it.worked}}" hint-placeholder-val="{{false}}">
+            <svg role="img" aria-label="Worked on today" width="14" height="14" viewBox="0 0 14 14" style="flex: none; color: #A85400"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M7 1.4a5.6 5.6 0 0 1 0 11.2z" fill="currentColor"></path></svg>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="padding: 10px 12px; border-top: 1px solid #E5E5E5; display: flex; flex-direction: column; gap: 10px; background: #F3F3F3">
+      <label style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: 6px; background: #FFFFFF; border: 1px solid #D1D1D1; border-bottom: 2px solid #005FB8">
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" style="color: #6B6B6B"><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+        <input type="text" aria-label="Add to My Day" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" placeholder="Add to My Day" style="flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: 13px; color: #1B1B1B">
+        <span style="font-size: 10px; color: #6B6B6B; border: 1px solid #D1D1D1; border-radius: 3px; padding: 0 4px; line-height: 15px">Enter</span>
+      </label>
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span style="font-size: 11px; color: #6B6B6B">New items land in Inbox</span>
+        <span style="flex: 1"></span>
+        <a href="Main.dc.html" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 6px; background: #FFFFFF; border: 1px solid #D1D1D1; color: #1B1B1B; font-size: 12px; text-decoration: none">
+          Open Work Planner
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M6 3h7v7M13 3 5 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Taskbar -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 48px; display: flex; align-items: center; justify-content: center; gap: 4px; background: #EEF0F2; border-top: 1px solid #D6D9DC">
+    <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 5px; display: flex; align-items: center; justify-content: center"><span style="width: 22px; height: 22px; border-radius: 5px; background: #9AA6B2"></span></span>
+    <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 5px; display: flex; align-items: center; justify-content: center"><span style="width: 22px; height: 22px; border-radius: 11px; background: #A9B4BF"></span></span>
+    <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 5px; display: flex; align-items: center; justify-content: center"><span style="width: 22px; height: 22px; border-radius: 5px; background: #B8C1CA"></span></span>
+    <button type="button" aria-label="Work Planner — My Day" aria-expanded="true" style="position: relative; width: 40px; height: 40px; border-radius: 5px; border: 0; background: #FFFFFF; box-shadow: 0 0 0 1px #E0E3E6; display: flex; align-items: center; justify-content: center; padding: 0">
+      <span aria-hidden="true" style="width: 22px; height: 22px; border-radius: 6px; background: #005FB8; color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+        <svg width="14" height="14" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </span>
+      <span aria-hidden="true" style="position: absolute; bottom: 2px; left: 13px; width: 14px; height: 3px; border-radius: 2px; background: #005FB8"></span>
+      <span style="position: absolute; top: 3px; right: 2px; min-width: 15px; height: 15px; box-sizing: border-box; padding: 0 3px; border-radius: 8px; background: #1B1B1B; color: #FFFFFF; font-size: 9.5px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{openCount}}</span>
+    </button>
+    <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 5px; display: flex; align-items: center; justify-content: center"><span style="width: 22px; height: 22px; border-radius: 5px; background: #A2ADB8"></span></span>
+    <span style="position: absolute; right: 16px; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; font-size: 11.5px; color: #1B1B1B; line-height: 16px">
+      <span>09:12</span><span>09-11-2026</span>
+    </span>
+  </div>
+
+  <div style="position: absolute; left: 640px; top: 160px; width: 140px; font-size: 12px; line-height: 17px; color: #2C3742">
+    Opens above its taskbar icon, like the calendar flyout. Badge = open items today.
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":760}}'>
+var BASE = [
+  { id:'a', title:'Review Jonas’s PR on drift correction', path:'Parity-readout calibration pipeline', done:true },
+  { id:'b', title:'Write loader for HDF5 v2 files', path:'Parity-readout  ›  Port fit routines', worked:true },
+  { id:'c', title:'Message Anja about the cryostat cooldown slot', path:'Inbox' },
+  { id:'d', title:'Verify pump tone frequency with the VNA', path:'Fridge 3  ›  Milestone 2  ›  Install TWPA' },
+  { id:'e', title:'Update wiring diagram in the lab wiki', path:'Fridge 3  ›  Milestone 2' },
+  { id:'f', title:'Draft runbook for the tune-up sequence', path:'Parity-readout  ›  Automate daily tune-up' },
+  { id:'g', title:'Call facilities about the helium delivery', path:'Inbox' }
+];
+class Component extends DCLogic {
+  st() { return this.state || {}; }
+  renderVals() {
+    var self = this;
+    var s = this.st();
+    var doneMap = s.done || {};
+    var list = BASE.concat(s.added || []);
+    var items = list.map(function (it) {
+      var done = Object.prototype.hasOwnProperty.call(doneMap, it.id) ? doneMap[it.id] : !!it.done;
+      return {
+        title:it.title, path:it.path, done:done, worked: !!it.worked && !done,
+        cbStyle:'width:18px;height:18px;flex:none;border-radius:9px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:1.5px solid ' + (done ? '#005FB8' : '#8A8A8A') + ';background:' + (done ? '#005FB8' : 'transparent') + ';color:#FFFFFF;',
+        titleStyle:'font-size:13px;color:' + (done ? '#757575' : '#1B1B1B') + ';text-decoration:' + (done ? 'line-through' : 'none') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
+        toggle: function () { var m = Object.assign({}, doneMap); m[it.id] = !done; self.setState({ done:m }); }
+      };
+    });
+    var doneCount = items.filter(function (i) { return i.done; }).length;
+    return {
+      items:items, total: String(items.length), doneCount: String(doneCount), openCount: String(items.length - doneCount),
+      progressStyle:'height:4px;background:#005FB8;border-radius:2px;width:' + Math.round(doneCount / items.length * 100) + '%;',
+      draft: s.draft || '',
+      onDraft: function (e) { self.setState({ draft:e.target.value }); },
+      onKey: function (e) {
+        if (e.key !== 'Enter') return;
+        var t = (self.st().draft || '').trim();
+        if (!t) return;
+        self.setState({ draft:'', added:(self.st().added || []).concat([{ id:'n' + Date.now(), title:t, path:'Inbox' }]) });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

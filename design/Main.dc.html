@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Work Planner — main window</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+
+  <!-- Title bar -->
+  <div style="height: 40px; flex: none; display: flex; align-items: center; padding-left: 14px; gap: 10px">
+    <span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: {{t.accent}}; color: {{t.onAccent}}; display: flex; align-items: center; justify-content: center">
+      <svg width="12" height="12" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    </span>
+    <span style="font-size: 12px; font-weight: 600; color: {{t.text}}">Work Planner</span>
+    <span style="font-size: 12px; color: {{t.text3}}">Monday 9 November</span>
+    <span style="flex: 1"></span>
+    <a href="QuickAdd.dc.html" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px; text-decoration: none; color: {{t.text2}}; border: 1px solid {{t.line}}; background: {{t.pane}}">
+      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+      Add to My Day
+      <span style="{{kbdTiny}}">Ctrl+Alt+Space</span>
+    </a>
+    <a href="MorningReviewList.dc.html" style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px; text-decoration: none; color: {{t.text2}}; border: 1px solid {{t.line}}; background: {{t.pane}}">
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="9" r="3" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 2.5v1.5M3 9H1.5M14.5 9H13M4.2 5.2l-1-1M11.8 5.2l1-1M1.5 13h13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+      Morning review
+    </a>
+    <div style="display: flex; margin-left: 8px">
+      <button type="button" aria-label="Minimise" style="width: 46px; height: 40px; border: 0; background: none; color: {{t.text}}; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor" stroke-width="1"></path></svg></button>
+      <button type="button" aria-label="Maximise" style="width: 46px; height: 40px; border: 0; background: none; color: {{t.text}}; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1"></rect></svg></button>
+      <button type="button" aria-label="Close" style="width: 46px; height: 40px; border: 0; background: none; color: {{t.text}}; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"></path></svg></button>
+    </div>
+  </div>
+
+  <div style="flex: 1; display: flex; gap: 8px; padding: 0 8px 8px; min-height: 0">
+
+    <!-- TREE -->
+    <section aria-label="Task tree" style="flex: 3 1 0; min-width: 0; display: flex; flex-direction: column; background: {{t.pane}}; border: 1px solid {{t.line}}; border-radius: 8px; overflow: hidden">
+      <div style="height: 52px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 18px; border-bottom: 1px solid {{t.line}}">
+        <h1 style="margin: 0; font-size: 15px; font-weight: 600; color: {{t.text}}">Tasks</h1>
+        <span style="flex: 1"></span>
+        <button type="button" aria-pressed="{{showCompleted}}" onClick="{{toggleCompleted}}" style="{{completedBtnStyle}}">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.2 8.2 7.2 10.2 10.8 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          Show completed
+          <span style="font-size: 11px; color: {{t.text3}}">{{oldDoneCount}}</span>
+        </button>
+        <button type="button" aria-label="Collapse all" onClick="{{collapseAll}}" style="width: 30px; height: 30px; border-radius: 6px; border: 1px solid {{t.line}}; background: {{t.pane}}; color: {{t.text2}}; display: flex; align-items: center; justify-content: center">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><path d="M4.5 6 8 2.5 11.5 6M4.5 10 8 13.5 11.5 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </button>
+        <button type="button" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 6px; border: 0; background: {{t.accent}}; color: {{t.onAccent}}; font: inherit; font-size: 12px; font-weight: 600">
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+          New task
+          <span style="font-size: 11px; font-weight: 500; opacity: 0.85">Ctrl+N</span>
+        </button>
+      </div>
+
+      <div style="flex: 1; min-height: 0; overflow: hidden; padding: 6px 8px">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="24">
+          <sc-if value="{{r.isHeader}}" hint-placeholder-val="{{false}}">
+            <div style="{{r.headStyle}}">
+              <span>{{r.title}}</span>
+              <span style="font-weight: 500; color: {{t.text3}}">{{r.count}}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{r.isTask}}" hint-placeholder-val="{{true}}">
+            <div style="{{r.rowStyle}}" onMouseEnter="{{r.enter}}" onClick="{{r.select}}">
+              <sc-if value="{{gutter}}" hint-placeholder-val="{{false}}">
+                <span style="{{r.gutterStyle}}">{{r.gutterText}}</span>
+              </sc-if>
+              <span aria-hidden="true" style="{{r.handleStyle}}">
+                <svg width="8" height="12" viewBox="0 0 8 12"><circle cx="2" cy="2" r="1" fill="currentColor"></circle><circle cx="6" cy="2" r="1" fill="currentColor"></circle><circle cx="2" cy="6" r="1" fill="currentColor"></circle><circle cx="6" cy="6" r="1" fill="currentColor"></circle><circle cx="2" cy="10" r="1" fill="currentColor"></circle><circle cx="6" cy="10" r="1" fill="currentColor"></circle></svg>
+              </span>
+              <span aria-hidden="true" style="{{r.indentStyle}}"></span>
+              <sc-if value="{{r.hasKids}}" hint-placeholder-val="{{false}}">
+                <button type="button" aria-label="{{r.chevLabel}}" onClick="{{r.toggleKids}}" style="width: 16px; height: 16px; flex: none; display: flex; align-items: center; justify-content: center; border: 0; padding: 0; background: none; color: {{t.text2}}; border-radius: 3px">
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style="{{r.chevStyle}}"><path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </button>
+              </sc-if>
+              <sc-if value="{{r.noKids}}" hint-placeholder-val="{{true}}">
+                <span aria-hidden="true" style="width: 16px; flex: none"></span>
+              </sc-if>
+              <button type="button" aria-label="{{r.cbLabel}}" onClick="{{r.toggleDone}}" style="{{r.cbStyle}}">
+                <sc-if value="{{r.done}}" hint-placeholder-val="{{false}}">
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </sc-if>
+                <sc-if value="{{r.cancelled}}" hint-placeholder-val="{{false}}">
+                  <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2 2 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+                </sc-if>
+                <sc-if value="{{r.doing}}" hint-placeholder-val="{{false}}">
+                  <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 2px; background: currentColor"></span>
+                </sc-if>
+              </button>
+              <sc-if value="{{r.worked}}" hint-placeholder-val="{{false}}">
+                <button type="button" aria-label="Worked on today (W)" onClick="{{r.toggleWorked}}" style="width: 16px; height: 16px; flex: none; border: 0; padding: 0; background: none; color: {{t.worked}}; display: flex; align-items: center; justify-content: center">
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M7 1.4a5.6 5.6 0 0 1 0 11.2z" fill="currentColor"></path></svg>
+                </button>
+              </sc-if>
+              <sc-if value="{{r.workedGhost}}" hint-placeholder-val="{{false}}">
+                <button type="button" aria-label="Mark worked on (W)" onClick="{{r.toggleWorked}}" style="width: 16px; height: 16px; flex: none; border: 0; padding: 0; background: none; color: {{t.text3}}; display: flex; align-items: center; justify-content: center">
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2.2 1.8"></circle></svg>
+                </button>
+              </sc-if>
+              <button type="button" onClick="{{r.open}}" style="{{r.titleStyle}}">{{r.title}}</button>
+              <sc-if value="{{r.hasNotes}}" hint-placeholder-val="{{false}}">
+                <svg role="img" aria-label="Has notes" width="12" height="12" viewBox="0 0 16 16" style="flex: none; color: {{t.text3}}"><path d="M3 4h10M3 8h10M3 12h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <sc-if value="{{r.hasLink}}" hint-placeholder-val="{{false}}">
+                <svg role="img" aria-label="Has a link" width="12" height="12" viewBox="0 0 16 16" style="flex: none; color: {{t.text3}}"><path d="M6.5 9.5l3-3M7 4.5l1-1a2.8 2.8 0 0 1 4 4l-1 1M9 11.5l-1 1a2.8 2.8 0 0 1-4-4l1-1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <sc-if value="{{r.showCount}}" hint-placeholder-val="{{false}}">
+                <span style="flex: none; font-size: 11px; color: {{t.text3}}; font-variant-numeric: tabular-nums">{{r.count}}</span>
+              </sc-if>
+              <sc-if value="{{r.chipInline}}" hint-placeholder-val="{{false}}">
+                <span style="{{r.chipStyle}}">{{r.chip}}</span>
+              </sc-if>
+              <span style="flex: 1; min-width: 8px"></span>
+              <sc-if value="{{r.hover}}" hint-placeholder-val="{{false}}">
+                <div style="display: flex; align-items: center; gap: 2px; flex: none">
+                  <button type="button" aria-label="Doing now (S)" onClick="{{r.toggleDoing}}" style="{{toolBtn}}">
+                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+                    <span style="{{kbdTiny}}">S</span>
+                  </button>
+                  <button type="button" aria-label="Schedule for today (T)" onClick="{{r.schedToday}}" style="{{toolBtn}}">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+                    <span style="{{kbdTiny}}">T</span>
+                  </button>
+                  <button type="button" aria-label="Pick a day (D)" onClick="{{r.pickDay}}" style="{{toolBtn}}">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16"><rect x="2.5" y="3.5" width="11" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+                    <span style="{{kbdTiny}}">D</span>
+                  </button>
+                  <button type="button" aria-label="New task below (Enter)" style="{{toolBtn}}">
+                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                  </button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+
+      <div style="height: 34px; flex: none; display: flex; align-items: center; gap: 13px; padding: 0 18px; border-top: 1px solid {{t.line}}; background: {{t.pane2}}; overflow: hidden">
+        <sc-for list="{{keys}}" as="k" hint-placeholder-count="8">
+          <span style="display: flex; align-items: center; gap: 5px; font-size: 11px; color: {{t.text3}}; white-space: nowrap">
+            <span style="{{kbd}}">{{k.key}}</span>{{k.label}}
+          </span>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- MY DAY -->
+    <sc-if value="{{noDetail}}" hint-placeholder-val="{{true}}">
+      <section aria-label="My Day" style="flex: 2 1 0; min-width: 0; display: flex; flex-direction: column; background: {{t.pane}}; border: 1px solid {{t.line}}; border-radius: 8px; overflow: hidden">
+        <div style="padding: 18px 20px 14px; display: flex; align-items: flex-end; gap: 12px; border-bottom: 1px solid {{t.line}}">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <h2 style="margin: 0; font-size: 22px; font-weight: 600; color: {{t.text}}">My Day</h2>
+            <span style="font-size: 12px; color: {{t.text2}}">Monday 9 November</span>
+          </div>
+          <span style="flex: 1"></span>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px">
+            <span style="font-size: 12px; color: {{t.text2}}; font-variant-numeric: tabular-nums">{{doneCount}} of {{dayCount}} done</span>
+            <div style="width: 120px; height: 4px; border-radius: 2px; background: {{t.chip}}; overflow: hidden">
+              <div style="{{progressStyle}}"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex: 1; min-height: 0; overflow: hidden; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px">
+          <sc-for list="{{day}}" as="d" hint-placeholder-count="7">
+            <div style="{{d.rowStyle}}" onMouseEnter="{{d.enter}}">
+              <span aria-hidden="true" style="{{d.handleStyle}}">
+                <svg width="8" height="12" viewBox="0 0 8 12"><circle cx="2" cy="2" r="1" fill="currentColor"></circle><circle cx="6" cy="2" r="1" fill="currentColor"></circle><circle cx="2" cy="6" r="1" fill="currentColor"></circle><circle cx="6" cy="6" r="1" fill="currentColor"></circle><circle cx="2" cy="10" r="1" fill="currentColor"></circle><circle cx="6" cy="10" r="1" fill="currentColor"></circle></svg>
+              </span>
+              <button type="button" aria-label="{{d.cbLabel}}" onClick="{{d.toggleDone}}" style="{{d.cbStyle}}">
+                <sc-if value="{{d.done}}" hint-placeholder-val="{{false}}">
+                  <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </sc-if>
+                <sc-if value="{{d.cancelled}}" hint-placeholder-val="{{false}}">
+                  <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2 2 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+                </sc-if>
+                <sc-if value="{{d.doing}}" hint-placeholder-val="{{false}}">
+                  <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: currentColor"></span>
+                </sc-if>
+              </button>
+              <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1">
+                <span style="font-size: 11px; color: {{t.text3}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{d.path}}</span>
+                <span style="display: flex; align-items: center; gap: 6px; min-width: 0">
+                  <sc-if value="{{d.worked}}" hint-placeholder-val="{{false}}">
+                    <button type="button" aria-label="Worked on today (W)" onClick="{{d.toggleWorked}}" style="width: 16px; height: 16px; flex: none; border: 0; padding: 0; background: none; color: {{t.worked}}; display: flex; align-items: center">
+                      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M7 1.4a5.6 5.6 0 0 1 0 11.2z" fill="currentColor"></path></svg>
+                    </button>
+                  </sc-if>
+                  <button type="button" onClick="{{d.open}}" style="{{d.titleStyle}}">{{d.title}}</button>
+                </span>
+              </div>
+              <sc-if value="{{d.doing}}" hint-placeholder-val="{{false}}">
+                <span style="flex: none; font-size: 11px; font-weight: 600; color: {{t.onAccent}}; background: {{t.accent}}; padding: 2px 8px; border-radius: 10px">Doing</span>
+              </sc-if>
+              <sc-if value="{{d.worked}}" hint-placeholder-val="{{false}}">
+                <span style="flex: none; font-size: 11px; font-weight: 600; color: {{t.worked}}; background: {{t.workedSoft}}; padding: 2px 8px; border-radius: 10px">Worked on</span>
+              </sc-if>
+              <sc-if value="{{d.workedGhost}}" hint-placeholder-val="{{false}}">
+                <button type="button" onClick="{{d.toggleDoing}}" style="flex: none; height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 5px; border: 1px solid {{t.line}}; background: {{t.pane}}; color: {{t.text2}}; font: inherit; font-size: 11px">
+                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg>
+                  Start <span style="{{kbdTiny}}">S</span>
+                </button>
+              </sc-if>
+            </div>
+          </sc-for>
+
+          <label style="display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 10px 0 28px; margin-top: 4px; border-radius: 6px; border: 1px dashed {{t.line2}}; color: {{t.text3}}">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+            <input type="text" aria-label="Add to My Day" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onDraftKey}}" placeholder="Add to My Day — goes to Inbox, scheduled today" style="flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: 13px; color: {{t.text}}">
+            <span style="{{kbd}}">N</span>
+          </label>
+
+          <div style="flex: 1"></div>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; font-size: 11px; color: {{t.text3}}">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><path d="M2 8h9M8 4.5 11.5 8 8 11.5M14 3v10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            Drag tasks in from the tree, or press T on a selected task
+          </div>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- TASK DETAIL -->
+    <sc-if value="{{hasDetail}}" hint-placeholder-val="{{false}}">
+      <section aria-label="Task detail" style="flex: 2 1 0; min-width: 0; display: flex; flex-direction: column; background: {{t.pane}}; border: 1px solid {{t.line}}; border-radius: 8px; overflow: hidden">
+        <div style="height: 52px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 20px; border-bottom: 1px solid {{t.line}}">
+          <span style="font-size: 12px; color: {{t.text3}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1">{{dt.path}}</span>
+          <button type="button" onClick="{{dt.close}}" style="flex: none; height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 6px; border: 1px solid {{t.line}}; background: {{t.pane}}; color: {{t.text2}}; font: inherit; font-size: 12px">
+            Back to My Day <span style="{{kbdTiny}}">Esc</span>
+          </button>
+        </div>
+
+        <div style="flex: 1; min-height: 0; overflow: hidden; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px">
+          <div style="display: flex; align-items: flex-start; gap: 12px">
+            <button type="button" aria-label="Tick off" onClick="{{dt.toggleDone}}" style="{{dt.cbStyle}}">
+              <sc-if value="{{dt.done}}" hint-placeholder-val="{{false}}">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </sc-if>
+              <sc-if value="{{dt.cancelled}}" hint-placeholder-val="{{false}}">
+                <svg aria-hidden="true" width="11" height="11" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2 2 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <sc-if value="{{dt.doing}}" hint-placeholder-val="{{false}}">
+                <span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 2px; background: currentColor"></span>
+              </sc-if>
+            </button>
+            <h2 style="margin: 0; font-size: 20px; line-height: 26px; font-weight: 600; color: {{t.text}}">{{dt.title}}</h2>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); row-gap: 14px; column-gap: 12px; align-items: center; font-size: 12px">
+            <span style="color: {{t.text3}}">Scheduled</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center">
+              <button type="button" aria-pressed="{{dt.today}}" onClick="{{dt.setToday}}" style="{{dt.todayStyle}}">Today</button>
+              <button type="button" style="{{segOff}}">Tomorrow</button>
+              <button type="button" onClick="{{dt.pickDay}}" style="{{segOff}}">Pick a day…</button>
+              <button type="button" aria-pressed="{{dt.noDate}}" onClick="{{dt.clearDay}}" style="{{dt.noDateStyle}}">No day</button>
+              <span style="{{kbdTiny}}">D</span>
+            </div>
+
+            <span style="color: {{t.text3}}">Status</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 0; border: 1px solid {{t.line}}; border-radius: 6px; padding: 2px; width: max-content; max-width: 100%">
+              <sc-for list="{{dt.statuses}}" as="st" hint-placeholder-count="5">
+                <button type="button" aria-pressed="{{st.on}}" onClick="{{st.set}}" style="{{st.style}}">{{st.label}} <span style="{{st.keyStyle}}">{{st.key}}</span></button>
+              </sc-for>
+            </div>
+
+            <span style="color: {{t.text3}}">Link</span>
+            <div style="display: flex; align-items: center; gap: 8px; min-width: 0">
+              <div style="flex: 1; min-width: 0; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 6px; border: 1px solid {{t.line}}; background: {{t.pane2}}">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" style="flex: none; color: {{t.text3}}"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+                <span style="{{dt.linkStyle}}">{{dt.link}}</span>
+              </div>
+              <button type="button" style="flex: none; height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid {{t.line}}; background: {{t.pane}}; color: {{t.text}}; font: inherit; font-size: 12px">Open</button>
+            </div>
+
+            <span style="color: {{t.text3}}">In tree</span>
+            <span style="color: {{t.text2}}">{{dt.path}}</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span style="font-size: 12px; color: {{t.text3}}">Notes</span>
+              <span style="font-size: 11px; color: {{t.text3}}">· Markdown</span>
+            </div>
+            <div style="border-radius: 6px; border: 1px solid {{t.line}}; padding: 12px 14px; font-size: 13px; line-height: 20px; color: {{t.text}}">
+              <sc-if value="{{dt.hasNotes}}" hint-placeholder-val="{{true}}">
+                <p style="margin: 0 0 6px"><strong>{{dt.notesLead}}</strong> {{dt.notesBody}}</p>
+                <ul style="margin: 0; padding-left: 18px">
+                  <sc-for list="{{dt.bullets}}" as="b" hint-placeholder-count="3">
+                    <li>{{b.text}}</li>
+                  </sc-for>
+                </ul>
+              </sc-if>
+              <sc-if value="{{dt.noNotes}}" hint-placeholder-val="{{false}}">
+                <span style="color: {{t.text3}}">Add notes — **bold**, - lists and `code` work.</span>
+              </sc-if>
+            </div>
+          </div>
+
+          <sc-if value="{{dt.hasKids}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <span style="font-size: 12px; color: {{t.text3}}">Subtasks · {{dt.kidsDone}} of {{dt.kidsTotal}} done</span>
+              <sc-for list="{{dt.kids}}" as="c" hint-placeholder-count="2">
+                <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+                  <button type="button" aria-label="Tick off" aria-pressed="{{c.done}}" onClick="{{c.toggleDone}}" style="{{c.cbStyle}}">
+                    <sc-if value="{{c.done}}" hint-placeholder-val="{{false}}">
+                      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    </sc-if>
+                    <sc-if value="{{c.doing}}" hint-placeholder-val="{{false}}">
+                      <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 2px; background: currentColor"></span>
+                    </sc-if>
+                  </button>
+                  <span style="{{c.titleStyle}}">{{c.title}}</span>
+                  <sc-if value="{{c.hasChip}}" hint-placeholder-val="{{false}}">
+                    <span style="{{c.chipStyle}}">{{c.chip}}</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <div style="flex: 1"></div>
+          <div style="display: flex; gap: 14px; font-size: 11px; color: {{t.text3}}">
+            <span style="display: flex; gap: 5px; align-items: center"><span style="{{kbd}}">Space</span>Done</span>
+            <span style="display: flex; gap: 5px; align-items: center"><span style="{{kbd}}">S</span>Doing</span>
+            <span style="display: flex; gap: 5px; align-items: center"><span style="{{kbd}}">W</span>Worked on</span>
+            <span style="display: flex; gap: 5px; align-items: center"><span style="{{kbd}}">X</span>Cancel</span>
+            <span style="display: flex; gap: 5px; align-items: center"><span style="{{kbd}}">Esc</span>Close</span>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+
+  <!-- Day picker: the same component as in the morning review; opens with D on any task -->
+  <sc-if value="{{hasPicker}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-label="Schedule task" tabIndex="0" onKeyDown="{{pk.onKey}}" style="position: absolute; left: 300px; top: 250px; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: {{t.pane}}; border: 1px solid {{t.line}}; box-shadow: 0 18px 44px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.08); outline: none">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 2px 4px 0">
+        <span style="font-size: 12px; color: {{t.text3}}">Schedule</span>
+        <span style="font-size: 14px; font-weight: 600; color: {{t.text}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px">{{pk.title}}</span>
+        <span style="flex: 1"></span>
+        <button type="button" onClick="{{pk.clear}}" style="height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid {{t.line}}; background: {{t.pane}}; color: {{t.text2}}; font: inherit; font-size: 12px">No day</button>
+        <button type="button" onClick="{{pk.close}}" style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 6px; border: 1px solid {{t.line}}; background: {{t.pane}}; color: {{t.text2}}; font: inherit; font-size: 12px">Close <span style="{{kbdTiny}}">Esc</span></button>
+      </div>
+      <dc-import name="DayPicker" base="2026-11-09" focus="{{pk.focus}}" on-pick="{{pk.pick}}" on-focus="{{pk.setFocus}}" hint-size="620px,330px"></dc-import>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"dates":{"editor":"enum","options":["gutter","inline"],"default":"gutter"},"detailOpen":{"editor":"boolean","default":false},"pickerFor":{"editor":"text","default":""},"$preview":{"width":1440,"height":900}}'>
+var FONT = "'Segoe UI Variable Text','Segoe UI Variable','Segoe UI',Inter,system-ui,sans-serif";
+var THEMES = {
+  light: { win:'#F3F3F3', pane:'#FFFFFF', pane2:'#FAFAFA', line:'#E5E5E5', line2:'#C8C8C8', cb:'#8A8A8A', text:'#1B1B1B', text2:'#5C5C5C', text3:'#6B6B6B', accent:'#005FB8', onAccent:'#FFFFFF', accentSoft:'#E3EEFA', doing:'#DCEAF9', overdue:'#C42B1C', near:'#2B2B2B', far:'#767676', hover:'#F3F3F3', worked:'#A85400', workedSoft:'#FBEEE2', done:'#757575', chip:'#EFEFEF' },
+  dark:  { win:'#1C1C1C', pane:'#272727', pane2:'#232323', line:'#383838', line2:'#555555', cb:'#9A9A9A', text:'#F2F2F2', text2:'#C4C4C4', text3:'#A8A8A8', accent:'#5CC2F5', onAccent:'#0A1A24', accentSoft:'#1B3647', doing:'#1B3647', overdue:'#FF99A4', near:'#EDEDED', far:'#8E8E8E', hover:'#303030', worked:'#F0A35E', workedSoft:'#3B2B1D', done:'#9C9C9C', chip:'#343434' }
+};
+var INBOX = [
+  { id:'l1', title:'Message Anja about the cryostat cooldown slot' },
+  { id:'l2', title:'Reply to Marcus re: wire-bonding quote', due:-3 },
+  { id:'l3', title:'Book a room for Thursday’s design review', due:2 },
+  { id:'l4', title:'Check whether the spare HEMT amplifier arrived' },
+  { id:'l5', title:'Renew lab safety training', due:4 },
+  { id:'l6', title:'Ask IT about VPN on the measurement PC', cancelled:true },
+  { id:'l7', title:'Forward fridge maintenance log to facilities', due:13 },
+  { id:'l8', title:'Call facilities about the helium delivery' },
+  { id:'l9', title:'Send cooldown slides to Priya', done:true, old:true }
+];
+var PROJECTS = [
+  { id:'p1', title:'Fridge 3 readout upgrade', link:'\\\\labshare\\fridge3', children:[
+    { id:'m1', short:'Milestone 1', title:'Milestone 1 — Design and procurement', collapsed:true, children:[
+      { id:'m1a', title:'Finalise wiring plan', done:true, old:true },
+      { id:'m1b', title:'Get quotes for TWPA and HEMT', done:true, old:true },
+      { id:'m1c', title:'Order attenuators and filters', done:true, old:true }
+    ]},
+    { id:'m2', short:'Milestone 2', title:'Milestone 2 — Install and cooldown', children:[
+      { id:'m2a', title:'Order replacement coax lines', done:true },
+      { id:'m2b', short:'Install TWPA', title:'Install TWPA on the mixing chamber plate', link:'\\\\labshare\\fridge3\\wiring\\F3-MXC-rev4.pdf', children:[
+        { id:'m2b1', title:'Verify pump tone frequency with the VNA', doing:true },
+        { id:'m2b2', title:'Thermal anchoring check before closing the can' }
+      ]},
+      { id:'m2c', title:'Update wiring diagram in the lab wiki', link:'https://wiki.lab/fridge3/wiring' },
+      { id:'m2d', title:'Plan cooldown window with Anja', due:1 }
+    ]},
+    { id:'m3', short:'Milestone 3', title:'Milestone 3 — Characterise noise temperature', collapsed:true, children:[
+      { id:'m3a', title:'Y-factor measurement with hot/cold load', due:10 },
+      { id:'m3b', title:'Compare against HEMT-only baseline' },
+      { id:'m3c', title:'Write up results for the readout review' },
+      { id:'m3d', title:'Present at group meeting' }
+    ]}
+  ]},
+  { id:'p2', title:'Parity-readout calibration pipeline', children:[
+    { id:'p2a', short:'Port fit routines', title:'Port fit routines to the new data format', children:[
+      { id:'p2a1', title:'Write loader for HDF5 v2 files', worked:true },
+      { id:'p2a2', title:'Regression tests against the March datasets', due:7 }
+    ]},
+    { id:'p2b', short:'Automate daily tune-up', title:'Automate the daily tune-up run', children:[
+      { id:'p2b1', title:'Draft runbook for the tune-up sequence' }
+    ]},
+    { id:'p2c', title:'Review Jonas’s PR on drift correction', done:true }
+  ]},
+  { id:'p3', title:'Hiring: lab engineer', collapsed:true, children:[
+    { id:'p3a', title:'Write job description' },
+    { id:'p3b', title:'Screen applications', due:17 },
+    { id:'p3c', title:'Line up interview panel' },
+    { id:'p3d', title:'Prepare practical exercise' }
+  ]}
+];
+var MYDAY = ['p2c','m2b1','p2a1','l1','m2c','p2b1','l8'];
+var NOTES = {
+  m2b: { lead:'Goal:', body:'TWPA mounted and wired on the MXC plate before the next cooldown.', bullets:[
+    'Use the rev 4 bulkhead drawing for the SMA feedthroughs',
+    'Pump line needs the 20 dB attenuator at the 4 K stage',
+    'Check with Anja that there is room next to the circulators'
+  ]},
+  p2a1: { lead:'Status:', body:'reader works for single runs; sweeps still fail on the nested groups.', bullets:[
+    'Keep the old loader behind a flag until regression tests pass'
+  ]},
+  p1: { lead:'Scope:', body:'replace the HEMT-only chain with TWPA + HEMT on all four lines.', bullets:[] }
+};
+var BY = {};
+function walk(list, parent, section) {
+  list.forEach(function (n) {
+    BY[n.id] = { node:n, parent:parent, section:section };
+    if (n.children) walk(n.children, n.id, section);
+  });
+}
+walk(INBOX, null, 'inbox');
+walk(PROJECTS, null, 'projects');
+function pathOf(id) {
+  var e = BY[id];
+  if (!e) return '';
+  if (e.section === 'inbox') return 'Inbox';
+  var parts = [];
+  var p = e.parent;
+  while (p) { var pn = BY[p].node; parts.unshift(pn.short || pn.title); p = BY[p].parent; }
+  return parts.length ? parts.join('  ›  ') : 'Projects';
+}
+function allNodes(list, out) {
+  list.forEach(function (n) { out.push(n); if (n.children) allNodes(n.children, out); });
+  return out;
+}
+var STATUS_KEYS = ['done', 'worked', 'doing', 'cancel'];
+var WD = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function dueLabel(n) {
+  if (n === 0) return 'Today';
+  var d = new Date(2026, 10, 9 + n);
+  if (n > 0 && n < 7) return WD[(d.getDay() + 6) % 7];
+  return d.getDate() + ' ' + MON[d.getMonth()];
+}
+function hex(c) { return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]; }
+function mix(a, b, f) { var x = hex(a), y = hex(b); return '#' + x.map(function (v, i) { var m = Math.round(v + (y[i] - v) * f).toString(16); return m.length < 2 ? '0' + m : m; }).join(''); }
+// red = overdue, accent = today, then a fade from near to far over two weeks
+function dueColor(n, t) { if (n < 0) return t.overdue; if (n === 0) return t.accent; return mix(t.near, t.far, Math.min(1, (n - 1) / 13)); }
+function dueOf(today, n) { return today ? 0 : (n === undefined ? null : n); }
+
+class Component extends DCLogic {
+  st() { return this.state || {}; }
+  pick(key, id, fallback) { var m = this.st()[key] || {}; return Object.prototype.hasOwnProperty.call(m, id) ? m[id] : fallback; }
+  node(id) { return BY[id] ? BY[id].node : {}; }
+  isDone(id) { return !!this.pick('done', id, !!this.node(id).done); }
+  isCancelled(id) { return !!this.pick('cancel', id, !!this.node(id).cancelled); }
+  isDoing(id) { return !!this.pick('doing', id, !!this.node(id).doing); }
+  isWorked(id) { return !!this.pick('worked', id, !!this.node(id).worked); }
+  isCollapsed(id) { return !!this.pick('col', id, !!this.node(id).collapsed); }
+  statusOf(id) {
+    if (this.isDone(id)) return 'done';
+    if (this.isCancelled(id)) return 'cancel';
+    if (this.isDoing(id)) return 'doing';
+    if (this.isWorked(id)) return 'worked';
+    return 'open';
+  }
+  setStatus(id, status) {
+    var s = this.st();
+    var o = {};
+    STATUS_KEYS.forEach(function (k) { var m = Object.assign({}, s[k] || {}); m[id] = (k === status); o[k] = m; });
+    this.setState(o);
+  }
+  myday() { return this.st().myday || MYDAY; }
+  dueFor(n) {
+    var m = this.st().dueMap || {};
+    if (Object.prototype.hasOwnProperty.call(m, n.id)) return m[n.id] === null ? undefined : m[n.id];
+    return n.due;
+  }
+  setKey(key, id, val) { var m = Object.assign({}, this.st()[key] || {}); m[id] = val; var o = {}; o[key] = m; this.setState(o); }
+  schedule(id, on) {
+    var md = this.myday().slice();
+    var i = md.indexOf(id);
+    if (on && i < 0) md.push(id);
+    if (!on && i >= 0) md.splice(i, 1);
+    this.setState({ myday: md });
+  }
+
+  renderVals() {
+    var self = this;
+    var s = this.st();
+    var t = THEMES[this.props.theme === 'dark' ? 'dark' : 'light'];
+    var gutter = this.props.dates !== 'inline';
+    var showCompleted = !!s.showCompleted;
+    var sel = s.sel === undefined ? 'm2b' : s.sel;
+    var hov = s.hov === undefined ? 'm2b2' : s.hov;
+    var detail = s.detail === undefined ? (this.props.detailOpen ? 'm2b' : null) : s.detail;
+    var md = this.myday();
+    var inbox = INBOX.concat(s.added || []);
+
+    var kbd = 'display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:4px;border:1px solid ' + t.line2 + ';border-bottom-width:2px;background:' + t.pane + ';color:' + t.text2 + ';font-size:10.5px;font-weight:500;line-height:1;';
+    var kbdTiny = 'font-size:10px;font-weight:500;color:' + t.text3 + ';padding:0 3px;border:1px solid ' + t.line + ';border-radius:3px;line-height:14px;';
+    var toolBtn = 'height:20px;display:flex;align-items:center;gap:3px;padding:0 4px;border:0;border-radius:4px;background:transparent;color:' + t.text2 + ';font:inherit;';
+
+    function cb(status, size, round) {
+      var filled = status === 'done';
+      var border = (status === 'done' || status === 'doing') ? t.accent : (status === 'cancel' ? t.text3 : t.cb);
+      var color = filled ? t.onAccent : (status === 'cancel' ? t.text3 : t.accent);
+      return 'width:' + size + 'px;height:' + size + 'px;flex:none;border-radius:' + (round ? size / 2 : 4) + 'px;padding:0;display:flex;align-items:center;justify-content:center;border:' + (status === 'doing' ? 2 : 1.5) + 'px solid ' + border + ';background:' + (filled ? t.accent : 'transparent') + ';color:' + color + ';box-sizing:border-box;';
+    }
+    function cbLabel(status) { return { done:'Done — untick', cancel:'Cancelled — reopen', doing:'Doing now — tick off', worked:'Tick off', open:'Tick off' }[status]; }
+    function chipStyle(today) {
+      return 'flex:none;font-size:11px;font-weight:' + (today ? 600 : 500) + ';color:' + (today ? t.accent : t.text2) + ';background:' + (today ? t.accentSoft : t.chip) + ';padding:1px 8px;border-radius:10px;line-height:16px;';
+    }
+    function titleStyle(status, size, weight) {
+      var closed = status === 'done' || status === 'cancel';
+      return 'border:0;background:none;padding:0;font:inherit;font-size:' + size + 'px;font-weight:' + weight + ';color:' + (status === 'done' ? t.done : (status === 'cancel' ? t.text3 : t.text)) + ';text-decoration:' + (closed ? 'line-through' : 'none') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;text-align:left;';
+    }
+    function toggleClosed(id, status) { self.setStatus(id, (status === 'done' || status === 'cancel') ? 'open' : 'done'); }
+
+    var rows = [];
+    function head(title, count, first) {
+      rows.push({ isHeader:true, isTask:false, title:title, count:count,
+        headStyle:'display:flex;align-items:center;gap:6px;height:26px;padding:0 8px 0 ' + (gutter ? 84 : 40) + 'px;margin-top:' + (first ? 0 : 10) + 'px;font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:' + t.text2 + ';' });
+    }
+    function push(list, depth, inProjects) {
+      list.forEach(function (n) {
+        var id = n.id;
+        var status = self.statusOf(id);
+        var closed = status === 'done' || status === 'cancel';
+        if (n.old && closed && !showCompleted) return;
+        var kids = !!(n.children && n.children.length);
+        var collapsed = kids && self.isCollapsed(id);
+        var today = md.indexOf(id) >= 0;
+        var isSel = id === sel;
+        var isHov = id === hov;
+        var proj = inProjects && depth === 0;
+        var kidsAll = kids ? allNodes(n.children, []) : [];
+        var kidsDone = kidsAll.filter(function (k) { return self.isDone(k.id); }).length;
+        var due = dueOf(today, self.dueFor(n));
+        var chip = due === null ? '' : dueLabel(due);
+        var dueC = due === null ? t.text3 : dueColor(due, t);
+        var dueW = due !== null && due <= 0 ? 600 : 500;
+        var bg = status === 'doing' ? t.doing : ((isSel || isHov) ? t.hover : 'transparent');
+        rows.push({
+          isHeader:false, isTask:true, id:id, title:n.title,
+          done: status === 'done', cancelled: status === 'cancel', doing: status === 'doing', worked: status === 'worked',
+          workedGhost: isHov && status === 'open',
+          cbLabel: cbLabel(status),
+          hasKids:kids, noKids:!kids, chevLabel: collapsed ? 'Expand' : 'Collapse',
+          showCount: collapsed, count: kidsDone + '/' + kidsAll.length,
+          hasNotes: !!NOTES[id], hasLink: !!n.link,
+          hover: isHov && !closed,
+          chipInline: !gutter && !!chip && !closed, chip:chip, chipStyle: chipStyle(today) + (today ? '' : 'color:' + dueC + ';'),
+          gutterText: closed ? '' : chip,
+          gutterStyle:'width:40px;flex:none;text-align:right;padding-right:4px;font-size:11px;font-variant-numeric:tabular-nums;font-weight:' + dueW + ';color:' + dueC + ';white-space:nowrap;',
+          rowStyle:'display:flex;align-items:center;gap:6px;height:26px;padding:0 8px 0 2px;border-radius:5px;background:' + bg + ';' + (isSel ? 'box-shadow:inset 0 0 0 1px ' + t.accent + ';' : '') + 'opacity:' + (closed ? 0.85 : 1) + ';',
+          handleStyle:'width:14px;flex:none;display:flex;justify-content:center;color:' + t.text3 + ';opacity:' + (isHov ? 1 : 0) + ';cursor:grab;',
+          indentStyle:'width:' + (depth * 22) + 'px;height:26px;flex:none;background-image:repeating-linear-gradient(to right, transparent 0 7px, ' + t.line + ' 7px 8px, transparent 8px 22px);',
+          chevStyle:'transform:rotate(' + (collapsed ? 0 : 90) + 'deg);',
+          cbStyle: cb(status, 16, false),
+          titleStyle: titleStyle(status, 13, (proj || status === 'doing') ? 600 : 400),
+          enter: function () { if (self.st().hov !== id) self.setState({ hov:id }); },
+          select: function () { self.setState({ sel:id }); },
+          open: function () { self.setState({ sel:id, detail:id }); },
+          toggleDone: function () { toggleClosed(id, status); },
+          toggleKids: function () { self.setKey('col', id, !collapsed); },
+          toggleWorked: function () { self.setStatus(id, status === 'worked' ? 'open' : 'worked'); },
+          toggleDoing: function () { self.setStatus(id, status === 'doing' ? 'open' : 'doing'); },
+          schedToday: function () { self.schedule(id, true); },
+          pickDay: function () { self.setState({ pick:id, pfocus:1 }); }
+        });
+        if (kids && !collapsed) push(n.children, depth + 1, inProjects);
+      });
+    }
+    var inboxOpen = inbox.filter(function (n) { var st = self.statusOf(n.id); return st !== 'done' && st !== 'cancel'; }).length;
+    head('Inbox', String(inboxOpen), true);
+    push(inbox, 0, false);
+    head('Projects', String(PROJECTS.length), false);
+    push(PROJECTS, 0, true);
+
+    var oldDone = allNodes(INBOX.concat(PROJECTS), []).filter(function (n) { return n.old && self.isDone(n.id); }).length;
+
+    var day = md.filter(function (id) { return BY[id]; }).map(function (id) {
+      var n = BY[id].node;
+      var status = self.statusOf(id);
+      var isHov = s.dhov === id;
+      return {
+        id:id, title:n.title, path:pathOf(id), status:status,
+        done: status === 'done', cancelled: status === 'cancel', doing: status === 'doing', worked: status === 'worked',
+        workedGhost: isHov && status === 'open',
+        cbLabel: cbLabel(status),
+        rowStyle:'display:flex;align-items:center;gap:10px;min-height:46px;padding:4px 10px 4px 0;border-radius:6px;background:' + (status === 'doing' ? t.doing : (isHov ? t.hover : 'transparent')) + ';',
+        handleStyle:'width:18px;flex:none;display:flex;justify-content:center;color:' + t.text3 + ';opacity:' + (isHov ? 1 : 0) + ';cursor:grab;',
+        cbStyle: cb(status, 18, true),
+        titleStyle: titleStyle(status, 13.5, status === 'doing' ? 600 : 400),
+        enter: function () { if (self.st().dhov !== id) self.setState({ dhov:id }); },
+        open: function () { self.setState({ sel:id, detail:id }); },
+        toggleDone: function () { toggleClosed(id, status); },
+        toggleWorked: function () { self.setStatus(id, status === 'worked' ? 'open' : 'worked'); },
+        toggleDoing: function () { self.setStatus(id, 'doing'); }
+      };
+    });
+    var counted = day.filter(function (d) { return !d.cancelled; });
+    var doneCount = counted.filter(function (d) { return d.done; }).length;
+
+    var dt = {};
+    if (detail && BY[detail]) {
+      var dn = BY[detail].node;
+      var dstatus = self.statusOf(detail);
+      var dtoday = md.indexOf(detail) >= 0;
+      var note = NOTES[detail];
+      var seg = function (on, fg, bgc) { return 'height:26px;padding:0 10px;border:0;border-radius:4px;font:inherit;font-size:12px;font-weight:' + (on ? 600 : 400) + ';background:' + (on ? (bgc || t.accentSoft) : 'transparent') + ';color:' + (on ? (fg || t.accent) : t.text2) + ';'; };
+      var kidsD = (dn.children || []).map(function (c) {
+        var cs = self.statusOf(c.id);
+        var ct = md.indexOf(c.id) >= 0;
+        var cdue = dueOf(ct, self.dueFor(c));
+        var chip = cdue === null ? '' : dueLabel(cdue);
+        return { title:c.title, done: cs === 'done', doing: cs === 'doing', cbStyle: cb(cs, 16, false), hasChip: !!chip && cs !== 'done', chip:chip, chipStyle: chipStyle(ct) + (ct || cdue === null ? '' : 'color:' + dueColor(cdue, t) + ';'),
+          titleStyle:'font-size:13px;color:' + (cs === 'done' ? t.done : t.text) + ';text-decoration:' + (cs === 'done' ? 'line-through' : 'none') + ';',
+          toggleDone: function () { toggleClosed(c.id, cs); } };
+      });
+      var statuses = [
+        { k:'open', label:'Open', key:'' },
+        { k:'doing', label:'Doing', key:'S' },
+        { k:'worked', label:'Worked on', key:'W', fg:t.worked, bg:t.workedSoft },
+        { k:'done', label:'Done', key:'Space' },
+        { k:'cancel', label:'Cancelled', key:'X', fg:t.text, bg:t.chip }
+      ].map(function (x) {
+        var on = dstatus === x.k;
+        return { label:x.label, key:x.key, on:on, style: seg(on, x.fg, x.bg), keyStyle:'font-size:10px;font-weight:500;color:' + t.text3 + ';margin-left:2px;',
+          set: function () { self.setStatus(detail, x.k); } };
+      });
+      dt = {
+        title:dn.title, path:pathOf(detail), done: dstatus === 'done', cancelled: dstatus === 'cancel', doing: dstatus === 'doing',
+        today:dtoday, noDate: !dtoday && dn.due === undefined, statuses:statuses,
+        cbStyle: cb(dstatus, 20, false) + 'margin-top:3px;',
+        link: dn.link || 'Paste a file, folder or URL', linkStyle:'font-size:12px;color:' + (dn.link ? t.text : t.text3) + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:Consolas,\'Cascadia Mono\',monospace;',
+        hasNotes: !!note, noNotes: !note, notesLead: note ? note.lead : '', notesBody: note ? note.body : '',
+        bullets: note ? note.bullets.map(function (b) { return { text:b }; }) : [],
+        hasKids: kidsD.length > 0, kids:kidsD, kidsTotal: kidsD.length, kidsDone: kidsD.filter(function (k) { return k.done; }).length,
+        todayStyle: seg(dtoday) + 'border:1px solid ' + (dtoday ? t.accent : t.line) + ';border-radius:6px;',
+        noDateStyle: seg(!dtoday && dn.due === undefined) + 'border:1px solid ' + t.line + ';border-radius:6px;',
+        close: function () { self.setState({ detail:null }); },
+        toggleDone: function () { toggleClosed(detail, dstatus); },
+        setToday: function () { self.schedule(detail, true); },
+        pickDay: function () { self.setState({ pick:detail, pfocus:1 }); },
+        clearDay: function () { self.schedule(detail, false); }
+      };
+    }
+
+    var pickId = s.pick !== undefined ? s.pick : (this.props.pickerFor || null);
+    var pf = s.pfocus !== undefined ? s.pfocus : 1;
+    var pk = {};
+    if (pickId && BY[pickId]) {
+      var setDue = function (off) {
+        var dm = Object.assign({}, self.st().dueMap || {});
+        dm[pickId] = off;
+        var mdl = self.myday().slice();
+        var ix = mdl.indexOf(pickId);
+        if (off === 0 && ix < 0) mdl.push(pickId);
+        if (off !== 0 && ix >= 0) mdl.splice(ix, 1);
+        self.setState({ dueMap:dm, myday:mdl, pick:null });
+      };
+      pk = {
+        title: BY[pickId].node.title, focus: pf,
+        pick: setDue,
+        setFocus: function (o) { self.setState({ pfocus:o }); },
+        close: function () { self.setState({ pick:null }); },
+        clear: function () { setDue(null); },
+        onKey: function (e) {
+          var k = e.key;
+          var mv = { ArrowLeft:-1, ArrowRight:1, ArrowUp:-7, ArrowDown:7 };
+          if (mv[k] !== undefined) { e.preventDefault(); self.setState({ pfocus: Math.max(0, pf + mv[k]) }); return; }
+          if (k === 'Enter') { e.preventDefault(); setDue(pf); return; }
+          if (k === 'Escape') { self.setState({ pick:null }); return; }
+          if (/^[1-9]$/.test(k)) { e.preventDefault(); setDue(Number(k) - 1); }
+        }
+      };
+    }
+
+    return {
+      t:t, kbd:kbd, kbdTiny:kbdTiny, toolBtn:toolBtn, gutter:gutter, hasPicker: !!pk.title, pk:pk,
+      segOff:'height:26px;padding:0 12px;border:1px solid ' + t.line + ';border-radius:6px;font:inherit;font-size:12px;background:transparent;color:' + t.text2 + ';',
+      rootStyle:'position:relative;width:1440px;height:900px;box-sizing:border-box;display:flex;flex-direction:column;background:' + t.win + ';color:' + t.text + ';font-family:' + FONT + ';font-size:13px;overflow:hidden;border-radius:8px;',
+      rows:rows, day:day, dayCount: counted.length, doneCount: doneCount,
+      progressStyle:'height:4px;border-radius:2px;background:' + t.accent + ';width:' + (counted.length ? Math.round(doneCount / counted.length * 100) : 0) + '%;',
+      showCompleted: showCompleted, oldDoneCount: String(oldDone),
+      completedBtnStyle:'height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;border-radius:6px;border:1px solid ' + (showCompleted ? t.accent : t.line) + ';background:' + (showCompleted ? t.accentSoft : t.pane) + ';color:' + (showCompleted ? t.accent : t.text2) + ';font:inherit;font-size:12px;',
+      toggleCompleted: function () { self.setState({ showCompleted: !showCompleted }); },
+      collapseAll: function () { var c = {}; allNodes(PROJECTS, []).forEach(function (n) { if (n.children) c[n.id] = true; }); self.setState({ col:c }); },
+      keys: [
+        { key:'Enter', label:'New' }, { key:'Tab', label:'Indent' }, { key:'Alt+↑↓', label:'Move' },
+        { key:'T', label:'Today' }, { key:'D', label:'Day' }, { key:'S', label:'Doing' }, { key:'W', label:'Worked on' },
+        { key:'Space', label:'Done' }, { key:'X', label:'Cancel' }, { key:'Ctrl+O', label:'Open' }
+      ],
+      hasDetail: !!dt.title, noDetail: !dt.title, dt:dt,
+      draft: s.draft || '',
+      onDraft: function (e) { self.setState({ draft: e.target.value }); },
+      onDraftKey: function (e) {
+        if (e.key !== 'Enter') return;
+        var title = (self.st().draft || '').trim();
+        if (!title) return;
+        var id = 'n' + Date.now();
+        var node = { id:id, title:title };
+        BY[id] = { node:node, parent:null, section:'inbox' };
+        self.setState({ draft:'', added:(self.st().added || []).concat([node]), myday: self.myday().concat([id]) });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

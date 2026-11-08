@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Work Planner — day picker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 620px; box-sizing: border-box; display: flex; gap: 16px; padding: 14px; border-radius: 10px; background: #FAFAFA; border: 1px solid #E5E5E5; color: #1B1B1B; font-family: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif; font-size: 13px">
+  <div style="width: 236px; flex: none; display: flex; flex-direction: column; gap: 2px">
+    <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #5C5C5C; padding: 0 6px 6px">Next 9 days</span>
+    <sc-for list="{{quick}}" as="q" hint-placeholder-count="9">
+      <button type="button" onClick="{{q.pick}}" onMouseEnter="{{q.hover}}" style="{{q.style}}">
+        <span style="{{q.keyStyle}}">{{q.key}}</span>
+        <span style="flex: 1; text-align: left">{{q.label}}</span>
+        <span style="font-size: 12px; letter-spacing: 1px; color: #6B6B6B">{{q.load}}</span>
+      </button>
+    </sc-for>
+  </div>
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 0 2px">
+      <span style="font-size: 13px; font-weight: 600">{{month}}</span>
+      <span style="flex: 1"></span>
+      <span style="font-size: 11px; color: #6B6B6B">← → day · ↑ ↓ week · Enter</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px">
+      <sc-for list="{{weekdays}}" as="w" hint-placeholder-count="7">
+        <span style="text-align: center; font-size: 11px; color: #6B6B6B; padding-bottom: 4px">{{w.label}}</span>
+      </sc-for>
+      <sc-for list="{{cells}}" as="c" hint-placeholder-count="42">
+        <button type="button" aria-label="{{c.aria}}" onClick="{{c.pick}}" style="{{c.style}}">
+          <sc-if value="{{c.hasKey}}" hint-placeholder-val="{{false}}">
+            <span style="position: absolute; top: 3px; left: 4px; font-size: 9px; font-weight: 600; color: #6B6B6B; line-height: 1">{{c.key}}</span>
+          </sc-if>
+          <span>{{c.num}}</span>
+          <span style="{{c.dotsStyle}}">{{c.dots}}</span>
+        </button>
+      </sc-for>
+    </div>
+    <span style="font-size: 11px; color: #6B6B6B; padding: 0 2px">1–9 = today … 8 days out. Dots = tasks already on that day. Or type “fri”, “24 nov”. Esc closes.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"base":{"editor":"text","default":"2026-11-10"},"focus":{"editor":null},"onPick":{"editor":null},"onFocus":{"editor":null},"$preview":{"width":620,"height":330}}'>
+var WD = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+// tasks already scheduled per day (sample data)
+var LOAD = { '2026-11-09':7, '2026-11-10':5, '2026-11-11':3, '2026-11-12':4, '2026-11-13':1, '2026-11-16':2, '2026-11-17':1, '2026-11-19':2, '2026-11-23':1, '2026-11-26':1 };
+function pad(n) { return n < 10 ? '0' + n : String(n); }
+function keyOf(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function dots(n) { return n ? '•'.repeat(Math.min(n, 4)) : ''; }
+
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var p = this.props;
+    var b = String(p.base || '2026-11-10').split('-').map(Number);
+    function at(off) { return new Date(b[0], b[1] - 1, b[2] + off); }
+    var st = this.state || {};
+    var focus = (p.focus !== undefined && p.focus !== null) ? p.focus : (st.focus !== undefined ? st.focus : 1);
+    function setFocus(off) { if (p.onFocus) p.onFocus(off); else self.setState({ focus:off }); }
+    function pick(off) { if (p.onPick) p.onPick(off); }
+    function longLabel(off) {
+      var d = at(off); var w = WD[(d.getDay() + 6) % 7];
+      if (off === 0) return 'Today · ' + w + ' ' + d.getDate();
+      if (off === 1) return 'Tomorrow · ' + w + ' ' + d.getDate();
+      return w + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
+    }
+    var quick = [];
+    for (var q = 0; q < 9; q++) {
+      (function (off) {
+        var on = off === focus;
+        quick.push({ key:String(off + 1), label: longLabel(off), load: dots(LOAD[keyOf(at(off))] || 0),
+          pick: function () { pick(off); }, hover: function () { setFocus(off); },
+          style:'height:28px;display:flex;align-items:center;gap:10px;padding:0 8px;border-radius:6px;border:0;font:inherit;font-size:12.5px;color:#1B1B1B;background:' + (on ? '#E3EEFA' : 'transparent') + ';' + (on ? 'box-shadow:inset 0 0 0 1px #005FB8;' : ''),
+          keyStyle:'width:18px;height:18px;box-sizing:border-box;flex:none;border-radius:4px;border:1px solid #C8C8C8;border-bottom-width:2px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;' });
+      })(q);
+    }
+    var base = at(0);
+    var first = new Date(b[0], b[1] - 1, 1);
+    var start = new Date(b[0], b[1] - 1, 1 - ((first.getDay() + 6) % 7));
+    var cells = [];
+    for (var i = 0; i < 42; i++) {
+      (function (d) {
+        var off = Math.round((d - base) / 86400000);
+        var inMonth = d.getMonth() === b[1] - 1;
+        var past = off < 0;
+        var isToday = off === 0;
+        var on = off === focus;
+        var weekend = ((d.getDay() + 6) % 7) >= 5;
+        cells.push({
+          num:String(d.getDate()), aria: longLabel(off), hasKey: off >= 0 && off <= 8, key:String(off + 1), dots: dots(LOAD[keyOf(d)] || 0),
+          pick: function () { if (!past) pick(off); },
+          style:'position:relative;height:42px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:7px;font:inherit;font-size:13px;font-variant-numeric:tabular-nums;font-weight:' + (isToday || on ? 600 : 400) + ';border:' + (on ? '2px solid #005FB8' : '1px solid transparent') + ';background:' + (on ? '#E3EEFA' : (isToday ? '#FFFFFF' : 'transparent')) + ';color:' + (past || !inMonth ? '#A0A0A0' : (isToday ? '#005FB8' : (weekend ? '#5C5C5C' : '#1B1B1B'))) + ';' + (isToday && !on ? 'box-shadow:inset 0 0 0 1px #99BFE6;' : ''),
+          dotsStyle:'height:8px;font-size:10px;line-height:8px;letter-spacing:1px;color:' + (on ? '#005FB8' : '#6B6B6B') + ';'
+        });
+      })(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+    }
+    return { quick:quick, cells:cells, month: MONTHS[b[1] - 1] + ' ' + b[0], weekdays: WD.map(function (w) { return { label:w }; }) };
+  }
+}
+</script>
+</body>
+</html>

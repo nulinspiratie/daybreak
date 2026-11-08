@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Work Planner — morning review, running list</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#005FB8}a:hover{color:#004A8F}
+</style>
+</helmet>
+<div tabIndex="0" onKeyDown="{{onKey}}" style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #F3F3F3; color: #1B1B1B; font-family: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif; font-size: 13px; overflow: hidden; border-radius: 8px; outline: none">
+
+  <!-- Title bar -->
+  <div style="height: 40px; flex: none; display: flex; align-items: center; padding-left: 14px; gap: 10px">
+    <span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: #005FB8; color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+      <svg width="12" height="12" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    </span>
+    <span style="font-size: 12px; font-weight: 600">Work Planner</span>
+    <span style="font-size: 12px; color: #6B6B6B">Morning review</span>
+    <span style="flex: 1"></span>
+    <a href="Main.dc.html" style="font-size: 12px; color: #5C5C5C; text-decoration: none; padding: 6px 10px; border-radius: 6px">Skip for today</a>
+    <div style="display: flex; margin-left: 8px">
+      <button type="button" aria-label="Minimise" style="width: 46px; height: 40px; border: 0; background: none; color: #1B1B1B; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor" stroke-width="1"></path></svg></button>
+      <button type="button" aria-label="Maximise" style="width: 46px; height: 40px; border: 0; background: none; color: #1B1B1B; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1"></rect></svg></button>
+      <button type="button" aria-label="Close" style="width: 46px; height: 40px; border: 0; background: none; color: #1B1B1B; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"></path></svg></button>
+    </div>
+  </div>
+
+  <div style="flex: 1; min-height: 0; display: flex; justify-content: center; gap: 40px; padding: 16px 40px 0">
+
+    <!-- The one list -->
+    <div style="width: 820px; display: flex; flex-direction: column; min-height: 0">
+      <div style="display: flex; align-items: flex-end; gap: 12px; padding: 0 4px 14px">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 12px; color: #6B6B6B">Good morning — Tuesday 10 November</span>
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600">Plan today, top to bottom</h1>
+        </div>
+        <span style="flex: 1"></span>
+        <span style="font-size: 13px; color: #5C5C5C; font-variant-numeric: tabular-nums">{{progress}}</span>
+      </div>
+
+      <ol style="list-style: none; margin: 0; padding: 0 0 24px; flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 2px">
+        <sc-for list="{{entries}}" as="e" hint-placeholder-count="10">
+          <sc-if value="{{e.isHeading}}" hint-placeholder-val="{{false}}">
+            <li style="display: flex; align-items: baseline; gap: 10px; padding: 14px 4px 6px">
+              <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #5C5C5C">{{e.title}}</span>
+              <span style="font-size: 12px; color: #6B6B6B">{{e.sub}}</span>
+            </li>
+          </sc-if>
+
+          <sc-if value="{{e.isPast}}" hint-placeholder-val="{{false}}">
+            <li style="{{e.rowStyle}}">
+              <span aria-hidden="true" style="{{e.markStyle}}"><svg width="11" height="11" viewBox="0 0 16 16"><path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+              <span style="{{e.titleStyle}}">{{e.title}}</span>
+              <span style="{{e.chipStyle}}">{{e.outcome}}</span>
+            </li>
+          </sc-if>
+
+          <sc-if value="{{e.isCurrent}}" hint-placeholder-val="{{false}}">
+            <li style="margin: 6px 0; padding: 18px 20px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 0 0 2px #005FB8, 0 6px 18px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; align-items: center; gap: 10px">
+                <span style="font-size: 12px; color: #6B6B6B; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.path}}</span>
+                <span style="font-size: 12px; font-weight: 600; color: #005FB8">{{e.tag}}</span>
+              </div>
+              <span style="font-size: 20px; line-height: 26px; font-weight: 600">{{e.title}}</span>
+              <sc-if value="{{e.worked}}" hint-placeholder-val="{{false}}">
+                <span style="display: flex; align-items: center; gap: 8px; font-size: 13px">
+                  <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #A85400; background: #FBEEE2; padding: 2px 9px; border-radius: 12px"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M7 1.4a5.6 5.6 0 0 1 0 11.2z" fill="currentColor"></path></svg>Worked on Monday</span>
+                  Continue today?
+                </span>
+              </sc-if>
+              <sc-if value="{{e.hasNote}}" hint-placeholder-val="{{false}}">
+                <span style="font-size: 13px; line-height: 19px; color: #5C5C5C">{{e.note}}</span>
+              </sc-if>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px">
+                <sc-for list="{{e.actions}}" as="a" hint-placeholder-count="4">
+                  <button type="button" onClick="{{a.run}}" style="{{a.style}}"><span style="{{a.capStyle}}">{{a.key}}</span>{{a.label}}</button>
+                </sc-for>
+              </div>
+
+              <!-- Day picker -->
+              <sc-if value="{{e.picking}}" hint-placeholder-val="{{false}}">
+                <dc-import name="DayPicker" base="2026-11-10" focus="{{focus}}" on-pick="{{pickOff}}" on-focus="{{setFocus}}" hint-size="620px,330px"></dc-import>
+              </sc-if>
+            </li>
+          </sc-if>
+
+          <sc-if value="{{e.isNext}}" hint-placeholder-val="{{true}}">
+            <li style="display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 14px; border-radius: 8px">
+              <span aria-hidden="true" style="width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 9px; border: 1.5px solid #C8C8C8"></span>
+              <span style="font-size: 13.5px; color: #1B1B1B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0">{{e.title}}</span>
+              <span style="font-size: 11px; color: #6B6B6B; white-space: nowrap; flex: none">{{e.short}}</span>
+            </li>
+          </sc-if>
+
+          <sc-if value="{{e.isEnd}}" hint-placeholder-val="{{false}}">
+            <li style="display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: {{e.endBg}}">
+              <span style="font-size: 14px; font-weight: 600; color: {{e.endFg}}">{{e.title}}</span>
+              <span style="flex: 1"></span>
+              <a href="Main.dc.html" style="{{e.endBtn}}">Start the day <span style="font-size: 11px; font-weight: 500; opacity: 0.9">Space</span></a>
+            </li>
+          </sc-if>
+        </sc-for>
+      </ol>
+    </div>
+
+    <!-- Key legend -->
+    <aside aria-label="Keys" style="width: 220px; flex: none; padding-top: 70px; display: flex; flex-direction: column; gap: 14px">
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #5C5C5C">Left hand only</span>
+      <div style="display: flex; gap: 6px">
+        <sc-for list="{{legend}}" as="l" hint-placeholder-count="4">
+          <span style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 48px">
+            <span style="width: 40px; height: 40px; box-sizing: border-box; border-radius: 8px; border: 1px solid #C8C8C8; border-bottom-width: 3px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600">{{l.key}}</span>
+            <span style="font-size: 10.5px; line-height: 13px; color: #5C5C5C; text-align: center">{{l.label}}</span>
+          </span>
+        </sc-for>
+      </div>
+      <span style="font-size: 12px; line-height: 18px; color: #5C5C5C">After S: 1–9 pick today up to 8 days out, or move with the arrows and press Enter. Z undoes the last choice.</span>
+      <span style="font-size: 12px; line-height: 18px; color: #5C5C5C">The list runs on into suggestions, then the start button. Nothing changes screen.</span>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+var LEFT = [
+  { title:'Message Anja about the cryostat cooldown slot', path:'Inbox', short:'Inbox' },
+  { title:'Verify pump tone frequency with the VNA', path:'Fridge 3 readout upgrade  ›  Milestone 2  ›  Install TWPA', short:'Fridge 3' },
+  { title:'Write loader for HDF5 v2 files', path:'Parity-readout calibration pipeline  ›  Port fit routines', short:'Parity-readout', worked:true, note:'Reader works for single runs; sweeps still fail on the nested groups.' },
+  { title:'Update wiring diagram in the lab wiki', path:'Fridge 3 readout upgrade  ›  Milestone 2', short:'Fridge 3' },
+  { title:'Draft runbook for the tune-up sequence', path:'Parity-readout  ›  Automate daily tune-up', short:'Parity-readout' },
+  { title:'Call facilities about the helium delivery', path:'Inbox', short:'Inbox' },
+  { title:'Ask IT about VPN on the measurement PC', path:'Inbox', short:'Inbox' }
+];
+var SUGG = [
+  { title:'Thermal anchoring check before closing the can', path:'Fridge 3  ›  Milestone 2  ›  Install TWPA', short:'Next step, no day' },
+  { title:'Regression tests against the March datasets', path:'Parity-readout  ›  Port fit routines', short:'Next step, no day' },
+  { title:'Reply to Marcus re: wire-bonding quote', path:'Inbox', short:'Inbox, overdue since 6 Nov' }
+];
+var ALL = LEFT.map(function (x) { return Object.assign({ group:'left' }, x); }).concat(SUGG.map(function (x) { return Object.assign({ group:'sugg' }, x); }));
+
+// Calendar: "today" for the review is Tue 10 Nov 2026 (offset 0)
+var WD = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var BASE = new Date(2026, 10, 10);
+function dateAt(off) { return new Date(2026, 10, 10 + off); }
+function shortLabel(off) {
+  if (off === 0) return 'Today';
+  if (off === 1) return 'Tomorrow';
+  var d = dateAt(off);
+  if (off > 0 && off < 7) return WD[(d.getDay() + 6) % 7];
+  return d.getDate() + ' ' + MON[d.getMonth()];
+}
+function longLabel(off) {
+  var d = dateAt(off);
+  var w = WD[(d.getDay() + 6) % 7];
+  if (off === 0) return 'Today · ' + w + ' ' + d.getDate();
+  if (off === 1) return 'Tomorrow · ' + w + ' ' + d.getDate();
+  return w + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
+}
+// tasks already on each day (by offset)
+var LOAD = { 0:5, 1:3, 2:4, 3:1, 6:2, 7:1, 9:2, 13:1, 16:1 };
+
+class Component extends DCLogic {
+  st() { return this.state || {}; }
+  decs() { return this.st().decs || [{ kind:'today' }, { kind:'day', off:2 }]; }
+  isPicking() { var p = this.st().picking; return p === undefined ? true : p; }
+  focusOff() { var f = this.st().focus; return f === undefined ? 1 : f; }
+  decide(d) { this.setState({ decs: this.decs().concat([d]), picking:false, focus:1 }); }
+  pickOff(off) { if (off === 0) this.decide({ kind:'today' }); else this.decide({ kind:'day', off:off }); }
+  act(kind) {
+    var i = this.decs().length;
+    if (i >= ALL.length) return;
+    if (kind === 'day') { this.setState({ picking: !this.isPicking(), focus:1 }); return; }
+    this.decide({ kind:kind });
+  }
+  renderVals() {
+    var self = this;
+    var decs = this.decs();
+    var picking = this.isPicking() && decs.length < ALL.length;
+    var focus = this.focusOff();
+    var entries = [];
+    var leftDone = Math.min(decs.length, LEFT.length);
+    var todayCount = 0;
+
+    // each outcome tints its whole row (adopted from 2e): blue today, purple another day, grey backlog, red drop
+    function chip(d) {
+      var map = { today:['Today', '#005FB8', '#E3EEFA'], day:[d.off !== undefined ? shortLabel(d.off) : '', '#6B3FA0', '#EFE8F8'], backlog:['Backlog', '#4D4D4D', '#EDEDED'], drop:['Dropped', '#B3261E', '#FBE9E7'], skip:['Not today', '#4D4D4D', '#F1F1F1'] };
+      var m = map[d.kind];
+      return { label:m[0],
+        style:'flex:none;font-size:11px;font-weight:600;color:' + m[1] + ';background:#FFFFFF;padding:1px 8px;border-radius:10px;line-height:16px;',
+        rowStyle:'display:flex;align-items:center;gap:10px;min-height:36px;padding:0 14px;border-radius:8px;background:' + m[2] + ';',
+        markStyle:'width:18px;height:18px;flex:none;border-radius:9px;background:#FFFFFF;color:' + m[1] + ';display:flex;align-items:center;justify-content:center;' };
+    }
+    function capStyle(primary) { return 'width:22px;height:22px;box-sizing:border-box;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;border:1px solid ' + (primary ? 'rgba(255,255,255,0.55)' : '#C8C8C8') + ';border-bottom-width:2px;'; }
+    function btn(primary, danger, active) { return 'height:36px;display:flex;align-items:center;gap:9px;padding:0 12px 0 7px;border-radius:8px;font:inherit;font-size:13px;font-weight:600;border:1px solid ' + (primary || active ? '#005FB8' : '#D6D6D6') + ';background:' + (primary ? '#005FB8' : (active ? '#E3EEFA' : '#FFFFFF')) + ';color:' + (primary ? '#FFFFFF' : (danger ? '#B3261E' : '#1B1B1B')) + ';'; }
+
+    entries.push({ isHeading:true, title:'Left over from Monday', sub: leftDone + ' of ' + LEFT.length + ' sorted' });
+    ALL.forEach(function (it, i) {
+      if (i === LEFT.length) entries.push({ isHeading:true, title:'Anything else for today?', sub:'Suggestions from your tree and Inbox' });
+      var d = decs[i];
+      if (d && d.kind === 'today') todayCount++;
+      if (d) {
+        var c = chip(d);
+        var faded = d.kind === 'drop' || d.kind === 'skip';
+        entries.push({ isPast:true, title:it.title, outcome:c.label, chipStyle:c.style, rowStyle:c.rowStyle, markStyle:c.markStyle,
+          titleStyle:'font-size:13.5px;color:' + (faded ? '#5C5C5C' : '#1B1B1B') + ';text-decoration:' + (d.kind === 'drop' ? 'line-through' : 'none') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;' });
+      } else if (i === decs.length) {
+        var sugg = it.group === 'sugg';
+        var acts = sugg
+          ? [{ k:'today', key:'A', label:'Add to today' }, { k:'day', key:'S', label:'Another day' }, { k:'skip', key:'D', label:'Not today' }]
+          : [{ k:'today', key:'A', label: it.worked ? 'Continue today' : 'Today' }, { k:'day', key:'S', label:'Another day' }, { k:'backlog', key:'D', label:'Backlog' }, { k:'drop', key:'F', label:'Drop' }];
+        entries.push({ isCurrent:true, title:it.title, path:it.path, worked:!!it.worked, hasNote:!!it.note, note:it.note || '',
+          tag: sugg ? 'Suggestion' : ((i + 1) + ' of ' + LEFT.length), picking:picking,
+          actions: acts.map(function (a, ai) { return { key:a.key, label:a.label, style: btn(ai === 0, a.k === 'drop', a.k === 'day' && picking), capStyle: capStyle(ai === 0), run: function () { self.act(a.k); } }; }) });
+      } else {
+        entries.push({ isNext:true, title:it.title, short:it.short });
+      }
+    });
+    var finished = decs.length >= ALL.length;
+    entries.push({ isEnd:true, title: todayCount + ' tasks for today', endBg: finished ? '#E3EEFA' : '#EBEBEB', endFg: finished ? '#005FB8' : '#5C5C5C',
+      endBtn:'height:36px;display:flex;align-items:center;gap:10px;padding:0 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:' + (finished ? '#005FB8' : '#FFFFFF') + ';color:' + (finished ? '#FFFFFF' : '#1B1B1B') + ';border:1px solid ' + (finished ? '#005FB8' : '#D6D6D6') + ';' });
+
+    return {
+      entries:entries, focus:focus,
+      pickOff: function (off) { self.pickOff(off); },
+      setFocus: function (off) { self.setState({ focus:off }); },
+      progress: finished ? 'All sorted' : (Math.min(decs.length, ALL.length) + ' of ' + ALL.length + ' done'),
+      legend: [{ key:'A', label:'Today' }, { key:'S', label:'Another day' }, { key:'D', label:'Backlog / not today' }, { key:'F', label:'Drop' }],
+      onKey: function (e) {
+        var k = e.key || '';
+        var lk = k.toLowerCase();
+        if (self.isPicking() && self.decs().length < ALL.length) {
+          var f = self.focusOff();
+          var moves = { ArrowLeft:-1, ArrowRight:1, ArrowUp:-7, ArrowDown:7 };
+          if (moves[k] !== undefined) { e.preventDefault(); self.setState({ focus: Math.max(0, f + moves[k]) }); return; }
+          if (k === 'Enter') { e.preventDefault(); self.pickOff(f); return; }
+          if (k === 'Escape') { self.setState({ picking:false }); return; }
+          if (/^[1-9]$/.test(k)) { e.preventDefault(); self.pickOff(Number(k) - 1); return; }
+        }
+        var map = { a:'today', s:'day', d:'backlog', f:'drop' };
+        if (map[lk]) {
+          e.preventDefault();
+          var it = ALL[self.decs().length];
+          var kind = map[lk];
+          if (it && it.group === 'sugg' && kind === 'backlog') kind = 'skip';
+          if (it && it.group === 'sugg' && kind === 'drop') return;
+          self.act(kind);
+          return;
+        }
+        if (lk === 'z') { e.preventDefault(); self.setState({ decs: self.decs().slice(0, -1), picking:false }); }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
