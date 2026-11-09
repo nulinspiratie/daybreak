@@ -26,3 +26,18 @@ Your data lives in `%LOCALAPPDATA%\Daybreak`: the database (`daybreak.db`), `log
 To change the port or the time a day starts, edit `config.json` in that folder (`port`, default 47815; `dayStartsAt`, default `04:00`) and restart. If you change `port`, also edit the URL in `start.cmd`.
 
 Never put DAYBREAK_DATA_DIR inside the repo.
+
+## Development
+
+Use a scratch data folder, never the real one; `bun run seed` refuses to run without `DAYBREAK_DATA_DIR`. It fills a fresh folder with fictional tasks.
+
+```
+export DAYBREAK_DATA_DIR=$(mktemp -d)
+bun run seed
+bun run dev                    # API server on 127.0.0.1:47815, also allowing the Vite dev origin
+bun run --cwd apps/web dev     # second terminal, same DAYBREAK_DATA_DIR: Vite on http://localhost:5173
+```
+
+Vite proxies `/api` and `/events` to the server, adding the token from the data folder, so start the server first. `bun run start` instead builds the web app and serves everything from the server, as `start.cmd` does.
+
+Tests: `bun run test` (Vitest, on Node 22.13+), `bun run test:bun` (the `bun:sqlite` smoke test) and `bun run typecheck`.

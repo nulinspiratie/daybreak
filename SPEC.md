@@ -215,16 +215,16 @@ daybreak/
 
 Key decisions:
 - **All logic lives in TypeScript** (`core` + `server`). Tauri's Rust side only does windowing, tray, shortcuts and launching the server. This keeps a future browser or NAS version a matter of running the server somewhere else.
-- **Server runtime:** Bun, using `bun:sqlite`. Hono runs on it unchanged. Fallback if Bun causes trouble: Node 24 with the built-in `node:sqlite` (no native modules to bundle). `core` talks to SQLite through a thin adapter so switching is a one-file change.
+- **Server runtime:** Bun, using `bun:sqlite`. Hono runs on it unchanged. Fallback if Bun causes trouble: Node 22.13+ (for `node:sqlite`), with no native modules to bundle. `core` talks to SQLite through a thin adapter so switching is a one-file change.
 - **How it runs on the work laptop:** from source. Clone the repo, `bun install`, then one start command (also a double-clickable `start.cmd`) builds the web UI if needed and starts the server; the UI is used in a browser tab at `http://127.0.0.1:47815`. No prebuilt or downloaded `.exe` in the MVP. A "Running on Windows" section in the README covers this.
-- **Server binds to 127.0.0.1 only**, on a fixed port (default 47815, configurable), and requires a random token generated at first run (kept in the data folder). The UI and CLI read it from there.
+- **Server binds to 127.0.0.1 only**, on a fixed port (default 47815, configurable), and requires a random token generated at first run (kept in the data folder). The UI and CLI read it from there. Writes (any `/api/*` request but GET) are refused with 403 unless they come from the app's own origin (`Origin` and `Sec-Fetch-Site`, where sent) and a JSON body is sent as `Content-Type: application/json`, so other local pages can't use the cookie.
 - **Live updates:** server-sent events (`GET /events/stream`) so the main window, pop-up and CLI changes stay in sync.
 - **What "today" is:** the server owns the date. A day starts at 04:00 local time (configurable as `dayStartsAt` in `config.json`), so working past midnight still counts as the same day. When the day rolls over, the server sends a `day_changed` SSE event; an open tab shows the morning review the next time it gets focus or input. Doing and Worked-on marks belong to the day they were set, so they lapse at rollover by construction. *(Builder's call.)*
 - **Data folder:** `%LOCALAPPDATA%\Daybreak\` by default (`daybreak.db`, `logs\`, `token`, `config.json`), overridable with `DAYBREAK_DATA_DIR`. Never inside this repo. `.gitignore` covers `*.db` as a safety net.
 - **Drag and drop:** `@dnd-kit/core` + `@dnd-kit/sortable`, sortable-tree pattern. Horizontal pointer offset picks depth, 22 px per level.
 - **Markdown rendering** in notes: `marked` or `markdown-it` with HTML disabled. Editing is a plain textarea in V1.
 - **Natural-language day input** in the day picker ("fri", "tomorrow", "nov 20"): a small hand-written parser in `core`, unit-tested. No big date library needed.
-- **Tests:** Vitest for `core` and `server`. Vitest runs on Node, so tests use the `node:sqlite` side of the adapter (Node 24 needed on dev machines) and the app runs on `bun:sqlite`; both sides of the adapter get the same small smoke test. Playwright for a few UI flows later.
+- **Tests:** Vitest for `core` and `server`. Vitest runs on Node 22.13+ (for `node:sqlite`), so tests use the `node:sqlite` side of the adapter and the app runs on `bun:sqlite`; both sides of the adapter get the same small smoke test. Playwright for a few UI flows later.
 
 ### HTTP API (V1)
 
@@ -233,7 +233,7 @@ Key decisions:
 | GET | /api/status | `{today, needsReview, dayStartsAt}` *(new)* |
 | GET | /api/tree?completed=recent\|all\|none | Whole tree with statuses and today's marks |
 | GET | /api/day/:date | My Day for a date, in day order, with paths |
-| GET | /api/days?from=&to= | Task counts per day in a range *(new)* |
+| GET | /api/days?from=&to= | Task counts per day in a range of at most 400 days (else 400) *(new)* |
 | POST | /api/tasks | Create `{title, section, parentId?, afterId?, beforeId?, scheduledOn?}` |
 | PATCH | /api/tasks/:id | Either fields (title, notes, link, collapsed, tags; returns the task) or `{status, withOpenDescendants?}` on its own (returns `{task, changedIds}`); status mixed with other fields is 400 |
 | DELETE | /api/tasks/:id | Soft-delete the task and its subtree; returns the deleted ids |
@@ -250,6 +250,7 @@ Key decisions:
 | POST | /api/review/:date/skip | Skip the review today |
 | POST | /api/review/:date/finish | Mark the review finished *(new)* |
 | GET | /api/projects/:id/export.md | Project as a Markdown outline with ids (for agents) |
+| GET | /api/ping | `{ok: true}`: internal health check *(new)* |
 | GET | /events/stream | SSE change feed |
 
 ### CLI (after the UI)
