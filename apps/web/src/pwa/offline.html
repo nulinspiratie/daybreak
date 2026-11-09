@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Daybreak</title>
+    <style>
+      /* TOKENS */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        font: 13px / 1.4 var(--font);
+        color: var(--text);
+        background: var(--win);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      main {
+        max-width: 360px;
+        padding: 24px;
+        text-align: center;
+      }
+      .icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 16px;
+      }
+      .icon svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      h1 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      p {
+        margin: 0 0 6px;
+        color: var(--text2);
+      }
+      code {
+        font-family: var(--mono);
+      }
+      .waiting {
+        color: var(--text3);
+        margin-top: 14px;
+      }
+    </style>
+    <script>
+      var t = null
+      try {
+        t = localStorage.getItem('daybreak.theme')
+        if (t !== 'light' && t !== 'dark') t = null
+      } catch {}
+      if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      document.documentElement.dataset.theme = t
+    </script>
+  </head>
+  <body>
+    <main>
+      <div class="icon" aria-hidden="true"><!-- ICON --></div>
+      <h1>Daybreak isn't running</h1>
+      <p>Start it with <code>start.cmd</code> or <code>bun run start</code>.</p>
+      <p class="waiting" role="status">This window opens Daybreak as soon as it's up.</p>
+    </main>
+    <script>
+      // Any answer from the server means it's back. The worker leaves this request alone.
+      setInterval(() => {
+        fetch('/manifest.webmanifest', { cache: 'no-store' }).then(
+          () => {
+            location.reload()
+          },
+          () => {},
+        )
+      }, 2000)
+    </script>
+  </body>
+</html>

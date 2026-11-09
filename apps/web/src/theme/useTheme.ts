@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { syncThemeColor } from '../pwa/themeColor'
 
 export type Theme = 'light' | 'dark'
 
@@ -11,6 +12,7 @@ export function useTheme(): { theme: Theme; toggle: () => void } {
   const toggle = useCallback(() => {
     const next: Theme = current() === 'dark' ? 'light' : 'dark'
     document.documentElement.dataset.theme = next
+    syncThemeColor()
     try {
       localStorage.setItem('daybreak.theme', next)
     } catch {

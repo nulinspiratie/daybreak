@@ -37,7 +37,7 @@ plan, kept for reference; don't execute it again.
 |---|---|
 | `packages/core` | Domain logic over SQLite: tree, scheduling, marks, review, export, daily logs. No HTTP. Tests in `packages/core/test`. |
 | `packages/server` | Hono API, token/host/origin guards, SSE, day rollover, link opening, `main.ts` entry. |
-| `apps/web` | React 19 + Vite UI. `api/` (queries, write queue, SSE), `keyboard/` (keymap and commands), `tree/`, `myday/`, `review/`, `detail/`, `picker/`. |
+| `apps/web` | React 19 + Vite UI. `api/` (queries, write queue, SSE), `keyboard/` (keymap and commands), `tree/`, `myday/`, `review/`, `detail/`, `picker/`, `pwa/` (service worker). Static files (manifest, icons) in `public/`. |
 | `scripts` | `seed.ts`, `smoke.ts`, the pre-commit guard `check-staged.ts`, `install-hooks.ts`. |
 | `docs` | Project docs: `spec.md`, `design.md`, `keyboard.md`, `future-ideas.md`, the canvas mock-ups in `mockups/` and the finished MVP plan in `archive/`. Also the ai-wiki knowledge base (see below). Not app code. |
 
@@ -90,6 +90,14 @@ bun run --cwd apps/web dev   # second terminal, same DAYBREAK_DATA_DIR: http://l
   window's origin there.
 - The day rolls over at `dayStartsAt` (default 04:00), not midnight. Use
   `localDate` in `packages/core/src/dates.ts`, never `new Date()` slicing.
+- The web app is a PWA (`apps/web/public/manifest.webmanifest`, service worker in
+  `apps/web/src/pwa/`, built to `/sw.js`). The worker caches nothing; it only shows an
+  offline page when the server is down. It's registered only in production builds and
+  never inside Tauri.
+- Dependencies are pinned to versions available on Microsoft's npm proxy (the work
+  laptop's feed); root `overrides` also pin the transitive `@babel/runtime` and `ws`.
+  Check the feed before bumping a pin. Biome stays on 2.5.1: 2.6.3 and 2.6.4 crash
+  during analysis on Windows ARM64 (biomejs/biome#11242).
 - Tests use a fixed clock and a temp database; never point a test or the seed
   at a real data folder (`assertOutsideRepo` refuses folders in the repo).
 

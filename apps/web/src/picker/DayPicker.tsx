@@ -146,7 +146,6 @@ export function DayPicker({
     if (text !== '') setText('')
     cancelQuick()
     const next = addDays(from, step)
-    // biome-ignore lint/complexity/useMathMinMax: these are ISO date strings; Math.min would give NaN.
     setHighlight(next < today ? today : next > last ? last : next)
   }
 

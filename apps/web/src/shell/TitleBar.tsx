@@ -39,18 +39,7 @@ export function TitleBar({ review }: TitleBarProps = {}) {
 
   return (
     <header className="titlebar">
-      <span className="titlebar__icon" aria-hidden="true">
-        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
-          <path
-            d="M3.5 8.2 6.6 11.2 12.5 4.8"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </span>
+      <img className="titlebar__icon" src="/daybreak-small.svg" alt="" width="18" height="18" />
       <span className="titlebar__name">Daybreak</span>
       {review ? (
         <>

@@ -41,7 +41,7 @@ All text meets 4.5:1 contrast, including the palest day labels. Keep it that way
 ## Main window
 
 - Target 1440 × 900. Must work at 1280 × 720 and snapped to half the screen.
-- Custom title bar, 40 px: app icon (blue rounded square with a tick), app name, today's date, an "Add to My Day" button showing Ctrl+Alt+Space, a "Morning review" button, then Windows-style minimise / maximise / close (46 × 40 each).
+- Custom title bar, 40 px: app icon (a sun rising over a horizon on a dawn-sky rounded square; `apps/web/public/daybreak-small.svg` at this size, `daybreak.svg` from 32 px up), app name, today's date, an "Add to My Day" button showing Ctrl+Alt+Space, a "Morning review" button, then Windows-style minimise / maximise / close (46 × 40 each).
 - Body: **tree on the left (~60%)**, **My Day on the right (~40%)**.
 - **Task detail opens in place of My Day**, so the tree never shrinks. Esc returns to My Day.
 - A bar of key hints sits under the tree: Enter Edit · N New · I Inbox · Tab Indent · Ctrl+↑↓ Move · Ctrl+←→ Fold · M My Day · T Today · D Day · B Backlog · S Doing · W Worked on · Space Done · X Cancel · Del Delete · Ctrl+O Details · Z Undo. In My Day, Del reads "Off My Day". While a title is being edited it shows an accent "EDITING" badge and the edit-mode hints (Enter New below · Tab Indent · Esc Done).
@@ -235,6 +235,16 @@ T Today · D Another day · B Backlog (Not today for suggestions) · X Cancel ·
 ### Global
 
 Ctrl+Alt+Space opens quick add from anywhere in Windows.
+
+## Installed app (PWA)
+
+Added at Serwan's request, outside V1 scope. A thin PWA: a manifest, icons, and a service worker that only shows a "Daybreak isn't running" page when a page load can't reach the server, and reloads into the app once it's back. It caches nothing and works nothing offline: the server is the only source of truth, so there's no stale data and an update is just a reload.
+
+- The app's own title bar stays below the browser's for now; Edge's "window controls overlay" could merge them, but Tauri does that properly in phase 6.
+- The installed window's title bar colour follows the theme (`--win`).
+- Icons come from the sunrise `apps/web/public/daybreak.svg`: 192 and 512 px PNGs, and a 512 px maskable one (sky to the edges, sun inside the safe zone). `daybreak-small.svg` is the simpler 16–24 px version; `favicon.ico` holds 16–256 px. Phase 6 can feed `daybreak.svg` to `tauri icon`.
+- The offline page carries the icon inline, since the server that would serve it is down.
+- Opening the app again focuses the open window rather than starting a second one (`launch_handler: focus-existing`).
 
 ## Accessibility
 
