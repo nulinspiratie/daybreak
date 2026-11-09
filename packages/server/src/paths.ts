@@ -1,7 +1,7 @@
 // Only node: built-ins here: Vite's config loader imports this file (SPEC R5).
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
-import { dirname, isAbsolute, join, relative, resolve, sep, win32 } from 'node:path'
+import { dirname, isAbsolute, join, posix, relative, resolve, sep, win32 } from 'node:path'
 
 export interface ServerConfig {
   port: number
@@ -13,8 +13,8 @@ export const DEFAULT_CONFIG: ServerConfig = { port: 47815, dayStartsAt: '04:00' 
 export function resolveDataDir(env: NodeJS.ProcessEnv, platform: NodeJS.Platform, home: string): string {
   if (env.DAYBREAK_DATA_DIR) return resolve(env.DAYBREAK_DATA_DIR)
   if (platform === 'win32' && env.LOCALAPPDATA) return win32.join(env.LOCALAPPDATA, 'Daybreak')
-  if (env.XDG_DATA_HOME) return join(env.XDG_DATA_HOME, 'daybreak')
-  return join(home, '.local', 'share', 'daybreak')
+  if (env.XDG_DATA_HOME) return posix.join(env.XDG_DATA_HOME, 'daybreak')
+  return posix.join(home, '.local', 'share', 'daybreak')
 }
 
 /** Realpath of `p`, or of its nearest existing ancestor with the missing tail re-appended. */
