@@ -1,0 +1,5 @@
+# Bulk formatting commits, skipped by `git blame` (GitHub uses this file automatically;
+# locally: git config blame.ignoreRevsFile .git-blame-ignore-revs).
+
+# style: adopt Biome for formatting and lint, reformat everything
+2ead259fa695e85967696355d6d80db7817cfa33
