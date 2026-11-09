@@ -39,7 +39,7 @@ const fake = createFakeApi()
 const { calls } = fake
 const queue = () => createMutationQueue()
 let q = queue()
-const noCache: TreeCache = { insert: () => {}, update: () => {} }
+const noCache: TreeCache = { insert: () => {}, update: () => {}, created: () => {}, remove: () => {} }
 
 function env(over: Partial<CommandEnv> = {}): CommandEnv {
   return {

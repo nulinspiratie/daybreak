@@ -8,6 +8,7 @@ import { CONFIRM_NOTE_ID, ConfirmNote } from '../shell/ConfirmNote'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
 import { flatten, type FlatRow } from './flatten'
+import { rowKey } from './optimistic'
 import { TreeRow } from './TreeRow'
 
 function expandedParents(nodes: TreeNode[], out: string[] = []): string[] {
@@ -99,7 +100,9 @@ export function TreePane() {
 
   const inboxOpen = tree ? tree.inbox.filter((n) => n.status === 'open').length : 0
   const renderRow = (r: FlatRow) => (
-    <Fragment key={r.id}>
+    // Keyed by the placeholder a new row was first shown under, so it isn't remounted (and its
+    // editor reset) when the server's answer gives it its real id.
+    <Fragment key={rowKey(r.id)}>
       <TreeRow
         row={r}
         today={today}

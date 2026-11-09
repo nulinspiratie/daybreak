@@ -1,14 +1,15 @@
 // @vitest-environment happy-dom
 import type { Section, TreeNode, TreeView } from '@daybreak/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/api/client'
-import { queue, useDrainInvalidation } from '../src/api/hooks'
+import { queue, useDrainInvalidation, useLiveUpdates } from '../src/api/hooks'
 import { IS_MAC } from '../src/keyboard/platform'
 import { useKeyboard } from '../src/keyboard/useKeyboard'
 import { Toast } from '../src/shell/Toast'
 import { toast } from '../src/shell/toastStore'
+import { resetPendingIds } from '../src/tree/optimistic'
 import { TreePane } from '../src/tree/TreePane'
 import { useUi } from '../src/ui/store'
 import { type FakeApi, node } from './helpers'
@@ -21,6 +22,15 @@ vi.mock('../src/api/client', async (importOriginal) => {
   return { ...(await importOriginal<typeof import('../src/api/client')>()), api: shared.fake.api }
 })
 const fake = () => shared.fake!
+
+// The SSE feed is replaced by a handle the test fires, as the server would after each write.
+const sse = vi.hoisted(() => ({ changed: () => {} }))
+vi.mock('../src/api/sse', () => ({
+  connectEvents: (onChanged: () => void) => {
+    sse.changed = onChanged
+    return () => {}
+  },
+}))
 
 const TODAY = '2026-11-09'
 
@@ -37,6 +47,8 @@ let db: Row[]
 let seq: number
 /** While set, writes wait for it, so a test can type faster than the server answers. */
 let gate: Promise<void> | null
+/** Opens every gate a test left shut, so a failed test can't hang the next one. */
+let releasers: Array<() => void> = []
 
 const normalizeTitle = (raw: string) => raw.replace(/[\r\n\t]+/g, ' ').trim()
 const live = () => db.filter((r) => !r.deleted)
@@ -82,6 +94,16 @@ function serve(method: string, path: string, body: Record<string, unknown> = {})
     return toNode(row)
   }
   const [, , , id, action] = path.split('/')
+  if (method === 'POST' && action === 'restore') {
+    const root = db.find((r) => r.id === id)
+    if (!root) throw new ApiError(404, 'not_found', `#${id} not found`)
+    const back = (r: Row): void => {
+      r.deleted = false
+      for (const k of db.filter((t) => t.parentId === r.id)) back(k)
+    }
+    back(root)
+    return toNode(root)
+  }
   const row = get(id!)
   if (method === 'PATCH') {
     if (body.title !== undefined) {
@@ -90,6 +112,7 @@ function serve(method: string, path: string, body: Record<string, unknown> = {})
       row.title = title
     }
     if (body.collapsed !== undefined) row.collapsed = body.collapsed as boolean
+    if (body.status !== undefined) return { changedIds: [row.id] }
     return toNode(row)
   }
   if (method === 'DELETE') {
@@ -123,6 +146,7 @@ function serve(method: string, path: string, body: Record<string, unknown> = {})
 
 function Harness() {
   useDrainInvalidation()
+  useLiveUpdates()
   useKeyboard()
   return (
     <>
@@ -149,6 +173,24 @@ async function type(text: string) {
     fireEvent.change(editor(), { target: { value: text } })
   })
 }
+/** Holds every write until the returned function is called. */
+function hold(): () => void {
+  let answer = () => {}
+  gate = new Promise((r) => {
+    answer = r
+  })
+  releasers.push(answer)
+  return () => {
+    gate = null
+    answer()
+  }
+}
+/** Lets queued writes that are not held run, and React catch up. */
+async function flush() {
+  await act(async () => {
+    for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0))
+  })
+}
 /** Waits until every write has been answered and the tree has refetched. */
 async function settle() {
   await act(async () => {
@@ -160,9 +202,12 @@ async function settle() {
   })
 }
 
+let client: QueryClient
+
 async function start(selected: string | null) {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={client}>
       <Harness />
     </QueryClientProvider>,
   )
@@ -181,6 +226,7 @@ beforeEach(() => {
   ]
   seq = 0
   gate = null
+  resetPendingIds()
   fake().calls.length = 0
   fake().reply = async (method, path, body) => {
     if (method !== 'GET' && gate) await gate
@@ -190,6 +236,9 @@ beforeEach(() => {
   toast.dismiss()
 })
 afterEach(async () => {
+  for (const r of releasers) r()
+  releasers = []
+  gate = null
   await act(async () => {
     await queue.idle()
   })
@@ -223,10 +272,7 @@ describe('drafts', () => {
 
   it('typed faster than the server answers, the list keeps its order and selection moves to the real id', async () => {
     await start('c1')
-    let answer = () => {}
-    gate = new Promise((r) => {
-      answer = r
-    })
+    const answer = hold()
     await press('n')
     await type('a')
     await press('Enter')
@@ -320,16 +366,17 @@ describe('drafts', () => {
   })
 
   it('a pasted multi-line title is sent as typed and rendered as the server returns it', async () => {
-    // Chromium turns pasted line breaks into spaces before the input sees them; tabs and outer spaces stay.
-    const pasted = '  line one \tline two  '
+    // A real input can't hold a line break (Chromium turns pasted ones into spaces), so the text is
+    // set through the store: whatever the editor holds is sent unchanged, and the server cleans it.
+    const pasted = '  line one\r\nline two\tthree  '
     await start('i1')
     await press('n')
-    await type(pasted)
+    act(() => ui().set({ editing: { ...ui().editing!, text: pasted } }))
     await press('Enter')
     await press('Escape')
     await settle()
     expect(writes()).toEqual([['POST', '/api/tasks', { title: pasted, section: 'inbox', afterId: 'i1' }]])
-    expect(screen.getByText('line one line two')).toBeTruthy()
+    expect(screen.getByText('line one line two three')).toBeTruthy()
   })
 
   it('N with nothing selected and the New task button open a draft at the end of Inbox', async () => {
@@ -472,5 +519,238 @@ describe('editing a saved title', () => {
     expect(writes()).toEqual([['PATCH', '/api/tasks/c1', { title: 'blurred' }]])
     noEditor()
     expect(ui()).toMatchObject({ editing: null, treeSel: 'c1' })
+  })
+})
+
+describe('while writes are still queued', () => {
+  it('Tab on a draft whose predecessor is still pending nests it under that task', async () => {
+    await start('c1')
+    const answer = hold()
+    await press('n')
+    await type('a')
+    await press('Enter')
+    await press('Tab')
+    expect(editor().closest('[role=treeitem]')!.getAttribute('aria-level')).toBe('3')
+    await type('kid')
+    await press('Escape')
+    answer()
+    await settle()
+    expect(writes()).toEqual([
+      ['POST', '/api/tasks', { title: 'a', section: 'projects', parentId: 'p1', afterId: 'c1' }],
+      ['POST', '/api/tasks', { title: 'kid', section: 'projects', parentId: idOf('a') }],
+    ])
+    expect(titlesUnder(idOf('a'))).toEqual(['kid'])
+    expect(ui().treeSel).toBe(idOf('kid'))
+  })
+
+  it('a refetch that lands mid-chain does not drop pending rows, so Tab still nests under the right task', async () => {
+    await start('c1')
+    const answer = hold()
+    await press('n')
+    await type('a')
+    await press('Enter')
+    await type('b')
+    await press('Enter')
+    // The server says something changed (another write, another window) before it has answered.
+    await act(async () => {
+      sse.changed()
+      await new Promise((r) => setTimeout(r, 150))
+    })
+    await act(async () => {
+      await client.invalidateQueries()
+    })
+    expect(screen.getByText('a')).toBeTruthy()
+    expect(screen.getByText('b')).toBeTruthy()
+    await press('Tab')
+    await type('c')
+    await press('Escape')
+    answer()
+    await settle()
+    expect(titlesUnder('p1')).toEqual(['Child one', 'a', 'b', 'Child two'])
+    expect(titlesUnder(idOf('b'))).toEqual(['c'])
+    expect(titlesUnder('c2')).toEqual([])
+  })
+
+  it('editing a pending row keeps the same input when it gets its real id, and the answer keeps a newer title', async () => {
+    await start('c1')
+    let answerPost = () => {}
+    let answerPatch = () => {}
+    const posted = new Promise<void>((r) => (answerPost = r))
+    const patched = new Promise<void>((r) => (answerPatch = r))
+    releasers.push(() => answerPost(), () => answerPatch())
+    fake().reply = async (method, path, body) => {
+      if (method === 'POST' && path === '/api/tasks') await posted
+      if (method === 'PATCH') await patched
+      return serve(method, path, body as Record<string, unknown>)
+    }
+    await press('n')
+    await type('a')
+    await press('Enter')
+    await press('ArrowUp') // the empty draft is dropped and the pending "a" is edited
+    const input = editor()
+    expect(input.value).toBe('a')
+    await type('a, renamed')
+    await act(async () => {
+      answerPost()
+    })
+    await flush()
+    expect(ui().editing?.id).toBe(idOf('a'))
+    expect(editor()).toBe(input)
+    await press('Escape')
+    expect(screen.getByText('a, renamed')).toBeTruthy()
+    expect(screen.queryByText('a')).toBeNull()
+    answerPatch()
+    await settle()
+    expect(titlesUnder('p1')).toEqual(['Child one', 'a, renamed', 'Child two'])
+  })
+
+  it('undoing the delete of a task created moments ago selects it by its real id', async () => {
+    await start('c1')
+    const answer = hold()
+    await press('n')
+    await type('oops')
+    await press('Escape')
+    await press('Delete')
+    answer()
+    await settle()
+    expect(screen.getByRole('status').textContent).toBe("Deleted 'oops' · Undo (Z)")
+    await press('z')
+    await settle()
+    expect(titlesUnder('p1')).toEqual(['Child one', 'oops', 'Child two'])
+    expect(ui().treeSel).toBe(idOf('oops'))
+  })
+})
+
+describe('a create the server refuses', () => {
+  /** Fails the first create with a 400; everything else is served as usual once the gate opens. */
+  function failFirstCreate() {
+    let failed = false
+    fake().reply = async (method, path, body) => {
+      if (method !== 'GET' && gate) await gate
+      if (method === 'POST' && path === '/api/tasks' && !failed) {
+        failed = true
+        throw new ApiError(400, 'invalid', 'refused')
+      }
+      return serve(method, path, body as Record<string, unknown>)
+    }
+  }
+
+  it('shows a toast, and the creates chained after it still land in order', async () => {
+    await start('c1')
+    failFirstCreate()
+    const answer = hold()
+    await press('n')
+    await type('a')
+    await press('Enter')
+    await type('b')
+    await press('Enter')
+    await type('c')
+    await press('Enter')
+    await press('Enter')
+    answer()
+    await settle()
+    expect(screen.getByRole('status').textContent).toBe("Couldn't save 'a'")
+    expect(writes()).toEqual([
+      ['POST', '/api/tasks', { title: 'a', section: 'projects', parentId: 'p1', afterId: 'c1' }],
+      ['POST', '/api/tasks', { title: 'b', section: 'projects', parentId: 'p1', afterId: 'c1' }],
+      ['POST', '/api/tasks', { title: 'c', section: 'projects', parentId: 'p1', afterId: idOf('b') }],
+    ])
+    expect(titlesUnder('p1')).toEqual(['Child one', 'b', 'c', 'Child two'])
+    expect(ui().treeSel).toBe(idOf('c'))
+  })
+
+  it('a draft nested under the refused task goes to its parent, and writes naming the refused task are skipped', async () => {
+    await start('c1')
+    failFirstCreate()
+    const answer = hold()
+    await press('n')
+    await type('a')
+    await press('Enter')
+    await press('Tab')
+    await type('kid')
+    await press('ArrowUp') // creates "kid", edits the pending "a"
+    await type('a2')
+    await press('Escape') // queues a rename of "a"
+    answer()
+    await settle()
+    expect(screen.getByRole('status').textContent).toBe("Couldn't save 'a'")
+    expect(writes()).toEqual([
+      ['POST', '/api/tasks', { title: 'a', section: 'projects', parentId: 'p1', afterId: 'c1' }],
+      ['POST', '/api/tasks', { title: 'kid', section: 'projects', parentId: 'p1' }],
+    ])
+    expect(titlesUnder('p1')).toEqual(['Child one', 'Child two', 'kid'])
+    expect(ui()).toMatchObject({ editing: null, treeSel: 'c1' })
+  })
+
+  it('a draft still open after the refused task is re-anchored where that task would have gone', async () => {
+    await start('c1')
+    failFirstCreate()
+    const answer = hold()
+    await press('n')
+    await type('a')
+    await press('Enter')
+    answer()
+    await flush()
+    expect(ui().draft).toEqual({ section: 'projects', parentId: 'p1', afterId: 'c1' })
+    await type('b')
+    await press('Escape')
+    await settle()
+    expect(titlesUnder('p1')).toEqual(['Child one', 'b', 'Child two'])
+  })
+})
+
+describe('leaving the editor', () => {
+  it("clicking another row's checkbox saves the title once, then ticks that row", async () => {
+    await start('c1')
+    await press('Enter')
+    await type('clicked away')
+    const box = within(screen.getByRole('treeitem', { name: 'Child two' })).getByRole('button', { name: 'Tick off' })
+    await act(async () => {
+      fireEvent.pointerDown(box)
+      fireEvent.blur(editor(), { relatedTarget: box })
+      fireEvent.pointerUp(box)
+      fireEvent.click(box)
+    })
+    await settle()
+    expect(writes()).toEqual([
+      ['PATCH', '/api/tasks/c1', { title: 'clicked away' }],
+      ['PATCH', '/api/tasks/c2', { status: 'done' }],
+    ])
+    noEditor()
+    expect(ui()).toMatchObject({ editing: null, treeSel: 'c2' })
+  })
+
+  it('the window losing focus commits the draft', async () => {
+    await start('c1')
+    await press('n')
+    await type('quick')
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    await act(async () => {
+      fireEvent.blur(editor())
+    })
+    hasFocus.mockRestore()
+    await settle()
+    expect(writes()).toEqual([['POST', '/api/tasks', { title: 'quick', section: 'projects', parentId: 'p1', afterId: 'c1' }]])
+    noEditor()
+    expect(ui()).toMatchObject({ editing: null, treeSel: idOf('quick') })
+  })
+
+  it('a failed rename before Tab is reported, and the nudge still goes out', async () => {
+    await start('c2')
+    fake().reply = async (method, path, body) => {
+      if (method === 'PATCH') throw new ApiError(500, 'internal', 'disk full')
+      return serve(method, path, body as Record<string, unknown>)
+    }
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await press('Enter')
+    await type('renamed')
+    await press('Tab')
+    await settle()
+    expect(writes()).toEqual([
+      ['PATCH', '/api/tasks/c2', { title: 'renamed' }],
+      ['POST', '/api/tasks/c2/nudge', { direction: 'indent' }],
+    ])
+    expect(error).toHaveBeenCalledWith(expect.objectContaining({ message: 'disk full' }))
+    error.mockRestore()
   })
 })

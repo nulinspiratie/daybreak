@@ -24,10 +24,15 @@ export interface UiState {
   focusDayAdd: () => void
   /** Points every reference to `from` (selection, editing, draft, detail) at `to`: a new task got its real id. */
   replaceId: (from: string, to: string) => void
+  /**
+   * Forgets a task the server refused to create: editing it ends, the selection moves to where it
+   * would have gone, and a draft placed after or under it takes that place instead.
+   */
+  dropId: (id: string, fallback: { parentId: string | null; afterId?: string; beforeId?: string }) => void
   set: (patch: Partial<Omit<UiState, Action>>) => void
 }
 
-type Action = 'set' | 'focusDayAdd' | 'replaceId'
+type Action = 'set' | 'focusDayAdd' | 'replaceId' | 'dropId'
 
 /** The store's actions; `UiState` already carries them, this names them for CommandEnv. */
 export type UiActions = Pick<UiState, Action>
@@ -49,6 +54,29 @@ function withId(s: UiState, from: string, to: string): Partial<UiState> {
   }
 }
 
+function withoutId(s: UiState, id: string, fb: Parameters<UiState['dropId']>[1]): Partial<UiState> {
+  const anchor = fb.afterId ?? fb.parentId ?? null
+  let draft = s.draft
+  // The same fallback the queued create of this draft will use (placementFor).
+  if (draft?.parentId === id) draft = { ...draft, parentId: fb.parentId }
+  if (draft?.afterId === id) {
+    const { afterId: _after, beforeId: _before, ...rest } = draft
+    draft = { ...rest, ...(fb.afterId !== undefined && { afterId: fb.afterId }), ...(fb.beforeId !== undefined && { beforeId: fb.beforeId }) }
+  }
+  if (draft?.beforeId === id) {
+    const { beforeId: _before, ...rest } = draft
+    draft = rest
+  }
+  return {
+    treeSel: s.treeSel === id ? anchor : s.treeSel,
+    daySel: s.daySel === id ? null : s.daySel,
+    detailId: s.detailId === id ? null : s.detailId,
+    editing: s.editing?.id === id ? null : s.editing,
+    draft,
+    confirm: s.confirm?.id === id ? null : s.confirm,
+  }
+}
+
 export const useUi = create<UiState>((set) => ({
   pane: 'tree',
   treeSel: null,
@@ -62,5 +90,6 @@ export const useUi = create<UiState>((set) => ({
   dayAddNonce: 0,
   focusDayAdd: () => set((s) => ({ dayAddNonce: s.dayAddNonce + 1 })),
   replaceId: (from, to) => set((s) => withId(s, from, to)),
+  dropId: (id, fallback) => set((s) => withoutId(s, id, fallback)),
   set: (patch) => set(patch),
 }))

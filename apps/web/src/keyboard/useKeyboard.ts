@@ -4,7 +4,7 @@ import { api } from '../api/client'
 import { useDay, useMutate, useStatus, useTree } from '../api/hooks'
 import { toast } from '../shell/toastStore'
 import { flatten } from '../tree/flatten'
-import { treeCache } from '../tree/optimistic'
+import { SkippedWrite, treeCache } from '../tree/optimistic'
 import { useUi } from '../ui/store'
 import { runCommand } from './commands'
 import { type Command, resolveKey } from './keymap'
@@ -31,7 +31,9 @@ export function useCommandRunner(): (cmd: Command) => void {
     (cmd: Command) => {
       const env = { ...latest.current, ui: useUi.getState(), api, cache, mutate, now: Date.now, toast }
       if (env.today === '') return // status not loaded yet
-      runCommand(cmd, env).catch((e: unknown) => console.error(e))
+      runCommand(cmd, env).catch((e: unknown) => {
+        if (!(e instanceof SkippedWrite)) console.error(e)
+      })
     },
     [mutate, cache],
   )
@@ -41,8 +43,9 @@ function isTextField(el: HTMLElement): boolean {
   return el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'
 }
 
-/** Only these repeat while a key is held; one-shot commands (Space, X, Del, letters…) fire once per press. */
-const repeats = (cmd: Command) => cmd.startsWith('nav.') || cmd.startsWith('move.')
+/** Only these repeat while a key is held (moving, and ↑↓ between titles); one-shot commands (Space, X, Del, letters…) fire once per press. */
+const repeats = (cmd: Command) =>
+  cmd.startsWith('nav.') || cmd.startsWith('move.') || cmd === 'edit.prev' || cmd === 'edit.next'
 
 /**
  * The keydown handler for the tree and My Day. It stands aside for the review, IME composition,

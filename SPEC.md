@@ -305,3 +305,4 @@ Settled on 2026-11-08:
 Still open:
 
 6. Suggestions rule (section 4) is a first guess. Tune after a week.
+10. Backspace on an emptied title in edit mode deletes the task (and its subtree) and moves editing to the row above, so pressing Z, as the toast suggests, types "z" into that title instead of undoing. Undo still works through the toast's button, or Z after Esc. Revisit after real use.

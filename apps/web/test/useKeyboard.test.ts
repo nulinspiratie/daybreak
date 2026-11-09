@@ -96,6 +96,17 @@ describe('the global keydown filter', () => {
     expect(run.mock.calls).toEqual([['edit.deleteEmpty']])
   })
 
+  it('in edit mode a held ↑ or ↓ repeats, while a held Enter, Esc or Backspace does not', () => {
+    useUi.getState().set({ editing: { id: 't1', initial: '', text: '' } })
+    const editor = add('input', { 'data-title-editor': '' })
+    press(editor, 'ArrowDown', { repeat: true })
+    press(editor, 'ArrowUp', { repeat: true })
+    press(editor, 'Enter', { repeat: true })
+    press(editor, 'Escape', { repeat: true })
+    press(editor, 'Backspace', { repeat: true })
+    expect(run.mock.calls).toEqual([['edit.next'], ['edit.prev']])
+  })
+
   it('a focused button keeps native Space and Enter, in a row or not', () => {
     const header = add('button')
     const row = add('div', { role: 'treeitem' })

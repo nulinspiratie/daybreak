@@ -1,7 +1,20 @@
 import type { TreeView } from '@daybreak/core'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { flatten } from '../src/tree/flatten'
-import { insertNode, pendingId, resolveId, settlePendingId, updateNode } from '../src/tree/optimistic'
+import {
+  failPendingId,
+  insertNode,
+  liveId,
+  pendingId,
+  placementFor,
+  removeNode,
+  resetPendingIds,
+  resolveId,
+  rowKey,
+  settlePendingId,
+  SkippedWrite,
+  updateNode,
+} from '../src/tree/optimistic'
 import { useUi } from '../src/ui/store'
 import { node } from './helpers'
 
@@ -12,6 +25,8 @@ const view = (): TreeView => ({
   hiddenCompletedCount: 0,
 })
 const ids = (v: TreeView) => flatten(v).map((r) => `${r.id}@${r.depth}`)
+
+beforeEach(() => resetPendingIds())
 
 describe('optimistic tree updates', () => {
   it('insertNode places a task after a sibling, before one, or last', () => {
@@ -42,6 +57,36 @@ describe('optimistic tree updates', () => {
     expect(resolveId('zzz999')).toBe('zzz999')
   })
 
+  it('removeNode drops a task and lifts its children to the end of its parent', () => {
+    const v: TreeView = { ...view(), projects: [node('p1', [node('x', [node('k1'), node('k2')]), node('c2')]), node('p2')] }
+    expect(ids(removeNode(v, 'x'))).toEqual(['i1@0', 'p1@0', 'c2@1', 'k1@1', 'k2@1', 'p2@0'])
+    expect(ids(removeNode(view(), 'p2'))).toEqual(['i1@0', 'p1@0', 'c1@1', 'c2@1'])
+  })
+
+  it('a settled placeholder keeps its row key; a fresh state starts over', () => {
+    const p = pendingId()
+    settlePendingId(p, 'abc123')
+    expect(rowKey('abc123')).toBe(p)
+    expect(rowKey('zzz999')).toBe('zzz999')
+    resetPendingIds()
+    expect(resolveId(p)).toBe(p)
+    expect(rowKey('abc123')).toBe('abc123')
+    expect(pendingId()).toBe('new:1')
+  })
+
+  it('placementFor falls back past a refused placeholder; liveId refuses to name it', () => {
+    const a = pendingId()
+    const b = pendingId()
+    failPendingId(a, { parentId: 'p1', afterId: 'c1' })
+    settlePendingId(b, 'bbb111')
+    expect(placementFor({ section: 'projects', parentId: 'p1', afterId: a })).toEqual({ section: 'projects', parentId: 'p1', afterId: 'c1' })
+    expect(placementFor({ section: 'projects', parentId: a })).toEqual({ section: 'projects', parentId: 'p1' })
+    expect(placementFor({ section: 'projects', parentId: 'p1', afterId: b })).toEqual({ section: 'projects', parentId: 'p1', afterId: 'bbb111' })
+    expect(placementFor({ section: 'projects', parentId: 'p1', beforeId: a })).toEqual({ section: 'projects', parentId: 'p1' })
+    expect(liveId(b)).toBe('bbb111')
+    expect(() => liveId(a)).toThrow(SkippedWrite)
+  })
+
   it('replaceId points the selection, editing, draft and detail at the real id', () => {
     const ui = useUi.getState()
     ui.set({
@@ -54,5 +99,22 @@ describe('optimistic tree updates', () => {
       draft: { parentId: 'k3f9a2', afterId: 'k3f9a2' },
     })
     expect(useUi.getState().draft).not.toHaveProperty('beforeId')
+  })
+
+  it('dropId forgets a refused task: selection to its anchor, a draft re-anchored, editing ended', () => {
+    const ui = useUi.getState()
+    ui.set({
+      treeSel: 'new:7', daySel: null, detailId: 'new:7', editing: { id: 'new:7', initial: 'a', text: 'a2' },
+      draft: null, confirm: null,
+    })
+    ui.dropId('new:7', { parentId: 'p1', afterId: 'c1' })
+    expect(useUi.getState()).toMatchObject({ treeSel: 'c1', detailId: null, editing: null })
+    ui.set({ treeSel: 'draft', editing: { id: 'draft', initial: '', text: '' }, draft: { section: 'projects', parentId: 'p1', afterId: 'new:8' } })
+    ui.dropId('new:8', { parentId: 'p1' })
+    expect(useUi.getState()).toMatchObject({ treeSel: 'draft', editing: { id: 'draft' } })
+    expect(useUi.getState().draft).toEqual({ section: 'projects', parentId: 'p1' })
+    ui.set({ draft: { section: 'projects', parentId: 'new:9' } })
+    ui.dropId('new:9', { parentId: null, afterId: 'p1' })
+    expect(useUi.getState().draft).toEqual({ section: 'projects', parentId: null })
   })
 })

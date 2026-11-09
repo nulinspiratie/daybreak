@@ -14,8 +14,21 @@ export interface Status {
 
 export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<Status>('/api/status') })
 
-export const useTree = (completed: CompletedMode) =>
-  useQuery({ queryKey: ['tree', completed], queryFn: () => api.get<TreeView>(`/api/tree?completed=${completed}`) })
+/**
+ * The tree. A fetch that answers while writes are still queued keeps the cached tree instead: it
+ * predates those writes and would drop their optimistic rows. The refetch on drain reconciles.
+ */
+export function useTree(completed: CompletedMode) {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: ['tree', completed],
+    queryFn: async () => {
+      const fetched = await api.get<TreeView>(`/api/tree?completed=${completed}`)
+      const shown = qc.getQueryData<TreeView>(['tree', completed])
+      return queue.busy() && shown ? shown : fetched
+    },
+  })
+}
 
 export const useDay = (date: string) =>
   useQuery({ queryKey: ['day', date], queryFn: () => api.get<DayView>(`/api/day/${date}`), enabled: date !== '' })
@@ -53,7 +66,10 @@ export function useLiveUpdates(): void {
     const close = connectEvents(
       () => {
         clearTimeout(timer.current)
-        timer.current = setTimeout(() => void qc.invalidateQueries(), CHANGED_DEBOUNCE_MS)
+        // While writes are queued the refetch on drain covers this change too.
+        timer.current = setTimeout(() => {
+          if (!queue.busy()) void qc.invalidateQueries()
+        }, CHANGED_DEBOUNCE_MS)
       },
       () => void qc.invalidateQueries(),
     )

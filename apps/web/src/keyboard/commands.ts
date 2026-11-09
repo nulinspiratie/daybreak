@@ -3,7 +3,7 @@ import { ApiError, type api } from '../api/client'
 import type { useMutate } from '../api/hooks'
 import type { ToastApi } from '../shell/toastStore'
 import { blankNode, DRAFT_ID, type FlatRow } from '../tree/flatten'
-import { pendingId, resolveId, settlePendingId, type TreeCache } from '../tree/optimistic'
+import { failPendingId, liveId, pendingId, placementFor, resolveId, settlePendingId, type TreeCache } from '../tree/optimistic'
 import type { Draft, UiActions, UiState } from '../ui/store'
 import type { Command } from './keymap'
 
@@ -86,8 +86,9 @@ function neighbourAfterRemoval(env: CommandEnv, t: Target): string | null {
   return ids[i + 1] ?? ids[i - 1] ?? null
 }
 
-// Built inside each queued write, so a placeholder id from a draft is already the real id.
-const taskPath = (id: string, action = '') => `/api/tasks/${resolveId(id)}${action}`
+// Built inside each queued write, so a placeholder id from a draft is already the real id (or the
+// write is skipped with SkippedWrite, if the server refused to create that task).
+const taskPath = (id: string, action = '') => `/api/tasks/${liveId(id)}${action}`
 
 function navigate(env: CommandEnv, cmd: 'nav.up' | 'nav.down' | 'nav.first' | 'nav.last'): void {
   const ids = paneIds(env)
@@ -190,19 +191,31 @@ function saveTitle(env: CommandEnv, ed: Editing): Promise<unknown> | null {
 
 /**
  * Creates the draft's task, shown at once under a placeholder id that becomes the real id (in the
- * cache, the selection, editing and any later draft) as soon as the server answers.
+ * cache, the selection, editing and any later draft) as soon as the server answers. If the server
+ * refuses, a toast says so, and writes queued after it that place a task after or under it use
+ * the place it would have taken instead (R29).
  */
 function createDraft(env: CommandEnv, d: Draft, title: string): { id: string; done: Promise<void> } {
   const id = pendingId()
   env.cache.insert({ ...blankNode(id, d.section, d.parentId), title }, d)
   const done = env.mutate(async () => {
     // Resolved now, inside the queue: the anchor may be a task whose create was only just answered.
-    const body: Record<string, unknown> = { title, section: d.section }
-    if (d.parentId !== null) body.parentId = resolveId(d.parentId)
-    if (d.afterId !== undefined) body.afterId = resolveId(d.afterId)
-    if (d.beforeId !== undefined) body.beforeId = resolveId(d.beforeId)
-    const task = await env.api.send<Task>('POST', '/api/tasks', body)
-    env.cache.update(id, task)
+    const at = placementFor(d)
+    const body: Record<string, unknown> = { title, section: at.section }
+    if (at.parentId !== null) body.parentId = at.parentId
+    if (at.afterId !== undefined) body.afterId = at.afterId
+    if (at.beforeId !== undefined) body.beforeId = at.beforeId
+    let task: Task
+    try {
+      task = await env.api.send<Task>('POST', '/api/tasks', body)
+    } catch {
+      failPendingId(id, at)
+      env.cache.remove(id)
+      env.ui.dropId(id, at)
+      env.toast.show({ message: `Couldn't save '${title}'` })
+      return
+    }
+    env.cache.created(id, task, title)
     settlePendingId(id, task.id)
     env.ui.replaceId(id, task.id)
   })
@@ -278,7 +291,8 @@ async function editTask(cmd: Command, env: CommandEnv, ed: Editing): Promise<voi
   const saveAndNudge = (direction: 'up' | 'down' | 'indent' | 'outdent') => {
     const saved = saveTitle(env, ed)
     if (saved) env.ui.set({ editing: { ...ed, initial: ed.text } })
-    return env.mutate(() => env.api.send('POST', taskPath(ed.id, '/nudge'), { direction }))
+    const nudged = env.mutate(() => env.api.send('POST', taskPath(ed.id, '/nudge'), { direction }))
+    return Promise.all([saved, nudged])
   }
   switch (cmd) {
     case 'edit.commitNew': {
@@ -354,7 +368,8 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       // Dismiss only once the restore worked, so a failed one can be retried with Z.
       await mutate(() => api.send('POST', taskPath(id, '/restore')))
       if (env.toast.current()?.id === shown.id) env.toast.dismiss()
-      if (shown.restoreIn?.includes(ui.pane)) select(env, id)
+      // A task deleted while its create was queued is named by its placeholder in the toast.
+      if (shown.restoreIn?.includes(ui.pane)) select(env, resolveId(id))
       return
     }
     case 'new.below': {

@@ -2,6 +2,8 @@
 export function createMutationQueue(): {
   enqueue<T>(fn: () => Promise<T>): Promise<T>
   idle(): Promise<void>
+  /** True while writes are queued or running. */
+  busy(): boolean
   /** Calls cb each time the queue goes from busy to empty. Returns an unsubscribe. */
   onDrain(cb: () => void): () => void
 } {
@@ -35,6 +37,7 @@ export function createMutationQueue(): {
       tail = result.then(settle, settle)
       return result
     },
+    busy: () => pending > 0,
     idle(): Promise<void> {
       if (pending === 0) return Promise.resolve()
       return new Promise((resolve) => waiters.push(resolve))
