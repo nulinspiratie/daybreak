@@ -243,7 +243,9 @@ export function decide(
  */
 export function undoDecision(ctx: Ctx, date: ISODate): ReviewView {
   return transaction(ctx.db, () => {
-    const last = decisionsOn(ctx, date).at(-1)
+    // A decision on a task deleted since is not shown, so Z passes over it.
+    const live = (d: Decision) => ctx.db.get('SELECT 1 FROM tasks WHERE id = ? AND deleted_at IS NULL', d.taskId) !== undefined
+    const last = decisionsOn(ctx, date).filter(live).at(-1)
     if (last) {
       const p = last.previous
       const now = nowIso(ctx)

@@ -243,6 +243,16 @@ describe('undoDecision', () => {
     expect(undo[0]!.taskId).toBe(ids.s)
   })
 
+  it('skips a decision whose task was deleted since, and undoes the one before it', async () => {
+    const { ctx, ids, before } = await decided()
+    softDelete(ctx, ids.c!)
+    const view = undoDecision(ctx, D)
+    expect(getTask(ctx, ids.b!)).toMatchObject({ scheduledOn: YESTERDAY, dayPosition: before.b.dayPosition })
+    expect(view.leftovers.map((i) => i.decision?.choice ?? null)).toEqual(['today', null])
+    const undos = reviewEvents(ctx).filter((e) => e.kind === 'review_undo')
+    expect(undos.map((e) => e.taskId)).toEqual([ids.b])
+  })
+
   it('undo survives a new service instance on the same db', async () => {
     const { ctx, ids } = await decided()
     const ctx2: Ctx = { db: ctx.db, clock: fixedClock(NOW), config: ctx.config }
