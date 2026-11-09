@@ -47,8 +47,6 @@ Newest at the bottom. Tick or strike items once we've talked them through.
 - The task detail panel (Ctrl+O) follows your selection: with it open, ↑/↓
   in the tree show the next task's details. Links in notes open through
   Daybreak's "open link" (your default browser or app), not inside the app.
-
-- **Images in notes are not loaded.** Markdown images show as link text, so
-  notes never fetch remote URLs (a fetch would leak to the image host that
-  you opened the task). Only http, https and mailto links are clickable;
-  others show as plain text.
+- Images in notes aren't loaded; they show as link text. Loading one would
+  send a request to an outside server whenever you open the task. Only http,
+  https and mailto links are clickable; other links show as plain text.
