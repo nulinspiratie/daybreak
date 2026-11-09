@@ -85,13 +85,33 @@ describe('the global keydown filter', () => {
     useUi.getState().set({ picker: null, pickerShown: false })
   })
 
-  it('while the picker has not appeared yet, only Esc is taken (it closes the picker)', () => {
+  it('while the picker is open but not shown yet, no key reaches the tree, and Esc closes it', () => {
     useUi.getState().set({ picker: { taskId: 't1', allowNoDay: true }, pickerShown: false })
     press(document.body, 'ArrowDown')
-    expect(run).toHaveBeenCalledWith('nav.down')
-    press(document.body, 'Escape')
+    press(document.body, 't')
+    press(document.body, ' ')
+    expect(run).not.toHaveBeenCalled()
+    const esc = press(document.body, 'Escape')
+    expect(esc.defaultPrevented).toBe(true)
     expect(useUi.getState().picker).toBeNull()
-    expect(run).toHaveBeenCalledTimes(1)
+    press(document.body, 'ArrowDown')
+    expect(run).toHaveBeenCalledWith('nav.down')
+  })
+
+  it('Tab inside the detail panel moves focus between its controls instead of indenting', () => {
+    const panel = add('section', { class: 'pane pane--detail' })
+    const segment = add('button', {}, panel)
+    for (const init of [{}, { shiftKey: true }]) {
+      const e = press(segment, 'Tab', init)
+      expect(e.defaultPrevented).toBe(false)
+    }
+    expect(run).not.toHaveBeenCalled()
+    // Ctrl+O there still reaches the notes (R49); Tab outside the panel still indents.
+    press(segment, 'o', { ctrlKey: true })
+    expect(run).toHaveBeenCalledWith('detail.open')
+    const e = press(document.body, 'Tab')
+    expect(e.defaultPrevented).toBe(true)
+    expect(run).toHaveBeenLastCalledWith('indent')
   })
 
   it('ignores text fields other than a row title editor', () => {

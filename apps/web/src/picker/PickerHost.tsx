@@ -37,8 +37,9 @@ function place(row: Element | null, height: number): { left: number; top: number
 
 /**
  * The main window's day picker: a card floating by the selected row, over the panes, with a
- * click-away backdrop. The keys belong to the picker while its card is shown (the global handler
- * stands aside); closing leaves the selection and the pane as they were, in navigate mode.
+ * click-away backdrop. The keys belong to the picker while it is open (the global handler stands
+ * aside, and only takes Esc before the card is shown); closing leaves the selection and the pane
+ * as they were, in navigate mode.
  * If the task or the data cannot be had, the picker closes rather than sit there unseen (R32).
  */
 export function PickerHost() {

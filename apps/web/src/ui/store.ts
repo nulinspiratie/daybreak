@@ -23,7 +23,7 @@ export interface UiState {
   reviewOpen: boolean
   /** The day picker (D), floated over the panes by PickerHost. `allowNoDay` is true from the tree only. */
   picker: { taskId: string; allowNoDay: boolean } | null
-  /** True once the picker's card is on screen. Until then the global keys still work, except Esc closes it. */
+  /** True once the picker's card is on screen and handles the keys. Until then keys do nothing, except Esc closes it. */
   pickerShown: boolean
   /** True while a row is being dragged; the global keys stand aside. */
   dragging: boolean

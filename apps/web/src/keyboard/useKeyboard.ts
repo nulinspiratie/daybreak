@@ -99,13 +99,13 @@ export function createKeyHandler(run: (cmd: Command) => void): (e: KeyboardEvent
     // A drag owns the keys: dnd-kit's own Esc cancels it, and nothing else may act meanwhile.
     if (ui.reviewOpen || ui.dragging) return
     if (ui.picker) {
-      // Once its card is shown the picker owns the keys; while it loads, Esc is the way out.
-      if (ui.pickerShown) return
-      if (e.key === 'Escape') {
+      // The picker owns the keys from the moment it opens. Once its card is shown it handles them;
+      // until then (R32: still loading) they do nothing, except Esc, which closes it.
+      if (!ui.pickerShown && e.key === 'Escape') {
         e.preventDefault()
         ui.set({ picker: null })
-        return
       }
+      return
     }
     const el = e.target instanceof HTMLElement ? e.target : null
     if (el && isTextField(el) && !el.closest('[data-title-editor]')) return
@@ -119,9 +119,9 @@ export function createKeyHandler(run: (cmd: Command) => void): (e: KeyboardEvent
       if (ui.confirm && !MODIFIERS.has(e.key)) ui.set({ confirm: null })
       return
     }
-    // With nothing selected, Tab moves focus as usual.
+    // With nothing selected, or from a control in the detail panel, Tab moves focus as usual.
     const selected = ui.pane === 'tree' ? ui.treeSel : ui.daySel
-    if ((cmd === 'indent' || cmd === 'outdent') && selected === null) return
+    if ((cmd === 'indent' || cmd === 'outdent') && (selected === null || el?.closest('.pane--detail'))) return
     e.preventDefault()
     // A held Space must not count as the second press of a parent close, nor a held Del delete row after row.
     if (e.repeat && !repeats(cmd)) return
