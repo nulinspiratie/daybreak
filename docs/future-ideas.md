@@ -51,3 +51,9 @@ This is the planned answer for moving a task far across the tree. In V1, Mod+↑
 Keys that fold the whole tree to a given depth in one go: everything deeper than level N collapses, everything at or above it opens. For example Mod+Shift+1 shows only top-level projects, Mod+Shift+2 shows projects and their milestones, and so on, with Mod+Shift+0 expanding everything. The "Collapse all" / "Expand all" button in V1 covers the two extremes; this fills in the levels between.
 
 Pick the keys with [keyboard.md](keyboard.md): Ctrl+1–9 are taken by the browser for tab switching while Daybreak runs in a tab, so the digits need Shift or the Tauri shell. Folding is stored per task (`collapsed`), so a fold to level is just a batch of collapse and expand writes and needs no new data.
+
+## Right-click menu
+
+Right-clicking a task (in the tree or My Day) opens a small context menu with the actions you'd otherwise reach by key, each showing its key so the menu also teaches the shortcuts: Edit title (Enter), New task below (N), Today (T), Pick a day (D), Backlog / Off My Day (B), Doing (S), Worked on (W), Done (Space), Cancel (X), Open details (Ctrl+O), Open link (O), Delete (Del, or Shift+Del in My Day). Right-clicking also selects the row, and each item runs the same command as its key, so undo and the double-press on parents work as usual. Esc or a click elsewhere closes it; ↑↓ and Enter work inside it.
+
+The browser's own menu is replaced only on task rows, so text fields keep copy and paste. List the menu next to the keys in [keyboard.md](keyboard.md) when it's built.
