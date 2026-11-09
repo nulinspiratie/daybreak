@@ -13,14 +13,26 @@ export class ApiError extends Error {
   }
 }
 
+/** The request got no answer at all: the server is not running. */
+export class Unreachable extends Error {
+  constructor(cause: unknown) {
+    super("Couldn't reach Daybreak", { cause })
+    this.name = 'Unreachable'
+  }
+}
+
 // Auth is the HttpOnly cookie the server sets when it serves `/`; no header is sent.
+// Every write says application/json, bodiless ones too: the server refuses other writes (CSRF).
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const init: RequestInit = { method, credentials: 'include' }
-  if (body !== undefined) {
-    init.headers = { 'Content-Type': 'application/json' }
-    init.body = JSON.stringify(body)
+  if (method !== 'GET') init.headers = { 'Content-Type': 'application/json' }
+  if (body !== undefined) init.body = JSON.stringify(body)
+  let res: Response
+  try {
+    res = await fetch(path, init)
+  } catch (e) {
+    throw new Unreachable(e)
   }
-  const res = await fetch(path, init)
   const text = await res.text()
   let data: unknown
   try {

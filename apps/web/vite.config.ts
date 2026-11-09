@@ -18,7 +18,9 @@ function readToken(): string | undefined {
 }
 
 export default defineConfig(({ command }) => {
-  // Only the dev server proxies, so only it needs the token.
+  // Only the dev server proxies, so only it needs the token. It is added to every proxied request;
+  // the server's own Origin and Sec-Fetch-Site check (auth.ts originGuard) refuses writes that a
+  // page on another origin sends here, and the proxy passes those headers through untouched.
   const token = command === 'serve' ? readToken() : undefined
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined
   return {
