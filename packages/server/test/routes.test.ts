@@ -39,7 +39,15 @@ describe('status, tree and day routes', () => {
       today: '2026-11-10',
       needsReview: true,
       dayStartsAt: '04:00',
+      backup: null,
     })
+  })
+  it('GET /api/status includes the backup status when there is one', async () => {
+    const backup = { dir: '/backups', lastAt: null, error: 'The backup folder is missing' }
+    const h = await testApp({ backupStatus: () => backup })
+    expect(((await (await h.req('/api/status')).json()) as { backup: unknown }).backup).toEqual(
+      backup,
+    )
   })
   it('GET /api/tree honours ?completed=', async () => {
     const h = await testApp({ seed: true })

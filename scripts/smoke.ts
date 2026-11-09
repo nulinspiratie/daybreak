@@ -3,13 +3,14 @@
 //
 //   bun run smoke
 import { spawn, spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const port = 47899
 const dataDir = mkdtempSync(join(tmpdir(), 'daybreak-smoke-'))
-writeFileSync(join(dataDir, 'config.json'), JSON.stringify({ port }))
+// With DAYBREAK_DATA_DIR set, the server reads its settings from this folder, not ~/.daybreak.toml.
+writeFileSync(join(dataDir, 'daybreak.toml'), `[server]\nport = ${port}\n`)
 
 const build = spawnSync('bun', ['run', '--cwd', 'apps/web', 'build'], {
   stdio: 'inherit',
@@ -54,8 +55,12 @@ async function check(): Promise<void> {
   if (unauth.status !== 401) throw new Error(`/api/ping without a token returned ${unauth.status}`)
   const status = await fetch(`${base}/api/status`, { headers: auth })
   if (status.status !== 200) throw new Error(`/api/status returned ${status.status}`)
+  const { backup } = (await status.json()) as { backup: { error: string | null } | null }
+  if (backup?.error !== null) throw new Error(`backup status: ${JSON.stringify(backup)}`)
+  if (!readdirSync(join(dataDir, 'backups')).some((f) => /^daybreak-.*\.db$/.test(f)))
+    throw new Error('no backup in the data folder’s backups folder')
   console.log(
-    'Smoke test passed: page, manifest, service worker, ping, token check and status all answer.',
+    'Smoke test passed: page, manifest, service worker, ping, token check, status and backup all answer.',
   )
 }
 

@@ -15,9 +15,11 @@ plan, kept for reference; don't execute it again.
 
 ## Conventions
 
-- Work task data must never be committed or leave the work laptop. The app's
-  database and logs live in `%LOCALAPPDATA%\Daybreak\` (or
-  `DAYBREAK_DATA_DIR`), never in this repo. Use fictional seed data for dev.
+- Work task data must never be committed or leave the secure work environment
+  (the work laptop and employer-managed storage such as the work OneDrive). The
+  app's database and logs live in `%LOCALAPPDATA%\Daybreak\` (or
+  `DAYBREAK_DATA_DIR`), never in this repo; backups may go to the work OneDrive.
+  Use fictional seed data for dev.
 - Stay inside the V1 scope in spec.md section 2. If something seems missing,
   add it to the open questions instead of building it.
 - All logic in TypeScript (`packages/core`, `packages/server`). Tauri's Rust
@@ -96,8 +98,14 @@ bun run --cwd apps/web dev   # second terminal, same DAYBREAK_DATA_DIR: http://l
   never inside Tauri.
 - Dependencies are pinned to versions available on Microsoft's npm proxy (the work
   laptop's feed); root `overrides` also pin the transitive `@babel/runtime` and `ws`.
-  Check the feed before bumping a pin. Biome stays on 2.5.1: 2.6.3 and 2.6.4 crash
+  Check the feed before bumping a pin. `bun.lock` names no registry (its tarball URLs
+  are blank), so other machines install from public npm; never commit feed URLs into it. Biome stays on 2.5.1: 2.6.3 and 2.6.4 crash
   during analysis on Windows ARM64 (biomejs/biome#11242).
+- Settings live in `~/.daybreak.toml` (`packages/server/src/config.ts`), not in the
+  data folder, except when `DAYBREAK_DATA_DIR` is set: then it's `daybreak.toml` in
+  that folder, so dev runs never touch the real settings or the real backup folder.
+  Keep it that way. The TOML reader (`toml.ts`) is a deliberate subset; extend it
+  rather than adding a dependency only if a new setting needs more.
 - Tests use a fixed clock and a temp database; never point a test or the seed
   at a real data folder (`assertOutsideRepo` refuses folders in the repo).
 

@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, statSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { assertOutsideRepo, loadConfig, loadOrCreateToken, resolveDataDir } from '../src/paths'
+import { assertOutsideRepo, loadOrCreateToken, resolveDataDir } from '../src/paths'
 
 const scratch = () => mkdtempSync(join(tmpdir(), 'daybreak-paths-'))
 
@@ -54,57 +54,6 @@ describe('assertOutsideRepo', () => {
   })
 })
 
-describe('loadConfig', () => {
-  it('config defaults are written once', () => {
-    const dir = scratch()
-    expect(loadConfig(dir)).toEqual({ port: 47815, dayStartsAt: '04:00' })
-    const file = join(dir, 'config.json')
-    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ port: 47815, dayStartsAt: '04:00' })
-    writeFileSync(file, JSON.stringify({ port: 5000, dayStartsAt: '05:30' }))
-    expect(loadConfig(dir)).toEqual({ port: 5000, dayStartsAt: '05:30' })
-    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ port: 5000, dayStartsAt: '05:30' })
-  })
-  it('creates the data dir when missing', () => {
-    const dir = join(scratch(), 'a', 'b')
-    expect(loadConfig(dir).port).toBe(47815)
-  })
-  it('fills missing keys from defaults without rewriting the file', () => {
-    const dir = scratch()
-    const file = join(dir, 'config.json')
-    writeFileSync(file, '{"port": 6000}')
-    expect(loadConfig(dir)).toEqual({ port: 6000, dayStartsAt: '04:00' })
-    expect(readFileSync(file, 'utf8')).toBe('{"port": 6000}')
-  })
-  it.each([
-    ['dayStartsAt', '24:00'],
-    ['dayStartsAt', '4:00'],
-    ['dayStartsAt', '12:60'],
-    ['dayStartsAt', 400],
-    ['port', 0],
-    ['port', 65536],
-    ['port', 80.5],
-    ['port', '8080'],
-  ])('rejects invalid %s = %j', (key, value) => {
-    const dir = scratch()
-    writeFileSync(join(dir, 'config.json'), JSON.stringify({ [key]: value }))
-    expect(() => loadConfig(dir)).toThrow(new RegExp(`config\\.json.*${key}`))
-  })
-  it('accepts boundary values', () => {
-    const dir = scratch()
-    writeFileSync(join(dir, 'config.json'), JSON.stringify({ port: 1, dayStartsAt: '23:59' }))
-    expect(loadConfig(dir)).toEqual({ port: 1, dayStartsAt: '23:59' })
-    writeFileSync(join(dir, 'config.json'), JSON.stringify({ port: 65535, dayStartsAt: '00:00' }))
-    expect(loadConfig(dir)).toEqual({ port: 65535, dayStartsAt: '00:00' })
-  })
-  it('throws naming config.json on bad JSON or a non-object', () => {
-    const dir = scratch()
-    writeFileSync(join(dir, 'config.json'), '{nope')
-    expect(() => loadConfig(dir)).toThrow(/config\.json/)
-    writeFileSync(join(dir, 'config.json'), '[1]')
-    expect(() => loadConfig(dir)).toThrow(/config\.json/)
-  })
-})
-
 describe('loadOrCreateToken', () => {
   it('token is 64 hex chars and stable across calls', () => {
     const dir = scratch()
@@ -126,12 +75,5 @@ describe('carry-ins', () => {
     const repo = join(base, 'repo')
     mkdirSync(repo)
     expect(() => assertOutsideRepo(join(repo, '..data'), repo)).toThrow(/inside the repo/)
-  })
-  it('loadConfig rejects null port and null dayStartsAt', () => {
-    for (const body of ['{"port": null}', '{"dayStartsAt": null}']) {
-      const dir = scratch()
-      writeFileSync(join(dir, 'config.json'), body)
-      expect(() => loadConfig(dir), body).toThrow(/config.json/)
-    }
   })
 })

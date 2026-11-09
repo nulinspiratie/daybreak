@@ -1,3 +1,5 @@
+export type { BackupOptions, BackupResult } from './backup'
+export { BACKUP_KEEP, backupDatabase, snapshotName } from './backup'
 export type { Clock } from './clock'
 export { fixedClock, systemClock } from './clock'
 export type { Ctx } from './ctx'
