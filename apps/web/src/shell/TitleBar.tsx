@@ -13,7 +13,12 @@ export function longDate(iso: string): string {
   return `${weekdayName(iso, 'long')} ${d} ${MONTHS[(m ?? 1) - 1]}`
 }
 
-export function TitleBar() {
+export interface TitleBarProps {
+  /** The morning review's title bar: "Morning review" and a "Skip for today" link in place of the day's buttons. */
+  review?: { onSkip: () => void }
+}
+
+export function TitleBar({ review }: TitleBarProps = {}) {
   const { data: status } = useStatus()
   const focusDayAdd = useUi((s) => s.focusDayAdd)
   const setUi = useUi((s) => s.set)
@@ -27,22 +32,34 @@ export function TitleBar() {
         </svg>
       </span>
       <span className="titlebar__name">Daybreak</span>
-      <span className="titlebar__date" data-testid="today">{status ? longDate(status.today) : ''}</span>
-      <span className="titlebar__spacer" />
-      <button type="button" className="tb-btn" onClick={focusDayAdd}>
-        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
-          <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
-        Add to My Day
-        <span className="kbd">Ctrl+Alt+Space</span>
-      </button>
-      <button type="button" className="tb-btn" onClick={() => setUi({ reviewOpen: true })}>
-        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
-          <circle cx="8" cy="9" r="3" fill="none" stroke="currentColor" strokeWidth="1.3" />
-          <path d="M8 2.5v1.5M3 9H1.5M14.5 9H13M4.2 5.2l-1-1M11.8 5.2l1-1M1.5 13h13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        </svg>
-        Morning review
-      </button>
+      {review ? (
+        <>
+          <span className="titlebar__date">Morning review</span>
+          <span className="titlebar__spacer" />
+          <button type="button" className="tb-link" onClick={review.onSkip}>
+            Skip for today
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="titlebar__date" data-testid="today">{status ? longDate(status.today) : ''}</span>
+          <span className="titlebar__spacer" />
+          <button type="button" className="tb-btn" onClick={focusDayAdd}>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
+              <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            Add to My Day
+            <span className="kbd">Ctrl+Alt+Space</span>
+          </button>
+          <button type="button" className="tb-btn" onClick={() => setUi({ reviewOpen: true })}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
+              <circle cx="8" cy="9" r="3" fill="none" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M8 2.5v1.5M3 9H1.5M14.5 9H13M4.2 5.2l-1-1M11.8 5.2l1-1M1.5 13h13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+            Morning review
+          </button>
+        </>
+      )}
       <button
         type="button"
         className="tb-btn tb-btn--icon"

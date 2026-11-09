@@ -24,7 +24,7 @@
   --done: #757575;
   --chip: #efefef;
 
-  /* Review outcome tints (light only in DESIGN.md): background / foreground */
+  /* Review outcome tints: background / foreground (light from DESIGN.md, dark per R37) */
   --rv-today-bg: #e3eefa;
   --rv-today-fg: #005fb8;
   --rv-day-bg: #efe8f8;
@@ -61,5 +61,16 @@
   --workedSoft: #3b2b1d;
   --done: #9c9c9c;
   --chip: #343434;
+
+  --rv-today-bg: #1b3647;
+  --rv-today-fg: #5cc2f5;
+  --rv-day-bg: #2e2440;
+  --rv-day-fg: #c7a6f0;
+  --rv-backlog-bg: #343434;
+  --rv-backlog-fg: #c4c4c4;
+  --rv-not-today-bg: #2b2b2b;
+  --rv-not-today-fg: #c4c4c4;
+  --rv-cancelled-bg: #3d2422;
+  --rv-cancelled-fg: #ff99a4;
   color-scheme: dark;
 }

@@ -44,8 +44,19 @@ export function useDay(date: string) {
   })
 }
 
-export const useReview = (date: string) =>
-  useQuery({ queryKey: ['review', date], queryFn: () => api.get<ReviewView>(`/api/review/${date}`) })
+/** The morning review, held back like the tree: its rapid decisions are shown optimistically while queued. */
+export function useReview(date: string) {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: ['review', date],
+    queryFn: async () => {
+      const fetched = await api.get<ReviewView>(`/api/review/${date}`)
+      const shown = qc.getQueryData<ReviewView>(['review', date])
+      return queue.busy() && shown ? shown : fetched
+    },
+    enabled: date !== '',
+  })
+}
 
 export const useDayCounts = (from: string, to: string) =>
   useQuery({
@@ -69,10 +80,15 @@ export function useDrainInvalidation(): void {
 
 const CHANGED_DEBOUNCE_MS = 100
 
-/** Subscribes to the SSE feed: debounced refetch on `changed`, status refetch on `day_changed`. */
+/**
+ * Subscribes to the SSE feed: debounced refetch on `changed`. On `day_changed` it only raises a
+ * flag; the next window focus or keydown refetches everything, the status (and so the morning
+ * review) included. A tab left open overnight shows the review when you come back to it.
+ */
 export function useLiveUpdates(): void {
   const qc = useQueryClient()
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const dayChanged = useRef(false)
   useEffect(() => {
     const close = connectEvents(
       () => {
@@ -82,11 +98,22 @@ export function useLiveUpdates(): void {
           if (!queue.busy()) void qc.invalidateQueries()
         }, CHANGED_DEBOUNCE_MS)
       },
-      () => void qc.invalidateQueries(),
+      () => {
+        dayChanged.current = true
+      },
     )
+    const wake = () => {
+      if (!dayChanged.current) return
+      dayChanged.current = false
+      void qc.invalidateQueries()
+    }
+    window.addEventListener('focus', wake)
+    window.addEventListener('keydown', wake, true)
     return () => {
       clearTimeout(timer.current)
       close()
+      window.removeEventListener('focus', wake)
+      window.removeEventListener('keydown', wake, true)
     }
   }, [qc])
 }
