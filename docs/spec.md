@@ -305,6 +305,7 @@ Settled on 2026-11-08:
 7. Delete exists (Del), as a soft delete with an undo toast; see section 3.
 8. Keyboard model: plain arrows only navigate (↑↓ visible rows, ← parent, → first child); one modifier (Mod = Ctrl on Windows, Option on macOS) for collapse/expand and move; Tab for depth; M switches panes. Avoids browser-reserved keys such as Alt+← (Back) and Ctrl+N.
 9. A parent with open subtasks closes only on a second Space / X, and then closes them too.
+13. Settled 2026-11-09: Alt+↑↓ skips over nested rows (previous sibling, else parent; next sibling, else the row after the parent's subtree). Redo is Ctrl+Shift+Z or Ctrl+Y. Shift+arrows stay free for multi-select later. Details in [keyboard.md](keyboard.md).
 
 Still open:
 
@@ -312,4 +313,3 @@ Still open:
 10. Backspace on an emptied title in edit mode deletes the task (and its subtree) and moves editing to the row above, so pressing Z, as the toast suggests, types "z" into that title instead of undoing. Undo still works through the toast's button, or Z after Esc. Revisit after real use.
 11. Daily logs are written only for days that have events (section 6). A day the app was never opened, such as a sick day, gets no log, even if tasks were scheduled for it and the next morning's review moved or cancelled them. Those decisions do record which day the task was planned for, so such days could get a log listing just the missed work. Decide after real use.
 12. Reopening one subtask with Space leaves its done parent done, so an open task can sit under a closed project. Decide whether reopening a child should reopen its parent too.
-13. Keyboard navigation: a move that skips over nested rows (previous / next row at the same level or higher), its key, and whether multi-select is ever wanted. Worked through in [keyboard.md](keyboard.md), "Open questions".

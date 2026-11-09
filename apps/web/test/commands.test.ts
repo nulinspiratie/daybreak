@@ -823,3 +823,74 @@ describe('I: new task in Inbox', () => {
     expect(ui()).toMatchObject({ pane: 'tree', draft: { section: 'inbox', parentId: null } })
   })
 })
+
+describe('redo', () => {
+  const ok = () => ({ task: node('x'), changedIds: ['x'] })
+
+  it('redo makes an undone change again; a new change clears what could be redone', async () => {
+    fake.reply = ok
+    select('c5')
+    await run('schedule.today')
+    await run('undo')
+    await run('redo')
+    expect(calls).toEqual([
+      ['POST', '/api/tasks/c5/schedule', { date: TODAY }],
+      ['POST', '/api/tasks/c5/schedule', { date: null }],
+      ['POST', '/api/tasks/c5/schedule', { date: TODAY }],
+    ])
+    expect(toast.current()?.message).toBe("Redone: Scheduled 'c5' for today")
+    // Redone, it can be undone again.
+    await run('undo')
+    expect(calls.at(-1)).toEqual(['POST', '/api/tasks/c5/schedule', { date: null }])
+    select('p3')
+    await run('status.done')
+    await run('redo')
+    expect(toast.current()?.message).toBe('Nothing to redo')
+  })
+
+  it('a delete is redone by deleting again; a new task by restoring it', async () => {
+    fake.reply = (method) => (method === 'DELETE' ? { deletedIds: ['p3'] } : ok())
+    select('p3')
+    await run('delete')
+    await run('undo')
+    await run('redo')
+    expect(calls.map((c) => `${c[0]} ${c[1]}`)).toEqual([
+      'DELETE /api/tasks/p3',
+      'POST /api/tasks/p3/restore',
+      'DELETE /api/tasks/p3',
+    ])
+  })
+})
+
+describe('Ctrl+Shift+↑↓: skip over nested rows', () => {
+  // Rows: i1 | p1 (m2 (c1..c4), c5), p2 (collapsed), p3
+  it('up goes to the previous sibling, past its subtree, else to the parent', async () => {
+    select('c5')
+    await run('nav.upLevel')
+    expect(ui().treeSel).toBe('m2')
+    await run('nav.upLevel')
+    expect(ui().treeSel).toBe('p1')
+    await run('nav.upLevel')
+    expect(ui().treeSel).toBe('i1') // the row above at the top level, across the sections
+  })
+
+  it('down goes to the next sibling, else the row after the parent’s subtree', async () => {
+    select('m2')
+    await run('nav.downLevel')
+    expect(ui().treeSel).toBe('c5')
+    await run('nav.downLevel')
+    expect(ui().treeSel).toBe('p2')
+    select('c4')
+    await run('nav.downLevel')
+    expect(ui().treeSel).toBe('c5')
+    select('p3')
+    await run('nav.downLevel')
+    expect(ui().treeSel).toBe('p3') // nothing below: stays
+  })
+
+  it('in My Day it is plain ↑↓', async () => {
+    select('d2', 'day')
+    await run('nav.upLevel')
+    expect(ui().daySel).toBe('d1')
+  })
+})

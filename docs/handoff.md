@@ -117,3 +117,11 @@ Changes from Serwan's first test, and the calls I made doing them:
 - docs/keyboard.md lists every way to navigate and change tasks, with the
   proposed "skip over nested rows" move and its open questions (which key,
   multi-select). Fold to level is in future-ideas.md.
+- Your answers, built the same day: Alt+↑↓ skips over nested rows (up: previous
+  sibling, else parent). On macOS, where Option is the move modifier, it's
+  Option+Shift+↑↓. Redo is Ctrl+Shift+Z or Ctrl+Y. A create is redone by
+  restoring the same task, so it keeps its id and place. Fold to level keeps
+  Ctrl+Shift+1–9 for when it's built.
+- Dragging into an empty Inbox: the dashed empty-Inbox line is now a drop
+  target of its own. Over it, it turns blue, says "Moves to Inbox" and shows
+  the insertion line, and the other rows stay where they are.

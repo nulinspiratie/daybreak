@@ -1,8 +1,10 @@
+import type { Task } from '@daybreak/core'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { useMutate } from '../api/hooks'
 import { toast } from '../shell/toastStore'
 import { useUi } from '../ui/store'
+import { recorded } from '../undo/history'
 
 /**
  * The inline add at the bottom of My Day. N (or the title bar's "Add to My Day") focuses it;
@@ -26,8 +28,25 @@ export function AddField({ today }: { today: string }) {
     const title = text.trim()
     if (title === '' || today === '') return
     setText('')
-    mutate(() =>
-      api.send('POST', '/api/tasks', { title, section: 'inbox', scheduledOn: today }),
+    // Undo deletes the new task, redo brings it back.
+    let id: string | undefined
+    const path = (action = '') => `/api/tasks/${id}${action}`
+    recorded(
+      mutate,
+      {
+        label: `Added '${title}' to My Day`,
+        revert: () => api.send('DELETE', path()),
+        reapply: () => api.send('POST', path('/restore')),
+      },
+      async () => {
+        const task = await api.send<Task>('POST', '/api/tasks', {
+          title,
+          section: 'inbox',
+          scheduledOn: today,
+        })
+        id = task.id
+        return task
+      },
     ).catch((e: unknown) => {
       console.error(e)
       toast.show({ message: `Couldn't save '${title}'` })

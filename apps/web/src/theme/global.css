@@ -349,6 +349,10 @@ kbd {
   color: var(--text);
 }
 
+.tree__empty-slot {
+  position: relative;
+}
+
 .tree__empty {
   display: block;
   width: calc(100% - 76px);

@@ -24,6 +24,9 @@ const SECTION_NAME: Record<Section, string> = { inbox: 'Inbox', projects: 'Proje
  */
 export const PROJECTS_HEAD = 'head:projects'
 
+/** The empty-Inbox line, a drop target only while Inbox has no rows: dropped there, a task goes to Inbox. */
+export const INBOX_EMPTY = 'head:inbox'
+
 /** Inbox is flat. A task's counts include subtasks the recent view hides, so they are checked too. */
 const hasSubtasks = (r: FlatRow) => r.hasChildren || r.node.totalCount > 0
 
@@ -72,6 +75,10 @@ export function projectDrop(
   if (from < 0) return null
   const active = kept[from]!
   if (overId === PROJECTS_HEAD) return acrossHeading(kept, active)
+  if (overId === INBOX_EMPTY) {
+    if (hasSubtasks(active) || kept.some((r) => r.section === 'inbox')) return null
+    return { parentId: null, section: 'inbox', depth: 0, label: 'Level 1 · goes to Inbox' }
+  }
   const to = kept.findIndex((r) => r.id === overId)
   if (to < 0) return null
   const section = kept[to]!.section

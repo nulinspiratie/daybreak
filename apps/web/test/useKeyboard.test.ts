@@ -61,7 +61,8 @@ describe('the global keydown filter', () => {
     press(document.body, 'ArrowDown', { repeat: true })
     press(document.body, 'ArrowUp', { repeat: true, ctrlKey: true })
     press(document.body, 'ArrowUp', { repeat: true, altKey: true })
-    expect(run.mock.calls).toHaveLength(2) // nav.down, and move.up for this platform's Mod
+    // nav.down, move.up for this platform's Mod, and Alt+↑ (skip nesting, or move.up on macOS)
+    expect(run.mock.calls).toHaveLength(3)
     expect(
       run.mock.calls.map((c) => c[0]).every((c) => c.startsWith('nav.') || c.startsWith('move.')),
     ).toBe(true)

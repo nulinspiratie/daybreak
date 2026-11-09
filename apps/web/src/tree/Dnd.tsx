@@ -400,7 +400,7 @@ export function DropHeading({ id, children }: { id: string; children: ReactNode 
 }
 
 /** The insertion line: a 2 px accent line, in the tree with a ring where the task will land. */
-function DropLine({ depth, at = 'top' }: Indicator) {
+export function DropLine({ depth, at = 'top' }: Indicator) {
   const cls = [
     'dropline',
     depth === 'full' && 'dropline--full',

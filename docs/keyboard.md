@@ -28,7 +28,7 @@ Started 2026-11-09, after the first round of real use. Status: **built** (in the
 | Action | Tree | My Day | Mouse | Status |
 | --- | --- | --- | --- | --- |
 | Previous / next visible row, ignoring nesting | ↑ ↓ | ↑ ↓ | Click | built |
-| Previous / next row at the same level or higher, skipping nested rows | ? | n/a | | **proposed**, see below |
+| Previous / next row at the same level or higher, skipping nested rows | Alt+↑ ↓ | ↑ ↓ (flat) | | built, see below |
 | Parent | ← | n/a | | built |
 | First child (expands a collapsed parent first) | → | n/a | | built |
 | First / last row | Home / End | Home / End | | built |
@@ -37,12 +37,12 @@ Started 2026-11-09, after the first round of real use. Status: **built** (in the
 | First / last sibling | | n/a | | idea |
 | Jump to Inbox / Projects heading | | n/a | | idea |
 
-### Proposed: skip over nested rows
+### Skip over nested rows (Alt+↑↓)
 
 ↑ and ↓ walk every visible row, nested or not. With an expanded parent above you, ↑ from the row below
 it lands on the parent's last descendant, and it takes many presses to get to the parent itself.
 
-The proposed move goes to the nearest row above (or below) that is **at the same level or higher**,
+This move goes to the nearest row above (or below) that is **at the same level or higher**,
 never deeper. With this tree, selected on "Milestone 3":
 
 ```
@@ -64,17 +64,9 @@ In other words: up is "previous sibling, else parent"; down is "next sibling, el
 the parent's subtree". Between Inbox and Projects it behaves like ↑↓. My Day is flat, so there it
 would be the same as ↑↓.
 
-Key options:
-
-| Key | For | Against |
-| --- | --- | --- |
-| Shift+↑ ↓ | Easy to reach, nothing else uses it yet | Shift+arrows usually extend a selection; it would block multi-select later |
-| Mod+Shift+↑ ↓ | Free; keeps Shift+arrows for multi-select | Three keys for a navigation move; on macOS it's Option+Shift |
-| Page Up / Page Down | One key, "big step" feel | Usually scrolls by a screen; awkward on laptop keyboards |
-| Alt+↑ ↓ on Windows | Free in browsers on Windows | On macOS Option is already Mod, so the two platforms would differ |
-
-Leaning: **Shift+↑↓** if multi-select is unlikely, otherwise **Mod+Shift+↑↓**. Decide together with
-whether we ever want multi-select (see "Open questions").
+Keys, decided 2026-11-09: **Alt+↑↓** on Windows. Shift+↑↓ stays free for selecting several rows
+later. On macOS, where Option is Mod and Option+↑↓ already moves the task, it's Option+Shift+↑↓.
+Alt+←→ stay unbound: they are the browser's Back and Forward.
 
 ## Folding
 
@@ -82,7 +74,7 @@ whether we ever want multi-select (see "Open questions").
 | --- | --- | --- | --- |
 | Collapse / expand the selected parent | Mod+← / Mod+→ | Chevron, or double-click the row beside the title | built |
 | Collapse everything / expand everything | | The header's fold button (Collapse all, then Expand all) | built |
-| Fold the whole tree to level N | | | **future** ([future-ideas.md](future-ideas.md), "Fold to level") |
+| Fold the whole tree to level N | Ctrl+Shift+1–9 (decided, not built) | | **future** ([future-ideas.md](future-ideas.md), "Fold to level") |
 | Collapse all siblings except this one | | | idea |
 
 ## Changing the tree's structure
@@ -146,19 +138,22 @@ tasks without subtasks".
 | --- | --- | --- | --- |
 | Delete the task and its subtree (undo toast) | Del | Shift+Del | built |
 | Undo the last change, again for the one before | Z or Ctrl+Z | Z or Ctrl+Z | built |
-| Redo | | | idea (Ctrl+Y or Shift+Z) |
+| Redo what Z undid | Ctrl+Shift+Z or Ctrl+Y | Ctrl+Shift+Z or Ctrl+Y | built |
 
 What Z covers and what it doesn't: design.md, "Undo".
 
+## Decided (2026-11-09)
+
+- Skip-nesting move: Alt+↑↓ (Option+Shift+↑↓ on macOS); up goes to the previous sibling, else
+  the parent.
+- Shift+↑↓ and Shift+click are kept for selecting several rows, which may come later
+  ([future-ideas.md](future-ideas.md), "Select several tasks").
+- Redo: Ctrl+Shift+Z or Ctrl+Y.
+- Fold to level: Ctrl+Shift+1–9, when it's built.
+
 ## Open questions
 
-1. **Skip-nesting navigation**: which key (see the table above)? Is "previous sibling, else parent" the
-   right rule for up, or should up stop only at siblings?
-2. **Multi-select**: do we ever want to select several rows (Shift+click, Shift+↑↓) and move,
-   schedule or close them together? The answer decides whether Shift+↑↓ is free.
-3. **Structure**: the current set grew key by key. One way to make it regular is a grid of "verb ×
-   direction": plain arrows move the selection, Mod+arrows move the task, Shift+arrows (or
-   Mod+Shift) jump by level, and letters act on the selection. Worth checking every row above
-   against that grid before adding more.
-4. **Redo**: needed, or is Z enough?
-5. **Fold to level**: which keys, given Ctrl+digits belong to the browser?
+1. **Structure**: the current set grew key by key. One way to make it regular is a grid of "verb ×
+   direction": plain arrows move the selection, Mod+arrows move the task, Alt+arrows jump by
+   level, Shift+arrows (later) extend a selection, and letters act on the selection. Worth checking
+   every row above against that grid before adding more.

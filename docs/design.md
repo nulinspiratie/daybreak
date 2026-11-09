@@ -50,7 +50,7 @@ All text meets 4.5:1 contrast, including the palest day labels. Keep it that way
 
 - Header: "Tasks", a "Show completed" toggle with the count of hidden done tasks, "New task" (N), and one fold button: "Collapse all" while any parent is open, then "Expand all" (chevrons turned round) to open every parent again.
 - Two section headers: **INBOX** (with open count and a small "+" that adds a task to Inbox, like I) and **PROJECTS** (with count). 11 px, semibold, uppercase, 0.04em letter spacing, text2.
-- An empty Inbox shows a dashed 26 px line in its place: "Inbox is empty · I or click to add a task". Clicking it adds a task; while a task that can go into Inbox is dragged up there, it turns accent and says "Drop here to move it to Inbox".
+- An empty Inbox shows a dashed 26 px line in its place: "Inbox is empty · I or click to add a task". Clicking it adds a task. It is also the drop target for an empty Inbox: while a task that can go there is dragged over it (or over the Projects heading from below), it turns accentSoft with an accent border, says "Moves to Inbox", and shows the usual insertion line with its ring at level 1; the rows stay put.
 - Double-click on a title edits it. Double-click elsewhere on a parent row folds or unfolds it.
 - **Rows are 26 px tall**, about 30 visible at 900 px. 22 px per nesting level, drawn with faint vertical guide lines (1 px `line` colour every 22 px).
 - Row anatomy, left to right: day column, drag handle (visible on hover), indent, chevron (if it has children), 16 px square checkbox (4 px radius), title, then on hover the quick actions with their keys (S, T, D), plus small icons if it has notes or a link. Collapsed parents show `done/total`.
@@ -166,6 +166,7 @@ The bar: as good as an outliner like Logseq without touching the mouse. One lett
 | Key | Action |
 | --- | --- |
 | ↑ ↓ | Previous / next visible row, regardless of hierarchy |
+| Alt+↑ / Alt+↓ | Previous / next row at the same level or higher, skipping nested rows: up is the previous sibling, else the parent; down is the next sibling, else the row after the parent's subtree (tree; in My Day the same as ↑↓). On macOS: Option+Shift+↑↓ |
 | ← | Go to parent (tree only) |
 | → | Go to first child; on a collapsed parent, expand it first (tree only) |
 | Home / End | First / last row |
@@ -189,6 +190,7 @@ The bar: as good as an outliner like Logseq without touching the mouse. One lett
 | O | Open the task's link |
 | Esc | Close detail panel, cancel drag, clear selection. In the notes: save and return to the tree with the panel still open; a second Esc closes it |
 | Z or Ctrl+Z | Undo the last change; press again to keep going back (see "Undo") |
+| Ctrl+Shift+Z or Ctrl+Y | Redo what Z undid |
 
 Plain letters (T, D, B, S, W, X, N, I, M, O, Z) and Space work the same in the tree and My Day. Ctrl+N and Ctrl+1–9 are deliberately not used: browsers keep them for new window and tab switching, and the MVP runs in a browser tab. Ctrl+N can be added as an alias in the Tauri shell.
 
@@ -218,7 +220,7 @@ Space (or X) on a task with open subtasks doesn't act straight away. The first p
 
 ### Undo
 
-Z (or Ctrl+Z) undoes the last change made in the main window, and keeps going back one change per press: scheduling (T, D, B, drops into My Day, reordering My Day, taking a task off today), moves (Mod+↑↓, Tab, Shift+Tab, drags), Done / Cancel / reopen, Doing / Worked on, deletes, new tasks and title edits. Each undo shows a toast saying what it put back ("Undone: Scheduled 'Order coax' for today"); with nothing left it says "Nothing to undo". In edit mode Z types and Ctrl+Z is the text field's own undo.
+Z (or Ctrl+Z) undoes the last change made in the main window, and keeps going back one change per press: scheduling (T, D, B, drops into My Day, reordering My Day, taking a task off today), moves (Mod+↑↓, Tab, Shift+Tab, drags), Done / Cancel / reopen, Doing / Worked on, deletes, new tasks and title edits. Each undo shows a toast saying what it put back ("Undone: Scheduled 'Order coax' for today"); with nothing left it says "Nothing to undo". Ctrl+Shift+Z or Ctrl+Y redoes what was undone ("Redone: …"), one change per press; any new change clears what could be redone. In edit mode Z types and Ctrl+Z, Ctrl+Y are the text field's own.
 
 Not undone: folding, notes and link edits in the detail panel (their fields have their own undo while you type), and changes made elsewhere (the CLI, another window). The morning review has its own Z. The history lasts until the window is reloaded.
 
