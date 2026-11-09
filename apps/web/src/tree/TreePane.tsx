@@ -8,10 +8,10 @@ import { useCommandRunner } from '../keyboard/useKeyboard'
 import { CONFIRM_NOTE_ID, ConfirmNote } from '../shell/ConfirmNote'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
-import { DragRow, DropLabel, dndId, useDrag, usePaneDrop } from './Dnd'
+import { DragRow, DropHeading, DropLabel, dndId, STAY_PUT, useDrag, usePaneDrop } from './Dnd'
 import { flatten, type FlatRow } from './flatten'
 import { rowKey } from './optimistic'
-import { withoutDescendants } from './projectDrop'
+import { PROJECTS_HEAD, withoutDescendants } from './projectDrop'
 import { TreeRow } from './TreeRow'
 
 function expandedParents(nodes: TreeNode[], out: string[] = []): string[] {
@@ -54,7 +54,16 @@ export function TreePane() {
   // A dragged parent's children travel in the card under the pointer.
   const dragged = drag.active?.pane === 'tree' ? drag.active.id : null
   const rows = useMemo(() => (dragged ? withoutDescendants(allRows, dragged) : allRows), [allRows, dragged])
-  const dndIds = useMemo(() => rows.map((r) => dndId('tree', r.id)), [rows])
+  const firstProject = rows.findIndex((r) => r.section === 'projects')
+  const projectsAt = firstProject < 0 ? rows.length : firstProject
+  // The Projects heading is in the list too: rows sort around it, and dropping on it crosses sections.
+  const dndIds = useMemo(() => {
+    const ids = rows.map((r) => dndId('tree', r.id))
+    ids.splice(projectsAt, 0, dndId('tree', PROJECTS_HEAD))
+    return ids
+  }, [rows, projectsAt])
+  const dropLabel = drag.over === 'tree' && drag.tree ? drag.tree.label : null
+  const stayPut = dragged !== null && drag.over === 'tree' && !drag.tree
 
   const run = useCallback(
     (fn: () => Promise<unknown>) => {
@@ -144,9 +153,6 @@ export function TreePane() {
     )
   }
 
-  const firstProject = rows.findIndex((r) => r.section === 'projects')
-  const projectsAt = firstProject < 0 ? rows.length : firstProject
-
   return (
     <section ref={paneDrop} className="pane pane--tree" aria-label="Task tree">
       <div className="pane__head tree__head">
@@ -186,15 +192,21 @@ export function TreePane() {
         {isError && <p className="tree__msg">Could not load tasks.</p>}
         {!tree && !isError && <p className="tree__msg">Loading…</p>}
         {tree && (
-          <SortableContext items={dndIds} strategy={verticalListSortingStrategy}>
+          <SortableContext items={dndIds} strategy={stayPut ? STAY_PUT : verticalListSortingStrategy}>
             <SectionHead title="Inbox" count={inboxOpen} />
             {rows.slice(0, projectsAt).map(renderRow)}
-            <SectionHead title="Projects" count={tree.projects.length} />
+            <DropHeading id={PROJECTS_HEAD}>
+              <SectionHead title="Projects" count={tree.projects.length} />
+            </DropHeading>
             {rows.slice(projectsAt).map(renderRow)}
           </SortableContext>
         )}
       </div>
-      {drag.over === 'tree' && drag.tree ? <DropLabel label={drag.tree.label} /> : <KeyHints />}
+      {/* The hints keep their place under the drop label, so the tree doesn't resize mid-drag. */}
+      <div className={`tree__foot${dropLabel ? ' tree__foot--drop' : ''}`}>
+        <KeyHints />
+        {dropLabel && <DropLabel label={dropLabel} />}
+      </div>
     </section>
   )
 }

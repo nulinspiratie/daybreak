@@ -235,7 +235,7 @@ kbd {
   color: var(--text2);
 }
 
-.tree__section:first-child {
+.tree > .tree__section:first-child {
   margin-top: 0;
 }
 
@@ -1190,6 +1190,12 @@ kbd {
   bottom: -2px;
 }
 
+/* Its own formatting context, so the card's top margin can't collapse through and move it. */
+.dragcard__anchor {
+  display: flow-root;
+  height: 100%;
+}
+
 .dragcard {
   display: flex;
   align-items: center;
@@ -1197,8 +1203,10 @@ kbd {
   width: max-content;
   max-width: 420px;
   height: 28px;
-  /* Lines the card's checkbox (46 px in) up with the row's (126 px in, plus 22 per level). */
-  margin: -1px 0 0 calc(80px + var(--depth, 0) * 22px);
+  /* 18 px right of the drop line's ring (122 px in, plus 22 per level) and 19 px lower than the
+     row under the pointer, as in the design, so the line's start stays in view. A margin, not a
+     transform: .dragcard__anchor, which picks the drop target, stays on the pointer's row. */
+  margin: 19px 0 0 calc(140px + var(--depth, 0) * 22px);
   padding: 0 10px 0 4px;
   border-radius: 6px;
   background: var(--pane);
@@ -1272,6 +1280,23 @@ kbd {
   line-height: 16px;
   font-weight: 600;
   color: var(--accent);
+}
+
+/* The footer under the tree: the drop label covers the hints, which keep the footer's height. */
+.tree__foot {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree__foot--drop > .keyhints:first-child {
+  visibility: hidden;
+}
+
+.tree__foot > .droplabel {
+  position: absolute;
+  inset: 0;
 }
 
 .droplabel {

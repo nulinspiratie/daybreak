@@ -16,6 +16,16 @@ const TITLE_MAX = 16
 const short = (title: string) => (title.length > TITLE_MAX ? `${title.slice(0, TITLE_MAX)}…` : title)
 const SECTION_NAME: Record<Section, string> = { inbox: 'Inbox', projects: 'Projects' }
 
+/**
+ * The Projects heading's id in the tree's sortable list. Dropped onto it, a task crosses the
+ * boundary: an Inbox task (moving down) to the top of Projects, a Projects task (moving up) to
+ * the end of Inbox. It is also the only target in an empty section.
+ */
+export const PROJECTS_HEAD = 'head:projects'
+
+/** Inbox is flat. A task's counts include subtasks the recent view hides, so they are checked too. */
+const hasSubtasks = (r: FlatRow) => r.hasChildren || r.node.totalCount > 0
+
 /** `rows` without the descendants of `id`: they travel with it, so they are never drop targets. */
 export function withoutDescendants(rows: FlatRow[], id: string): FlatRow[] {
   const i = rows.findIndex((r) => r.id === id)
@@ -49,9 +59,11 @@ function placeAbove(rows: FlatRow[], i: number, depth: number, section: Section)
 export function projectDrop(rows: FlatRow[], activeId: string, overId: string, offsetX: number, indent = 22): DropProjection | null {
   const kept = withoutDescendants(rows.filter((r) => !r.isDraft), activeId)
   const from = kept.findIndex((r) => r.id === activeId)
-  const to = kept.findIndex((r) => r.id === overId)
-  if (from < 0 || to < 0) return null
+  if (from < 0) return null
   const active = kept[from]!
+  if (overId === PROJECTS_HEAD) return acrossHeading(kept, active)
+  const to = kept.findIndex((r) => r.id === overId)
+  if (to < 0) return null
   const section = kept[to]!.section
   const moved = [...kept]
   moved.splice(from, 1)
@@ -62,7 +74,7 @@ export function projectDrop(rows: FlatRow[], activeId: string, overId: string, o
 
   let depth = 0
   if (section === 'inbox') {
-    if (active.hasChildren) return null // Inbox is flat
+    if (hasSubtasks(active)) return null
   } else {
     const min = next?.depth ?? 0
     const max = prev ? prev.depth + 1 : 0
@@ -87,6 +99,20 @@ export function projectDrop(rows: FlatRow[], activeId: string, overId: string, o
   }
   p.label = `Level ${depth + 1} · ${relation}`
   return p
+}
+
+/** Dropped on the Projects heading: just past it, into the other section, at the top level. */
+function acrossHeading(rows: FlatRow[], active: FlatRow): DropProjection | null {
+  const base = { parentId: null, depth: 0 }
+  if (active.section === 'inbox') {
+    const first = rows.find((r) => r.section === 'projects')
+    return { ...base, section: 'projects', ...(first && { beforeId: first.id }), label: 'Level 1 · goes to the top of Projects' }
+  }
+  if (hasSubtasks(active)) return null
+  const last = rows.filter((r) => r.section === 'inbox').at(-1)
+  return last
+    ? { ...base, section: 'inbox', afterId: last.id, label: `Level 1 · becomes a sibling of '${short(last.node.title)}'` }
+    : { ...base, section: 'inbox', label: 'Level 1 · goes to the top of Inbox' }
 }
 
 /** True when `p` puts the task back where it is: the same parent, after the same sibling. */

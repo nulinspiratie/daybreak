@@ -1,7 +1,7 @@
 import type { TreeView } from '@daybreak/core'
 import { describe, expect, it } from 'vitest'
 import { flatten } from '../src/tree/flatten'
-import { isUnchanged, projectDayDrop, projectDrop } from '../src/tree/projectDrop'
+import { isUnchanged, PROJECTS_HEAD, projectDayDrop, projectDrop } from '../src/tree/projectDrop'
 import { node } from './helpers'
 
 // Rows (id@depth): i1@0 i2@0 | p@0 a@1 w@2 r@1 r1@2 q@0 (collapsed: q1, q2) x@0
@@ -91,9 +91,63 @@ describe('projectDrop', () => {
     expect(projectDrop(rows, 'r', 'w', 22)).toMatchObject({ parentId: 'a', depth: 2, beforeId: 'w' })
   })
 
+  it('an Inbox row entering Projects takes the slot after the first project', () => {
+    // As the sortable list shows it: below p, above p's first child, so it can only be p's child.
+    expect(projectDrop(rows, 'i2', 'p', -22)).toMatchObject({ section: 'projects', parentId: 'p', depth: 1, beforeId: 'a' })
+  })
+
+  it('a Projects row entering Inbox takes the slot before the last Inbox row', () => {
+    expect(projectDrop(rows, 'x', 'i2', 0)).toMatchObject({ section: 'inbox', parentId: null, depth: 0, afterId: 'i1' })
+  })
+
   it('unknown rows give null', () => {
     expect(projectDrop(rows, 'nope', 'x', 0)).toBeNull()
     expect(projectDrop(rows, 'x', 'nope', 0)).toBeNull()
+  })
+})
+
+describe('the Projects heading as a drop target', () => {
+  it('an Inbox task dropped on it goes to the top of Projects', () => {
+    expect(projectDrop(rows, 'i2', PROJECTS_HEAD, 44)).toEqual({
+      parentId: null, section: 'projects', depth: 0, beforeId: 'p', label: 'Level 1 · goes to the top of Projects',
+    })
+  })
+
+  it('a Projects leaf dropped on it goes to the end of Inbox', () => {
+    expect(projectDrop(rows, 'x', PROJECTS_HEAD, 22)).toEqual({
+      parentId: null, section: 'inbox', depth: 0, afterId: 'i2', label: "Level 1 · becomes a sibling of 'i2'",
+    })
+  })
+
+  it('a parent dropped on it gives null: Inbox is flat', () => {
+    expect(projectDrop(rows, 'r', PROJECTS_HEAD, 0)).toBeNull()
+  })
+
+  it('reaches an empty Inbox', () => {
+    expect(projectDrop(flatten({ ...view, inbox: [] }), 'x', PROJECTS_HEAD, 0)).toEqual({
+      parentId: null, section: 'inbox', depth: 0, label: 'Level 1 · goes to the top of Inbox',
+    })
+  })
+
+  it('reaches an empty Projects', () => {
+    expect(projectDrop(flatten({ ...view, projects: [] }), 'i1', PROJECTS_HEAD, 22)).toEqual({
+      parentId: null, section: 'projects', depth: 0, label: 'Level 1 · goes to the top of Projects',
+    })
+  })
+})
+
+describe('a parent whose subtasks are all hidden', () => {
+  // Closed long ago, so not in the recent view; the counts still show them.
+  const hidden = flatten({
+    today: '2026-11-09',
+    inbox: [node('i1', [], { section: 'inbox' })],
+    projects: [node('h', [], { totalCount: 1, doneCount: 1 })],
+    hiddenCompletedCount: 1,
+  })
+
+  it('still cannot go into Inbox', () => {
+    expect(projectDrop(hidden, 'h', 'i1', 0)).toBeNull()
+    expect(projectDrop(hidden, 'h', PROJECTS_HEAD, 0)).toBeNull()
   })
 })
 

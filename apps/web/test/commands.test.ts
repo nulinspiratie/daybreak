@@ -5,7 +5,7 @@ import { createMutationQueue } from '../src/api/queue'
 import { type CommandEnv, confirmNoteText, moveTo, runCommand, scheduleAt } from '../src/keyboard/commands'
 import { TOAST_MS, toast, toastText, useToastStore } from '../src/shell/toastStore'
 import { flatten } from '../src/tree/flatten'
-import type { TreeCache } from '../src/tree/optimistic'
+import { pendingId, settlePendingId, type TreeCache } from '../src/tree/optimistic'
 import { useUi } from '../src/ui/store'
 import { createFakeApi, node } from './helpers'
 
@@ -500,6 +500,20 @@ describe('drag and drop writes', () => {
     }
     await expect(moveTo(env(), 'p1', { parentId: 'c1', section: 'projects' }, true)).rejects.toThrow(ApiError)
     expect(calls).toHaveLength(1)
+  })
+
+  it('anchors still shown under a placeholder are sent as their real ids', async () => {
+    const parent = pendingId()
+    const after = pendingId()
+    settlePendingId(parent, 'pp1111')
+    settlePendingId(after, 'aa1111')
+    await moveTo(env(), 'c5', { parentId: parent, section: 'projects', afterId: after }, true)
+    await scheduleAt(env(), 'c5', TODAY, { beforeId: after })
+    expect(calls).toEqual([
+      ['POST', '/api/tasks/c5/move', { parentId: 'pp1111', section: 'projects', afterId: 'aa1111' }],
+      ['PATCH', '/api/tasks/pp1111', { collapsed: false }],
+      ['POST', '/api/tasks/c5/schedule', { date: TODAY, beforeId: 'aa1111' }],
+    ])
   })
 
   it('scheduleAt schedules on the day next to a neighbour', async () => {

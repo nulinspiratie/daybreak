@@ -109,8 +109,11 @@ export function pickDay(env: Pick<CommandEnv, 'api' | 'mutate'>, t: Task, date: 
 /** Drag and drop in the tree: the task and its subtree go to `to` (POST /move), then `expand` opens the new parent. */
 export function moveTo(env: Pick<CommandEnv, 'api' | 'mutate'>, id: string, to: MoveTarget, expand = false): Promise<unknown> {
   return env.mutate(async () => {
-    await env.api.send('POST', taskPath(id, '/move'), to)
-    if (expand && to.parentId !== null) await env.api.send('PATCH', taskPath(to.parentId), { collapsed: false })
+    // Resolved now, inside the queue: an anchor may be a task whose create was only just answered.
+    const { section, parentId, afterId, beforeId } = placementFor(to)
+    const body: MoveTarget = { parentId, section, ...(afterId !== undefined && { afterId }), ...(beforeId !== undefined && { beforeId }) }
+    await env.api.send('POST', taskPath(id, '/move'), body)
+    if (expand && parentId !== null) await env.api.send('PATCH', taskPath(parentId), { collapsed: false })
   })
 }
 
@@ -121,7 +124,10 @@ export function scheduleAt(
   date: ISODate,
   at: { afterId?: string; beforeId?: string },
 ): Promise<unknown> {
-  return env.mutate(() => env.api.send('POST', taskPath(id, '/schedule'), { date, ...at }))
+  return env.mutate(() => {
+    const anchor = at.afterId !== undefined ? { afterId: resolveId(at.afterId) } : at.beforeId !== undefined ? { beforeId: resolveId(at.beforeId) } : {}
+    return env.api.send('POST', taskPath(id, '/schedule'), { date, ...anchor })
+  })
 }
 
 /** My Day: move one slot within today's order, read fresh inside the queue so quick presses stay correct. */

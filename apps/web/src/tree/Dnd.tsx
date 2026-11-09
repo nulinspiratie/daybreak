@@ -8,13 +8,14 @@ import {
   DragOverlay,
   type DragStartEvent,
   MeasuringStrategy,
+  type Modifier,
   PointerSensor,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { useSortable } from '@dnd-kit/sortable'
-import { createContext, type CSSProperties, type PointerEvent, type ReactNode, useContext, useRef, useState } from 'react'
+import { type SortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { createContext, type CSSProperties, type PointerEvent, type ReactNode, useContext, useEffect, useRef, useState } from 'react'
 import { type CommandEnv, moveTo, scheduleAt } from '../keyboard/commands'
 import { reportWriteError, useCommandEnv } from '../keyboard/useKeyboard'
 import { PATH_SEPARATOR } from '../myday/DayRow'
@@ -144,9 +145,10 @@ function DragCard({ env, s, grabX }: { env: CommandEnv; s: DragState; grabX: num
   if (!row) return null
   const subtasks = countDescendants(row.node)
   const state = stateOf(row)
-  // Lined up with the row it came from, so its checkbox shows where the task lands.
+  // Just below and right of where the drop line starts, so the line and its ring stay in view;
+  // its x follows the projected depth, not the pointer.
   return (
-    <div className="dragcard" style={{ '--depth': row.depth } as CSSProperties}>
+    <div className="dragcard" style={{ '--depth': s.tree?.depth ?? row.depth } as CSSProperties}>
       <span className="row__handle" aria-hidden="true">{GUIDE_DOTS}</span>
       <span className="row__chev" aria-hidden="true">
         {row.hasChildren && (
@@ -182,6 +184,13 @@ function treePath(env: CommandEnv, id: string): string[] {
 const titleOf = (env: CommandEnv | null, id: string) =>
   env?.rows.find((r) => r.id === id)?.node.title ?? env?.dayItems.find((i) => i.task.id === id)?.task.title ?? 'task'
 
+/** In the tree the card's x is set by the projected depth (see DragCard and .dragcard), not the pointer. */
+const treeCard = (s: DragState): Modifier => ({ transform }) =>
+  s.active?.pane === 'tree' && s.over !== 'day' ? { ...transform, x: 0 } : transform
+
+/** While a drop would be refused (a parent over Inbox), the rows stay put instead of opening a slot. */
+export const STAY_PUT: SortingStrategy = () => null
+
 /** One DndContext around the tree and My Day: reorder and indent in the tree, plan and reorder My Day. */
 export function DragAndDrop({ children }: { children: ReactNode }) {
   const getEnv = useCommandEnv()
@@ -189,6 +198,14 @@ export function DragAndDrop({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DragState>(IDLE)
   const [grabX, setGrabX] = useState(0)
   const shown = useRef('')
+  const keysBack = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(
+    () => () => {
+      clearTimeout(keysBack.current)
+      useUi.getState().set({ dragging: false })
+    },
+    [],
+  )
 
   const update = (e: DragMoveEvent) => {
     const env = getEnv()
@@ -211,7 +228,7 @@ export function DragAndDrop({ children }: { children: ReactNode }) {
     setState(IDLE)
     // dnd-kit cancels on Esc from a document listener, before the window one sees that same Esc;
     // keys stay off until it has passed.
-    setTimeout(() => useUi.getState().set({ dragging: false }), 0)
+    keysBack.current = setTimeout(() => useUi.getState().set({ dragging: false }), 0)
   }
 
   const announce = (id: string | number) => titleOf(getEnv(), parse(id)?.id ?? '')
@@ -219,8 +236,9 @@ export function DragAndDrop({ children }: { children: ReactNode }) {
     <DndContext
       sensors={sensors}
       collisionDetection={collide}
-      // Rows come and go during a drag (a dragged parent's children travel in the card).
-      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+      // Measured while dragging, and again as rows come and go (a dragged parent's children
+      // leave the list for the card).
+      measuring={{ droppable: { strategy: MeasuringStrategy.WhileDragging } }}
       onDragStart={(e: DragStartEvent) => {
         useUi.getState().set({ dragging: true, confirm: null })
         const pointer = e.activatorEvent as MouseEvent
@@ -233,7 +251,7 @@ export function DragAndDrop({ children }: { children: ReactNode }) {
       onDragEnd={(e: DragEndEvent) => {
         const env = getEnv()
         reset()
-        if (env) drop({ ...env, ui: useUi.getState() }, project(env, e))
+        if (env) drop(env, project(env, e))
       }}
       onDragCancel={cancel}
       accessibility={{
@@ -246,14 +264,20 @@ export function DragAndDrop({ children }: { children: ReactNode }) {
       }}
     >
       <DragContext.Provider value={state}>{children}</DragContext.Provider>
-      <DragOverlay dropAnimation={null}>{state.active && <DragCardHost getEnv={getEnv} s={state} grabX={grabX} />}</DragOverlay>
+      <DragOverlay dropAnimation={null} modifiers={[treeCard(state)]}>{state.active && <DragCardHost getEnv={getEnv} s={state} grabX={grabX} />}</DragOverlay>
     </DndContext>
   )
 }
 
 function DragCardHost({ getEnv, s, grabX }: { getEnv: () => CommandEnv | null; s: DragState; grabX: number }) {
   const env = getEnv()
-  return env ? <DragCard env={env} s={s} grabX={grabX} /> : null
+  // dnd-kit measures the overlay's only child to pick the drop target. This anchor keeps that box
+  // the size of the grabbed row, on the pointer, while the card inside sits offset from it.
+  return env ? (
+    <div className="dragcard__anchor">
+      <DragCard env={env} s={s} grabX={grabX} />
+    </div>
+  ) : null
 }
 
 /** Registers a pane as a drop area, so the pointer's pane picks the targets. */
@@ -291,9 +315,21 @@ export function DragRow({ pane, id, disabled, indicator, activeClass, children }
   }
   const cls = ['dragrow', isDragging && activeClass].filter(Boolean).join(' ')
   return (
-    <div ref={setNodeRef} style={style} className={cls} onPointerDown={onPointerDown}>
+    <div ref={setNodeRef} role="none" style={style} className={cls} onPointerDown={onPointerDown}>
       {children}
       {indicator && <DropLine {...indicator} />}
+    </div>
+  )
+}
+
+/** A heading rows sort around and can be dropped onto; it never moves itself. */
+export function DropHeading({ id, children }: { id: string; children: ReactNode }) {
+  const { setNodeRef, transform, transition } = useSortable({ id: dndId('tree', id), disabled: { draggable: true } })
+  const style: CSSProperties = { transition }
+  if (transform) style.transform = `translate3d(0, ${Math.round(transform.y)}px, 0)`
+  return (
+    <div ref={setNodeRef} role="none" style={style}>
+      {children}
     </div>
   )
 }
