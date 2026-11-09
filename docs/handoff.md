@@ -15,6 +15,13 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   check that a link opens in your default browser, and a mailto link in
   Outlook.
 
+- [ ] **Install as an app on Windows.** Daybreak can now be installed as a
+  PWA (README, "Install as an app"). Please check on the laptop that Edge
+  offers "Install Daybreak", the icon looks right on the taskbar and Start
+  menu, and that stopping the server shows "Daybreak isn't running" and
+  starting it again brings the app back by itself. Also check whether IT
+  policy allows installing sites as apps in Edge.
+
 ## Calls I made
 
 - Packages are used straight from TypeScript source; there's no build step
@@ -94,3 +101,44 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   .ico frames) and `favicon.ico` holds 16–256 px. Phase 6 can feed
   `daybreak.svg` to `tauri icon`. Until then you can point a `start.cmd`
   shortcut's icon at `favicon.ico`.
+
+## PWA (added after the MVP, at your request)
+
+Not in spec.md's V1 scope; you asked for it directly.
+
+- It's a thin PWA: a manifest, icons, and a service worker that only shows a
+  "Daybreak isn't running" page (and reloads into the app once the server is
+  back) when a page load can't reach the server. It caches nothing and works
+  nothing offline: the server is the only source of truth, so there's no
+  stale data, no offline edits to merge, and an update is just a reload.
+  Real offline use would need a sync design; tell me if you want it.
+- The app's own title bar stays below the browser's title bar for now.
+  Edge's "window controls overlay" could make Daybreak's title bar the
+  window's title bar, as in design.md, but Tauri does that properly in
+  phase 6, so I left it.
+- The installed window's title bar colour follows the theme (`--win`).
+- The install icons are made from the sunrise `daybreak.svg`: 192 and
+  512 px PNGs, and a 512 px "maskable" one (sky to the edges, sun shrunk to
+  the safe zone) for places that crop icons to a circle or squircle. The
+  offline page carries the icon inline, since the server that would serve
+  it is down. The offline page's wording is mine; design.md has none.
+- With the app installed, opening it again focuses the open window rather
+  than starting a second one (`launch_handler: focus-existing`).
+
+### Phase 6 (Tauri) and the PWA
+
+Nothing in the PWA blocks Tauri, but:
+
+- The service worker isn't registered inside Tauri (`__TAURI_INTERNALS__` is
+  checked in `apps/web/src/pwa/register.ts`). Service workers don't work on
+  Tauri's own asset protocol, and Tauri does its own windowing and single
+  instance. If Tauri points its window at the server's URL instead, the
+  check still keeps it out. Confirm on the laptop that `__TAURI_INTERNALS__`
+  is present in the window in whichever mode phase 6 uses.
+- WebView2 has its own profile, so a worker installed in Edge never reaches
+  the Tauri window, and vice versa.
+- Once the Tauri app is in use, uninstall the Edge app (`edge://apps`), or
+  you'll have two Daybreak windows and two taskbar icons. Tauri's single
+  instance doesn't know about the Edge one.
+- The PWA gives none of phase 6's tray, My Day pop-up or global quick add
+  (Ctrl+Alt+Space); browsers can't do those. That's still why phase 6 exists.

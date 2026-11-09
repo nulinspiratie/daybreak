@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { resolveDataDir } from '@daybreak/server/paths'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
@@ -27,6 +28,18 @@ export default defineConfig(({ command }) => {
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined
   return {
     plugins: [react()],
+    build: {
+      rolldownOptions: {
+        // The service worker is its own entry, at /sw.js so its scope is the whole app.
+        input: {
+          main: fileURLToPath(new URL('index.html', import.meta.url)),
+          sw: fileURLToPath(new URL('src/pwa/sw.ts', import.meta.url)),
+        },
+        output: {
+          entryFileNames: (chunk) => (chunk.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js'),
+        },
+      },
+    },
     server: {
       proxy: {
         '/api': { target: TARGET, headers },

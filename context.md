@@ -9,6 +9,7 @@ Daybreak is Serwan's planned work task manager and daily planner. It replaces Lo
 - 2026-11-08: requirements settled in a long design conversation, mock-ups made on a design canvas, spec and design notes written. No code yet. Next: MVP with Claude Code, phases 1–5 of docs/spec.md section 9.
 - 2026-11-09: the MVP (phases 1–5) is built and tested on Linux. The Windows check (docs/handoff.md) is next, then one week of real use before phase 6.
   - CI (GitHub Actions, Windows and Linux) and a pre-commit hook guard the repo: typecheck, tests, a server smoke test, and a check that no task data is committed.
+  - Daybreak is also a thin PWA: it can be installed from Edge as its own window, and shows an "isn't running" page when the server is off. It caches nothing. Not registered inside Tauri; see docs/handoff.md.
   - For phase 6: the server only accepts writes from its own page (`http://127.0.0.1:<port>` or `http://localhost:<port>`). The Tauri window's origin must be added to `originGuard` in `packages/server/src/auth.ts`, or every write is refused with 403.
 
 ## Conventions
