@@ -28,6 +28,7 @@ The one thing that decides whether it sticks: a morning review that takes about 
 - One nested task tree: Inbox plus projects, any depth.
 - Full keyboard control and full mouse control (drag to reorder, drag to indent, drag into My Day). The keyboard has to be as good as an outliner like Logseq: adding, deleting, reordering, re-nesting and moving tasks into and around My Day all without the mouse (design.md, "Keyboard map").
 - Delete (Del), with an undo toast. Separate from cancel: delete is for mistakes, cancel is for work you decided not to do.
+- Undo (Z or Ctrl+Z) for the main window's recent changes, one per press, newest first (design.md, "Undo").
 - My Day: the tasks scheduled for today, in the order they'll be done.
 - Morning review: clears yesterday's leftovers one by one, then offers suggestions.
 - Task detail panel: title, Markdown notes, link, scheduled day, status, subtasks.
@@ -74,6 +75,7 @@ Exactly one at a time:
 - Anything typed into My Day becomes a real task in Inbox, scheduled today.
 - Ticking a task in My Day completes the same task in the tree. There's only ever one object.
 - Dragging a task from the tree into My Day schedules it for today at the drop position. It stays in the tree and gains a "Today" label in the day column.
+- Taking a task out of My Day (Del or B there, or dragging it onto the tree) only clears its day; the task stays in the tree. Shift+Del deletes it. *(Builder's call, 2026-11-09, after first use.)*
 - Done tasks stay visible, crossed out, in My Day until the day ends. In the tree they fade and hide about a day after completion, unless "Show completed" is on. Nothing is ever deleted by this.
 - A parent's progress shows as `done/total` when collapsed.
 - Only one task is Doing at a time. Starting one turns the previous Doing task into Worked on.
@@ -310,3 +312,4 @@ Still open:
 10. Backspace on an emptied title in edit mode deletes the task (and its subtree) and moves editing to the row above, so pressing Z, as the toast suggests, types "z" into that title instead of undoing. Undo still works through the toast's button, or Z after Esc. Revisit after real use.
 11. Daily logs are written only for days that have events (section 6). A day the app was never opened, such as a sick day, gets no log, even if tasks were scheduled for it and the next morning's review moved or cancelled them. Those decisions do record which day the task was planned for, so such days could get a log listing just the missed work. Decide after real use.
 12. Reopening one subtask with Space leaves its done parent done, so an open task can sit under a closed project. Decide whether reopening a child should reopen its parent too.
+13. Keyboard navigation: a move that skips over nested rows (previous / next row at the same level or higher), its key, and whether multi-select is ever wanted. Worked through in [keyboard.md](keyboard.md), "Open questions".

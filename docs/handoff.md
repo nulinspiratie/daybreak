@@ -75,10 +75,45 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   only be reached by clicking.)
 - The first time you press M, My Day selects its top row, so the next key
   acts on something straight away.
-- Two small gaps I left for later:
-  - If the server is down at the moment you press Z to undo a delete, the
-    "Couldn't save" toast replaces the Undo toast, so Z can't retry once the
-    server is back. The deleted tasks are still in the database (deletes are
-    soft), but the app has no other way to bring them back yet.
+- A small gap I left for later:
   - If you set the day to start between 02:00 and 03:00, the night the
     clocks go back can count as the wrong day. The default (04:00) is fine.
+
+## After the first round of use (2026-11-09)
+
+Changes from Serwan's first test, and the calls I made doing them:
+
+- In My Day, Del now takes the task off today instead of deleting it, with
+  a "Removed '…' from My Day · Undo (Z)" toast. B does the same there.
+  Shift+Del deletes the task itself, from My Day or the tree.
+- Z (and Ctrl+Z) is now a general undo with a history, not just "undo the
+  last delete". It covers scheduling, moves, Done / Cancel / reopen, Doing /
+  Worked on, deletes, new tasks and title edits; each press goes one change
+  further back and shows "Undone: …". It leaves out folding, notes and link
+  edits in the detail panel, and changes from the CLI or another window.
+  The history is in the page, so a reload clears it. If an undo fails (the
+  server is down), the change stays in the history and Z can try again.
+- Two undo results are approximate: a task moved back goes after the
+  sibling that was visible above it (a hidden completed sibling can make it
+  land one slot off), and undoing a reopen closes the task again with all
+  its open subtasks, not only the ones that had been closed with it.
+- Dragging a My Day row onto the tree takes it off today. While it's over
+  the tree, the tree gets a grey frame and the card says "Remove from My
+  Day".
+- I adds a task at the end of Inbox from anywhere (also the "+" on the
+  Inbox heading, and the dashed line an empty Inbox shows). Dragging a leaf
+  task into an empty Inbox already worked (drop it on the Projects heading
+  or just above it); a task with subtasks can't go into Inbox, and the bar
+  under the tree now says so instead of doing nothing.
+- Edit mode now looks like a text field: white, a 2 px ring, an "Editing ·
+  Esc" tag, and an EDITING badge in the key-hint bar. That's option A of
+  three in docs/mockups/edit-mode-options.png; B and C are easy to swap in
+  if you prefer one.
+- Double-click on a title edits it; double-click elsewhere on a parent row
+  folds it. The quick actions (S, T, D, Start) ignore the second click of a
+  double-click, since they appear under the pointer on the first one.
+- The tree header's fold button now toggles: Collapse all, then Expand all,
+  which opens every parent, including ones that were collapsed before.
+- docs/keyboard.md lists every way to navigate and change tasks, with the
+  proposed "skip over nested rows" move and its open questions (which key,
+  multi-select). Fold to level is in future-ideas.md.

@@ -38,7 +38,7 @@ plan, kept for reference; don't execute it again.
 | `packages/server` | Hono API, token/host/origin guards, SSE, day rollover, link opening, `main.ts` entry. |
 | `apps/web` | React 19 + Vite UI. `api/` (queries, write queue, SSE), `keyboard/` (keymap and commands), `tree/`, `myday/`, `review/`, `detail/`, `picker/`. |
 | `scripts` | `seed.ts`, `smoke.ts`, the pre-commit guard `check-staged.ts`, `install-hooks.ts`. |
-| `docs` | Project docs: `spec.md`, `design.md`, `handoff.md`, `future-ideas.md`, the canvas mock-ups in `mockups/` and the finished MVP plan in `archive/`. Also the ai-wiki knowledge base (see below). Not app code. |
+| `docs` | Project docs: `spec.md`, `design.md`, `keyboard.md`, `handoff.md`, `future-ideas.md`, the canvas mock-ups in `mockups/` and the finished MVP plan in `archive/`. Also the ai-wiki knowledge base (see below). Not app code. |
 
 Packages are consumed as TypeScript source; there is no build step except the
 web bundle.

@@ -45,3 +45,9 @@ Works with either layout and pairs naturally with the one-outliner layout.
 Ctrl+X on a selected task cuts it (with its subtree); Ctrl+V pastes it as the next sibling of the selected task, or as its first child with a modifier. The cut task stays visible, dimmed, until pasted, and Esc cancels the cut. Nothing is removed until the paste, so it's really a keyboard "move to here".
 
 This is the planned answer for moving a task far across the tree. In V1, Mod+↑↓ moves one slot at a time and dragging covers longer distances. Browsers let pages use Ctrl+X / Ctrl+V, so it works in the browser version too.
+
+## Fold to level
+
+Keys that fold the whole tree to a given depth in one go: everything deeper than level N collapses, everything at or above it opens. For example Mod+Shift+1 shows only top-level projects, Mod+Shift+2 shows projects and their milestones, and so on, with Mod+Shift+0 expanding everything. The "Collapse all" / "Expand all" button in V1 covers the two extremes; this fills in the levels between.
+
+Pick the keys with [keyboard.md](keyboard.md): Ctrl+1–9 are taken by the browser for tab switching while Daybreak runs in a tab, so the digits need Shift or the Tauri shell. Folding is stored per task (`collapsed`), so a fold to level is just a batch of collapse and expand writes and needs no new data.
