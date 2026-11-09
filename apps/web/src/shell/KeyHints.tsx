@@ -10,10 +10,14 @@ const NAVIGATE: readonly Hint[] = [
 
 const EDIT: readonly Hint[] = [['Enter', 'New below'], ['Tab', 'Indent'], ['Esc', 'Done']]
 
+/** My Day has no drafts or indenting: Enter saves like Esc. */
+const EDIT_DAY: readonly Hint[] = [['Enter', 'Save'], ['Esc', 'Done']]
+
 /** The bar under the tree. Shows edit-mode hints while a title is being edited. */
 export function KeyHints() {
   const editing = useUi((s) => s.editing !== null)
-  const hints = editing ? EDIT : NAVIGATE
+  const inDay = useUi((s) => s.pane === 'day')
+  const hints = editing ? (inDay ? EDIT_DAY : EDIT) : NAVIGATE
   return (
     <div className="keyhints" aria-label="Keyboard hints">
       {hints.map(([key, label]) => (

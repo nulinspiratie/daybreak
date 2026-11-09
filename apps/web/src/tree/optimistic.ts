@@ -1,4 +1,4 @@
-import type { TreeNode, TreeView } from '@daybreak/core'
+import type { DayView, TreeNode, TreeView } from '@daybreak/core'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Draft } from '../ui/store'
 
@@ -153,7 +153,15 @@ export function treeCache(qc: QueryClient): TreeCache {
   }
   return {
     insert: (node, at) => edit((v) => insertNode(v, node, placementFor(at))),
-    update: (id, patch) => edit((v) => updateNode(v, resolveId(id), patch)),
+    update: (id, patch) => {
+      edit((v) => updateNode(v, resolveId(id), patch))
+      // My Day lists the same tasks; show the change there too.
+      const real = resolveId(id)
+      void qc.cancelQueries({ queryKey: ['day'] })
+      qc.setQueriesData<DayView>({ queryKey: ['day'] }, (d) =>
+        d && { ...d, items: d.items.map((i) => (i.task.id === real ? { ...i, task: { ...i.task, ...patch } } : i)) },
+      )
+    },
     created: (placeholder, task, sentTitle) =>
       edit((v) =>
         updateNode(v, placeholder, (n) => ({ ...n, ...task, title: n.title === sentTitle ? (task.title ?? n.title) : n.title })),

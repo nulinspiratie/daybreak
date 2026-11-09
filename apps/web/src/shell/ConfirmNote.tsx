@@ -9,9 +9,17 @@ export const CONFIRM_NOTE_ID = 'confirm-note'
  * between treeitems, so it is hidden from the accessibility tree; the row points at it with
  * aria-describedby and ConfirmLive announces it.
  */
-export function ConfirmNote({ depth }: { depth: number }) {
+export function ConfirmNote({ depth }: { depth?: number }) {
   const confirm = useUi((s) => s.confirm)
   if (!confirm) return null
+  // My Day rows have no day column or indent: the note lines up with the row's text.
+  if (depth === undefined) {
+    return (
+      <div className="row-note row-note--day" aria-hidden="true">
+        <span className="row-note__text" id={CONFIRM_NOTE_ID}>{confirmNoteText(confirm)}</span>
+      </div>
+    )
+  }
   return (
     <div className="row-note" aria-hidden="true">
       <span className="day" />

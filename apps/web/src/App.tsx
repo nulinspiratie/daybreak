@@ -1,5 +1,6 @@
 import { useDrainInvalidation, useLiveUpdates } from './api/hooks'
 import { useKeyboard } from './keyboard/useKeyboard'
+import { MyDayPane } from './myday/MyDayPane'
 import { ConfirmLive } from './shell/ConfirmNote'
 import { TitleBar } from './shell/TitleBar'
 import { Toast } from './shell/Toast'
@@ -14,9 +15,7 @@ export function App() {
       <TitleBar />
       <div className="body">
         <TreePane />
-        <section className="pane pane--day" aria-label="My Day">
-          <div className="pane__head"><h2>My Day</h2></div>
-        </section>
+        <MyDayPane />
       </div>
       <Toast />
       <ConfirmLive />

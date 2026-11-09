@@ -34,7 +34,8 @@ export function TreePane() {
   const showCompleted = useUi((s) => s.showCompleted)
   const treeSel = useUi((s) => s.treeSel)
   const draft = useUi((s) => s.draft)
-  const editingId = useUi((s) => s.editing?.id)
+  // A task listed in both panes is edited in the one that is active.
+  const editingId = useUi((s) => (s.pane === 'tree' ? s.editing?.id : undefined))
   const confirmId = useUi((s) => (s.pane === 'tree' ? s.confirm?.id : undefined))
   const setUi = useUi((s) => s.set)
   const { data: tree, isError } = useTree(showCompleted ? 'all' : 'recent')

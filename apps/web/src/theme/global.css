@@ -597,3 +597,236 @@ kbd {
   white-space: nowrap;
   border: 0;
 }
+
+/* My Day */
+.dayhead {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.dayhead__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dayhead__title h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.dayhead__date {
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.dayhead__grow {
+  flex: 1;
+}
+
+.dayhead__progress {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.dayhead__count {
+  font-size: 12px;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress {
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--chip);
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.daybody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.daylist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dayrow {
+  height: 46px;
+  gap: 10px;
+  padding: 0 10px 0 2px;
+  border-radius: 6px;
+}
+
+.dayrow .row__handle {
+  width: 14px;
+}
+
+.dayrow__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dayrow__path {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dayrow__line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dayrow__title {
+  font-size: 13.5px;
+}
+
+.dayrow .row__editor {
+  font-size: 13.5px;
+}
+
+.cb--round {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+.cb--round .cb__dot {
+  border-radius: 50%;
+}
+
+.dayrow__pill {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.dayrow__pill--doing {
+  background: var(--accent);
+  color: var(--onAccent);
+}
+
+.dayrow__pill--worked {
+  background: var(--workedSoft);
+  color: var(--worked);
+}
+
+.dayrow__start {
+  display: none;
+  flex: none;
+  height: 24px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--pane);
+  color: var(--text2);
+  font: inherit;
+  font-size: 11px;
+}
+
+.dayrow:hover .dayrow__start,
+.dayrow--selected .dayrow__start,
+.dayrow.row--selected .dayrow__start,
+.dayrow:focus-within .dayrow__start {
+  display: flex;
+}
+
+.dayrow__start:hover {
+  background: var(--hover);
+}
+
+.row-note--day {
+  padding-left: 48px;
+}
+
+.dayadd {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  flex: none;
+  margin-top: 4px;
+  padding: 0 10px 0 28px;
+  border: 1px dashed var(--line2);
+  border-radius: 6px;
+  color: var(--text3);
+}
+
+.dayadd:focus-within {
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+.dayadd__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.dayadd__input::placeholder {
+  color: var(--text3);
+}
+
+.dayadd__key {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 14px;
+  padding: 0 4px;
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  color: var(--text3);
+}
+
+.dayspace {
+  flex: 1;
+}
+
+.dayempty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  font-size: 11px;
+  color: var(--text3);
+}

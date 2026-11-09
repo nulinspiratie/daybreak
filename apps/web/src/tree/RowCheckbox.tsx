@@ -10,12 +10,13 @@ const LABEL: Record<RowState, string> = {
   cancelled: 'Cancelled, reopen',
 }
 
-export function RowCheckbox({ state, onToggle }: { state: RowState; onToggle: () => void }) {
+/** `round` is My Day's 18 px circle; the tree's is a 16 px square. */
+export function RowCheckbox({ state, onToggle, round }: { state: RowState; onToggle: () => void; round?: boolean }) {
   const cls = state === 'worked' ? 'open' : state
   return (
     <button
       type="button"
-      className={`cb cb--${cls}`}
+      className={`cb cb--${cls}${round ? ' cb--round' : ''}`}
       aria-label={LABEL[state]}
       onClick={(e) => rowControlClick(e, onToggle)}
     >

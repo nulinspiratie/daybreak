@@ -8,7 +8,7 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-function longDate(iso: string): string {
+export function longDate(iso: string): string {
   const [, m, d] = iso.split('-').map(Number)
   return `${weekdayName(iso, 'long')} ${d} ${MONTHS[(m ?? 1) - 1]}`
 }

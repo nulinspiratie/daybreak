@@ -158,7 +158,7 @@ async function deleteWithToast(env: CommandEnv, t: Target): Promise<void> {
   })
 }
 
-// ---- Edit mode (tree only; My Day's editing is Task 18) ----
+// ---- Edit mode ----
 
 type Editing = NonNullable<UiState['editing']>
 
@@ -283,6 +283,17 @@ async function editDraft(cmd: Command, env: CommandEnv, d: Draft, text: string):
   }
 }
 
+/**
+ * My Day's editing: a title only, with no drafts. Enter and Esc save and leave; ↑↓, Mod+↑↓ and
+ * Backspace on an empty title do nothing (the text field keeps any other key).
+ */
+async function editDayTask(cmd: Command, env: CommandEnv, ed: Editing): Promise<void> {
+  if (cmd !== 'edit.commitNew' && cmd !== 'edit.exit') return
+  const saved = saveTitle(env, ed)
+  env.ui.set({ editing: null, daySel: ed.id })
+  await saved
+}
+
 async function editTask(cmd: Command, env: CommandEnv, ed: Editing): Promise<void> {
   const { rows } = env
   const i = rows.findIndex((r) => r.id === ed.id)
@@ -345,6 +356,7 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
   if (ui.confirm && cmd !== 'status.done' && cmd !== 'status.cancel') ui.set({ confirm: null })
 
   if (ui.editing) {
+    if (ui.pane === 'day') return editDayTask(cmd, env, ui.editing)
     if (ui.editing.id !== DRAFT_ID) return editTask(cmd, env, ui.editing)
     if (ui.draft) return editDraft(cmd, env, ui.draft, ui.editing.text)
     return leaveEdit(env, null) // editing a draft that is gone: nothing to save
@@ -393,7 +405,8 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
 
   switch (cmd) {
     case 'edit.start':
-      if (row) editRow(env, row) // editing in My Day is Task 18
+      if (row) return editRow(env, row)
+      if (ui.pane === 'day') ui.set({ editing: { id: t.id, initial: t.task.title, text: t.task.title } })
       return
     case 'nav.parent':
       if (row?.parentId && treeRows(env).some((r) => r.id === row.parentId)) select(env, row.parentId)
