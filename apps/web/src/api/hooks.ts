@@ -83,7 +83,8 @@ const CHANGED_DEBOUNCE_MS = 100
 /**
  * Subscribes to the SSE feed: debounced refetch on `changed`. On `day_changed` it only raises a
  * flag; the next window focus or keydown refetches everything, the status (and so the morning
- * review) included. A tab left open overnight shows the review when you come back to it.
+ * review) included. A tab left open overnight shows the review when you come back to it. Keys
+ * pressed until that refetch lands do nothing.
  */
 export function useLiveUpdates(): void {
   const qc = useQueryClient()
@@ -102,10 +103,21 @@ export function useLiveUpdates(): void {
         dayChanged.current = true
       },
     )
-    const wake = () => {
-      if (!dayChanged.current) return
-      dayChanged.current = false
-      void qc.invalidateQueries()
+    // The key that wakes the app (and any key until the refetch lands) is swallowed (R41): run
+    // now, it would act on yesterday, e.g. T would schedule the selected task on the old day.
+    let refetching = false
+    const wake = (e: Event) => {
+      if (dayChanged.current) {
+        dayChanged.current = false
+        refetching = true
+        void qc.invalidateQueries().finally(() => {
+          refetching = false
+        })
+      }
+      if (refetching && e.type === 'keydown') {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+      }
     }
     window.addEventListener('focus', wake)
     window.addEventListener('keydown', wake, true)

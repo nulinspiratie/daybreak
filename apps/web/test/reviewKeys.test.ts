@@ -10,7 +10,8 @@ const key = (k: string, m: Partial<Omit<KeyLike, 'key'>> = {}): KeyLike => ({
 const open = { pickerOpen: false, allSorted: false }
 
 function item(id: string, group: ReviewItem['group'], decision: ReviewItem['decision'] = null): ReviewItem {
-  return { task: node(id), path: [], group, decision, workedOn: null, scheduledOn: '2026-11-06' }
+  return { task: node(id), path: [], group, decision, workedOn: null, scheduledOn: '2026-11-06',
+    leftoverFrom: group === 'leftover' ? '2026-11-06' : null }
 }
 function view(leftovers: ReviewItem[], suggestions: ReviewItem[]): ReviewView {
   const all = [...leftovers, ...suggestions]

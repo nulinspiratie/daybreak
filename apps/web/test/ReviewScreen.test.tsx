@@ -27,13 +27,14 @@ const R = `/api/review/${MONDAY}`
 let server: ReviewView
 let order: string[] = []
 let needsReview = true
+let statusToday = MONDAY
 let failDecide = false
 
 function item(id: string, group: ReviewItem['group'], over: Partial<ReviewItem> = {}): ReviewItem {
   return {
     task: node(id, [], { title: `Task ${id}`, scheduledOn: group === 'leftover' ? FRIDAY : null }),
     path: ['Fridge 3 readout upgrade', 'Milestone 2'], group, decision: null, workedOn: null,
-    scheduledOn: group === 'leftover' ? FRIDAY : null, ...over,
+    scheduledOn: group === 'leftover' ? FRIDAY : null, leftoverFrom: group === 'leftover' ? FRIDAY : null, ...over,
   }
 }
 function build(leftovers: ReviewItem[], suggestions: ReviewItem[]): ReviewView {
@@ -45,7 +46,7 @@ function recount() {
 }
 
 function reply(method: string, path: string, body?: unknown): unknown {
-  if (path === '/api/status') return { today: MONDAY, needsReview, dayStartsAt: '04:00' }
+  if (path === '/api/status') return { today: statusToday, needsReview, dayStartsAt: '04:00' }
   if (path.startsWith('/api/days')) return {}
   if (method === 'GET' && path === R) return structuredClone(server)
   if (path === `${R}/decide`) {
@@ -99,8 +100,9 @@ function Harness() {
   return open ? <ReviewScreen /> : <p>Main window</p>
 }
 
+let qc: QueryClient
 async function mount() {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={qc}>
       <Harness />
@@ -117,6 +119,7 @@ beforeEach(() => {
   server = build([item('a', 'leftover'), item('b', 'leftover')], [item('s', 'suggestion', { path: ['Inbox'] })])
   order = []
   needsReview = true
+  statusToday = MONDAY
   failDecide = false
   fake().calls.length = 0
   fake().reply = reply
@@ -151,18 +154,27 @@ describe('ReviewScreen', () => {
   })
 
   it('heading says EARLIER when the leftovers are from different days', async () => {
-    server.leftovers[1] = item('b', 'leftover', { scheduledOn: THURSDAY })
+    server.leftovers[1] = item('b', 'leftover', { scheduledOn: THURSDAY, leftoverFrom: THURSDAY })
     await mount()
     expect(screen.getByText('LEFT OVER FROM EARLIER')).toBeTruthy()
   })
 
   it('the heading keeps its day as leftovers are sorted', async () => {
-    server.leftovers[0] = item('a', 'leftover', { scheduledOn: THURSDAY })
+    server.leftovers[0] = item('a', 'leftover', { scheduledOn: THURSDAY, leftoverFrom: THURSDAY })
     await mount()
     expect(screen.getByText('LEFT OVER FROM EARLIER')).toBeTruthy()
     await press('t') // a moves to today; only Friday's b still shows an old day
     await flush()
     expect(screen.getByText('LEFT OVER FROM EARLIER')).toBeTruthy()
+  })
+
+  it('the heading reads the original days of leftovers sorted before the screen opened (a reload mid-review)', async () => {
+    server.leftovers[0] = item('a', 'leftover', { scheduledOn: MONDAY, leftoverFrom: THURSDAY, decision: { choice: 'today', date: MONDAY } })
+    order = ['a']
+    recount()
+    await mount()
+    expect(screen.getByText('LEFT OVER FROM EARLIER')).toBeTruthy()
+    expect(within(rowOf('Task a')).getByText('Today')).toBeTruthy()
   })
 
   it('T on the current card posts decide today and the row turns into a decided row with chip "Today"', async () => {
@@ -188,6 +200,38 @@ describe('ReviewScreen', () => {
     expect(writes().map((w) => (w[2] as { taskId: string }).taskId)).toEqual(['a', 'b', 's'])
     expect(within(rowOf('Task b')).getByText('Backlog')).toBeTruthy()
     expect(within(rowOf('Task s')).getByText('Today')).toBeTruthy()
+  })
+
+  it('T T T with the replies still in flight goes down the list in order', async () => {
+    await mount()
+    const held: Array<() => void> = []
+    fake().reply = (m, p, b) =>
+      p === `${R}/decide` ? new Promise((r) => held.push(() => r(reply(m, p, b)))) : reply(m, p, b)
+    /** Lets renders and in-flight posts move on, without waiting for the queue to drain. */
+    const tick = () =>
+      act(async () => {
+        for (let t = 0; t < 5; t++) await new Promise((r) => setTimeout(r, 0))
+      })
+    await press('t')
+    await press('t')
+    await press('t')
+    await tick()
+    expect(held).toHaveLength(1) // the first post is in flight, the other two wait in the queue
+    expect(screen.getByText('3 of 3 done')).toBeTruthy() // shown at once
+    expect(screen.getByText('5 tasks for today')).toBeTruthy()
+    for (let i = 0; i < 3; i++) {
+      expect(held).toHaveLength(1)
+      held.shift()!()
+      await tick()
+      expect(screen.getByText('3 of 3 done')).toBeTruthy() // an early reply never shows a step back
+    }
+    await flush()
+    expect(writes().map((w) => (w[2] as { taskId: string }).taskId)).toEqual(['a', 'b', 's'])
+    expect(order).toEqual(['a', 'b', 's'])
+    expect(screen.getByText('3 of 3 done')).toBeTruthy()
+    expect(screen.getByText('5 tasks for today')).toBeTruthy()
+    for (const t of ['Task a', 'Task b', 'Task s']) expect(within(rowOf(t)).getByText('Today')).toBeTruthy()
+    expect(document.querySelector('.rv-card')).toBeNull()
   })
 
   it('D opens the picker inside the card; pressing 3 posts decide day with today+2', async () => {
@@ -291,6 +335,25 @@ describe('ReviewScreen', () => {
     expect(writes().at(-1)).toEqual(['POST', `${R}/finish`, undefined])
     expect(ui().reviewOpen).toBe(false)
     expect(screen.getByText('Main window')).toBeTruthy()
+  })
+
+  it('closes when the day turns and the new day has no review due', async () => {
+    await mount()
+    statusToday = '2026-11-10'
+    needsReview = false
+    await act(() => qc.invalidateQueries({ queryKey: ['status'] }))
+    await flush()
+    expect(ui().reviewOpen).toBe(false)
+    expect(screen.getByText('Main window')).toBeTruthy()
+  })
+
+  it('a review opened from the title bar (none due) stays open while the day stays the same', async () => {
+    needsReview = false
+    useUi.getState().set({ reviewOpen: true })
+    await mount()
+    await act(() => qc.invalidateQueries({ queryKey: ['status'] }))
+    await flush()
+    expect(ui().reviewOpen).toBe(true)
   })
 
   it('Start the day is clickable before everything is sorted', async () => {

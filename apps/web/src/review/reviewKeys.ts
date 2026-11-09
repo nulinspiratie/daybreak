@@ -39,9 +39,12 @@ export function applyDecision(view: ReviewView, taskId: string, decision: Decisi
 }
 
 /**
- * The view with its latest decision reverted, as undo will do. Decided items lead their group in
- * decision order and the review goes leftovers first, so the latest is the last decided
- * suggestion, else the last decided leftover. The server's answer replaces this guess.
+ * The view with its latest decision reverted, as undo will do. The guess leans on `currentItem`:
+ * every decision goes to `currentItem`, the first undecided item, leftovers before suggestions.
+ * So decided items lead their group in decision order, and the latest is the last decided
+ * suggestion, else the last decided leftover. If decisions ever go to any other item (a click on
+ * an upcoming row, say), this guess is wrong and must follow the server's decision order instead.
+ * The server's answer replaces this guess.
  */
 export function undoLast(view: ReviewView): ReviewView {
   const last = (list: ReviewItem[]) => list.findLast((i) => i.decision !== null)

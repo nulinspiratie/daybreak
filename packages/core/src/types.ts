@@ -77,7 +77,10 @@ export interface ReviewItem {
   group: 'leftover' | 'suggestion'
   decision: { choice: ReviewChoice; date?: ISODate } | null
   workedOn: ISODate | null
+  /** The task's day as it is now (after any decision). */
   scheduledOn: ISODate | null
+  /** A leftover's day before this review: kept through its decision. Null for a suggestion. */
+  leftoverFrom: ISODate | null
 }
 
 export interface ReviewView {

@@ -432,3 +432,51 @@ describe('skip, finish and needsReview', () => {
     expect(needsReview(ctx)).toBe(false)
   })
 })
+
+describe('leftoverFrom', () => {
+  async function setup() {
+    const ctx = await makeCtx(NOW)
+    const ids = at(ctx, LONG_AGO, () => {
+      const ids = build(ctx, 'projects:\n  P\n    a\n    b\n    c\n    d')
+      schedule(ctx, ids.a!, YESTERDAY)
+      schedule(ctx, ids.b!, '2026-11-07')
+      schedule(ctx, ids.c!, YESTERDAY)
+      schedule(ctx, ids.d!, YESTERDAY)
+      return ids
+    })
+    // Q is created this week, so its leaf s is a suggestion.
+    const q = build(ctx, 'projects:\n  Q\n    s')
+    return { ctx, ids: { ...ids, ...q } }
+  }
+  const from = (view: ReviewView, id: string) => view.leftovers.find((i) => i.task.id === id)!.leftoverFrom
+
+  it('is the scheduled day of an undecided leftover and null for a suggestion', async () => {
+    const { ctx, ids } = await setup()
+    const view = reviewView(ctx, D)
+    expect(from(view, ids.a!)).toBe(YESTERDAY)
+    expect(from(view, ids.b!)).toBe('2026-11-07')
+    expect(view.suggestions.length).toBeGreaterThan(0)
+    for (const s of view.suggestions) expect(s.leftoverFrom).toBeNull()
+  })
+
+  it('keeps the original day once decided today, another day or backlog, also on a fresh read', async () => {
+    const { ctx, ids } = await setup()
+    decide(ctx, D, ids.a!, 'today')
+    decide(ctx, D, ids.b!, 'day', '2026-11-12')
+    decide(ctx, D, ids.c!, 'backlog')
+    const view = reviewView(ctx, D)
+    expect(view.leftovers.find((i) => i.task.id === ids.a)!.scheduledOn).toBe(D)
+    expect(from(view, ids.a!)).toBe(YESTERDAY)
+    expect(from(view, ids.b!)).toBe('2026-11-07')
+    expect(from(view, ids.c!)).toBe(YESTERDAY)
+    expect(from(view, ids.d!)).toBe(YESTERDAY)
+  })
+
+  it('is the original day again after undo', async () => {
+    const { ctx, ids } = await setup()
+    decide(ctx, D, ids.b!, 'day', '2026-11-12')
+    const view = undoDecision(ctx, D)
+    expect(from(view, ids.b!)).toBe('2026-11-07')
+    expect(view.leftovers.find((i) => i.task.id === ids.b)!.decision).toBeNull()
+  })
+})

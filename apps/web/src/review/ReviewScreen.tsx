@@ -1,7 +1,7 @@
 import type { ISODate, ReviewChoice, ReviewItem, ReviewView } from '@daybreak/core'
 import { daysBetween, weekdayName } from '@daybreak/core/dates'
 import { useQueryClient } from '@tanstack/react-query'
-import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type MouseEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { useMutate, useReview, useStatus } from '../api/hooks'
 import { monthShort } from '../picker/dayGrid'
@@ -40,31 +40,36 @@ function chipText(item: ReviewItem, today: ISODate): string {
 }
 
 /**
- * "MONDAY" when every leftover is from the same day within the last week, "EARLIER" otherwise
- * (R39). The view gives each item's day as it is now, so a sorted leftover no longer shows the
- * day it was left over from; `origins` remembers that day for each leftover from the first view
- * that showed it, which keeps the heading steady through the review. (After a reload mid-review,
- * leftovers sorted before it are unknown and left out.)
+ * "MONDAY" when every leftover was left over from the same day, "EARLIER" otherwise. It reads
+ * `leftoverFrom`, the day before this review, which core keeps through each decision (R40).
  */
-function leftoverDay(view: ReviewView, origins: Map<string, ISODate>): string {
-  for (const i of view.leftovers) {
-    if (!origins.has(i.task.id) && i.scheduledOn !== null && i.scheduledOn < view.date) origins.set(i.task.id, i.scheduledOn)
-  }
-  const days = new Set(view.leftovers.flatMap((i) => origins.get(i.task.id) ?? []))
-  if (days.size !== 1) return 'EARLIER'
+function leftoverDay(view: ReviewView): string {
+  const days = new Set(view.leftovers.map((i) => i.leftoverFrom))
   const [only] = days
-  return daysBetween(only!, view.date) <= 6 ? weekdayName(only!, 'long').toUpperCase() : 'EARLIER'
+  if (days.size !== 1 || !only) return 'EARLIER'
+  // Weekday only within the last week: "FROM MONDAY" for a day three weeks back would point at the wrong Monday.
+  return daysBetween(only, view.date) <= 6 ? weekdayName(only, 'long').toUpperCase() : 'EARLIER'
 }
 
 const sorted = (list: ReviewItem[]) => list.filter((i) => i.decision !== null).length
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
 
-/** Opens the review when the status says today's review is due (R38). Mounted once, in App. */
+/**
+ * Opens the review when the status says today's review is due (R38), and closes one left open
+ * when the day turns to a day with nothing to review: yesterday's review is no longer today's.
+ * Mounted once, in App.
+ */
 export function useOpenReviewWhenDue(): void {
   const status = useStatus().data
   const setUi = useUi((s) => s.set)
+  const seenDay = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (status?.needsReview) setUi({ reviewOpen: true })
+    if (!status) return
+    const dayTurned = seenDay.current !== undefined && seenDay.current !== status.today
+    seenDay.current = status.today
+    if (status.needsReview) setUi({ reviewOpen: true })
+    // Only on a real change of day: a review opened with the title bar's button stays open.
+    else if (dayTurned) setUi({ reviewOpen: false })
   }, [status?.today, status?.needsReview, setUi])
 }
 
@@ -83,8 +88,6 @@ export function ReviewScreen() {
   const setUi = useUi((s) => s.set)
   const [picking, setPicking] = useState<string | null>(null)
   const root = useRef<HTMLDivElement>(null)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new review day starts a new record
-  const origins = useMemo(() => new Map<string, ISODate>(), [today])
   const pending = useRef(0)
 
   const key = useCallback(() => ['review', today], [today])
@@ -269,7 +272,7 @@ export function ReviewScreen() {
               {view.leftovers.length > 0 && (
                 <>
                   <li className="rv-section">
-                    <span className="rv-section__title">{`LEFT OVER FROM ${leftoverDay(view, origins)}`}</span>
+                    <span className="rv-section__title">{`LEFT OVER FROM ${leftoverDay(view)}`}</span>
                     <span className="rv-section__sub">{`${sorted(view.leftovers)} of ${view.leftovers.length} sorted`}</span>
                   </li>
                   {rows(view.leftovers)}

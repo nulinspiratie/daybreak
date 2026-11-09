@@ -40,4 +40,28 @@ describe('useLiveUpdates on day_changed', () => {
     fireEvent.keyDown(document.body, { key: 't' })
     expect(spy).toHaveBeenCalledTimes(2)
   })
+
+  it('swallows the waking keydown, and every key, until the refetch has landed', async () => {
+    const qc = new QueryClient()
+    let land = () => {}
+    vi.spyOn(qc, 'invalidateQueries').mockImplementation(() => new Promise<void>((r) => (land = r)))
+    const posted: string[] = []
+    const app = (e: KeyboardEvent) => posted.push(e.key) // stands in for the app's handlers: T would post
+    window.addEventListener('keydown', app)
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness />
+      </QueryClientProvider>,
+    )
+    act(() => sse.dayChanged('2026-11-10'))
+    const waking = new KeyboardEvent('keydown', { key: 't', bubbles: true, cancelable: true })
+    document.body.dispatchEvent(waking)
+    expect(waking.defaultPrevented).toBe(true)
+    fireEvent.keyDown(document.body, { key: 't' })
+    expect(posted).toEqual([])
+    await act(async () => land())
+    fireEvent.keyDown(document.body, { key: 't' })
+    expect(posted).toEqual(['t'])
+    window.removeEventListener('keydown', app)
+  })
 })

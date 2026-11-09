@@ -137,6 +137,7 @@ export function reviewView(ctx: Ctx, date: ISODate): ReviewView {
     decision: d ? { choice: d.choice, ...(d.to !== undefined ? { date: d.to } : {}) } : null,
     workedOn: lastWorkedBefore(ctx, task.id, date),
     scheduledOn: task.scheduledOn,
+    leftoverFrom: group === 'leftover' ? (d ? d.previous.scheduledOn : task.scheduledOn) : null,
   })
   const decidedIn = (group: Group) =>
     decisions.filter((d) => d.group === group).map((d) => item(byId.get(d.taskId)!, group, d))
