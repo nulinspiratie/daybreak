@@ -1,4 +1,4 @@
-import type { DayItem, DayView, ISODate, MoveTarget, Task } from '@daybreak/core'
+import type { DayItem, DayView, ISODate, Mark, MoveTarget, Task } from '@daybreak/core'
 import { ApiError, type api } from '../api/client'
 import type { useMutate } from '../api/hooks'
 import type { ToastApi } from '../shell/toastStore'
@@ -171,6 +171,33 @@ async function toggleClosed(env: CommandEnv, t: Target, want: Closed): Promise<v
     }
     throw e
   }
+}
+
+/** What the detail panel's status segments ask for. */
+export type DetailStatus = 'open' | 'doing' | 'worked' | 'done' | 'cancelled'
+
+/**
+ * The detail panel's Status segments, on the same paths as the keys: Done and Cancelled are Space
+ * and X (with the second press on a parent), Doing and Worked on are S and W, and Open reopens a
+ * closed task or clears the mark of an open one.
+ */
+export async function setDetailStatus(env: CommandEnv, task: Task, want: DetailStatus, mark: Mark | null): Promise<void> {
+  const t: Target = { id: task.id, task }
+  if (want === 'done' || want === 'cancelled') return toggleClosed(env, t, want)
+  if (env.ui.confirm) env.ui.set({ confirm: null })
+  if (want === 'open') {
+    if (task.status !== 'open') return toggleClosed(env, t, task.status)
+    if (mark === null) return
+    await env.mutate(() => env.api.send('POST', taskPath(task.id, '/mark'), { mark: null }))
+    return
+  }
+  return markTask(env, task, want)
+}
+
+/** S and W: core toggles a mark that is already set and keeps only one Doing. Closed tasks have no marks. */
+async function markTask(env: CommandEnv, task: Task, mark: 'doing' | 'worked'): Promise<void> {
+  if (task.status !== 'open') return
+  await env.mutate(() => env.api.send('POST', taskPath(task.id, '/mark'), { mark }))
 }
 
 /** Deletes the task and its subtree and shows the undo toast. The caller has already moved the selection. */
@@ -399,6 +426,8 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
     case 'nav.last':
       return navigate(env, cmd)
     case 'pane.toggle':
+      // The detail panel stands where My Day is: M closes it and shows My Day.
+      if (ui.detailId !== null) return ui.set({ detailId: null, pane: 'day' })
       return ui.set({ pane: ui.pane === 'tree' ? 'day' : 'tree' })
     case 'escape':
       if (ui.detailId !== null) return ui.set({ detailId: null })
@@ -481,10 +510,7 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       return
     case 'mark.doing':
     case 'mark.worked':
-      // Core toggles a mark that is already set and keeps only one Doing.
-      if (t.task.status !== 'open') return
-      await mutate(() => api.send('POST', taskPath(t.id, '/mark'), { mark: cmd === 'mark.doing' ? 'doing' : 'worked' }))
-      return
+      return markTask(env, t.task, cmd === 'mark.doing' ? 'doing' : 'worked')
     case 'status.done':
       return toggleClosed(env, t, 'done')
     case 'status.cancel':
@@ -493,6 +519,9 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       select(env, neighbourAfterRemoval(env, t))
       return deleteWithToast(env, t)
     case 'detail.open':
+      // The detail replaces My Day, so from there the task is selected in the tree. Hidden under a
+      // collapsed parent, the detail still shows it and the tree selection stays where it is.
+      if (ui.pane === 'day') return ui.set({ detailId: t.id, pane: 'tree', ...(treeRows(env).some((r) => r.id === t.id) && { treeSel: t.id }) })
       return ui.set({ detailId: t.id })
     case 'link.open':
       if (!t.task.link?.trim()) return

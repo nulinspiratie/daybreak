@@ -432,6 +432,22 @@ describe('scheduling, marks, detail and link', () => {
     expect(ui().detailId).toBe('c2')
   })
 
+  it('detail.open from My Day moves to the tree and selects the task, unless the tree does not list it', async () => {
+    ui().set({ treeSel: 'c1', daySel: 'c5', pane: 'day' })
+    await run('detail.open', { dayItems: [dayItem(node('c5', [], { scheduledOn: TODAY }))] })
+    expect(ui()).toMatchObject({ detailId: 'c5', pane: 'tree', treeSel: 'c5' })
+
+    ui().set({ detailId: null, treeSel: 'c1', daySel: 'k1', pane: 'day' }) // k1 is under collapsed p2
+    await run('detail.open', { dayItems: [dayItem(node('k1', [], { scheduledOn: TODAY }))] })
+    expect(ui()).toMatchObject({ detailId: 'k1', pane: 'tree', treeSel: 'c1' })
+  })
+
+  it('M while the detail is open closes it and goes to My Day', async () => {
+    ui().set({ pane: 'tree', treeSel: 'c1', detailId: 'c1' })
+    await run('pane.toggle')
+    expect(ui()).toMatchObject({ detailId: null, pane: 'day' })
+  })
+
   it('schedule.pick opens the picker for the selection: with No day from the tree, without it from My Day', async () => {
     select('c2')
     await run('schedule.pick')

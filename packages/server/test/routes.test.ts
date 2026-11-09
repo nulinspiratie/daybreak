@@ -277,3 +277,26 @@ describe('export route', () => {
     expect(await res.text()).toBe(h.daybreak.exportProject(project.id))
   })
 })
+
+describe('POST /api/open-link', () => {
+  const post = (target: unknown) => ({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target }),
+  })
+  it('opens an http(s) or mailto target and returns 204', async () => {
+    const opened: string[] = []
+    const h = await testApp({ openLink: (l) => opened.push(l) })
+    expect((await h.req('/api/open-link', post('https://example.com/a'))).status).toBe(204)
+    expect((await h.req('/api/open-link', post('mailto:a@b.c'))).status).toBe(204)
+    expect(opened).toEqual(['https://example.com/a', 'mailto:a@b.c'])
+  })
+  it('refuses other targets and a missing one with 400', async () => {
+    const opened: string[] = []
+    const h = await testApp({ openLink: (l) => opened.push(l) })
+    for (const t of ['C:\\Windows\\notepad.exe', 'file:///etc/passwd', 'javascript:alert(1)', '', 5]) {
+      expect((await h.req('/api/open-link', post(t))).status).toBe(400)
+    }
+    expect(opened).toEqual([])
+  })
+})

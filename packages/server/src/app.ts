@@ -12,6 +12,7 @@ import { reviewRoutes } from './routes/review'
 import { taskRoutes } from './routes/tasks'
 import { type ChangeBroker, eventRoutes } from './sse'
 import { readStatic } from './static'
+import { invalid, isString, need, readBody } from './validate'
 
 export interface AppDeps {
   daybreak: Daybreak
@@ -39,6 +40,14 @@ export function createApp(deps: AppDeps): Hono {
   app.use('/events/*', host, token)
 
   app.get('/api/ping', (c) => c.json({ ok: true }))
+
+  // Links in rendered notes. Only web and mail links: a task's own link may be a path, notes text may not.
+  app.post('/api/open-link', async (c) => {
+    const target = need(await readBody(c), 'target', isString, 'a string').trim()
+    if (!/^(https?:\/\/|mailto:)/i.test(target)) throw invalid('Only http, https and mailto links can be opened')
+    ;(deps.openLink ?? openLink)(target)
+    return c.body(null, 204)
+  })
 
   app.route('/api', miscRoutes(deps.daybreak, deps.dayStartsAt))
   app.route('/api', dayRoutes(deps.daybreak))
