@@ -35,3 +35,7 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   toast says "Couldn't save '…'" so it's never lost silently; tasks typed
   after it in the same list still save. The wording is mine; DESIGN has no
   error copy.
+- Day picker digits: pressing 1–9 in an empty picker picks that day after a
+  short pause (0.4 s), or straight away if you press Enter. If you keep
+  typing, it becomes a typed date instead, so "20 nov" works. (The plan's
+  rule picked on the first digit, which made "20 nov" impossible to type.)
