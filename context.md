@@ -7,6 +7,7 @@ Daybreak is Serwan's planned work task manager and daily planner. It replaces Lo
 ## Current state
 
 - 2026-11-08: requirements settled in a long design conversation, mock-ups made on a design canvas, spec and design notes written. No code yet. Next: MVP with Claude Code, phases 1–5 of SPEC.md section 9.
+- 2026-11-09: the MVP (phases 1–5) is built and tested on Linux. The Windows check (SYNC.md) is next, then one week of real use before phase 6.
 
 ## Conventions
 

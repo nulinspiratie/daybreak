@@ -7,7 +7,7 @@ One nested task tree (Inbox plus projects), a My Day list for today, and a two-m
 - [SPEC.md](SPEC.md): what it does, data model, architecture, build plan, open questions
 - [DESIGN.md](DESIGN.md): visual and interaction details from the design canvas
 
-Status: the core and server are built; the UI is in progress.
+Status: MVP (phases 1–5) built; Windows check, then trial use.
 
 ## Running on Windows
 
