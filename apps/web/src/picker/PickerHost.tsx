@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { api } from '../api/client'
 import { useDay, useMutate, useStatus, useTree } from '../api/hooks'
 import { pickDay } from '../keyboard/commands'
-import { SkippedWrite } from '../tree/optimistic'
+import { reportWriteError } from '../keyboard/useKeyboard'
 import { useUi } from '../ui/store'
 import { DayPicker } from './DayPicker'
 
@@ -74,9 +74,7 @@ function OpenPicker({ taskId, allowNoDay }: { taskId: string; allowNoDay: boolea
   const pick = (date: ISODate | null) => {
     close()
     if (!task) return
-    pickDay({ api, mutate }, task, date).catch((e: unknown) => {
-      if (!(e instanceof SkippedWrite)) console.error(e)
-    })
+    pickDay({ api, mutate }, task, date).catch(reportWriteError)
   }
 
   if (today === '' || !task) return null

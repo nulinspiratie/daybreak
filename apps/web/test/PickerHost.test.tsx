@@ -2,10 +2,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '../src/api/client'
 import { queue, useDrainInvalidation } from '../src/api/hooks'
 import { useKeyboard } from '../src/keyboard/useKeyboard'
 import { PickerHost } from '../src/picker/PickerHost'
 import { QUICK_PICK_MS } from '../src/picker/DayPicker'
+import { toast } from '../src/shell/toastStore'
 import { TreePane } from '../src/tree/TreePane'
 import { useUi } from '../src/ui/store'
 import { type FakeApi, node } from './helpers'
@@ -109,6 +111,23 @@ describe('PickerHost', () => {
     expect(ui().picker).toBeNull()
     expect(ui().treeSel).toBe('a')
     expect(ui().pane).toBe('tree')
+  })
+
+  it('a pick the server refuses is reported in a toast', async () => {
+    const reply = fake().reply
+    fake().reply = (method, path, body) => {
+      if (method === 'POST') throw new ApiError(404, 'not_found', '#a not found')
+      return reply(method, path, body)
+    }
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    toast.dismiss()
+    await press('d')
+    await press('3')
+    await press('Enter')
+    await flush()
+    expect(writes()).toEqual([['POST', '/api/tasks/a/schedule', { date: '2026-11-11' }]])
+    expect(toast.current()?.message).toBe('#a not found')
+    error.mockRestore()
   })
 
   it('does not run global commands while open (arrows move the picker, not the selection)', async () => {

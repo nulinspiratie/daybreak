@@ -52,3 +52,9 @@ export const api = {
   send: <T>(method: 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T> =>
     request<T>(method, path, body),
 }
+
+/**
+ * No answer from Daybreak itself: the fetch failed, or something else answered without the
+ * server's error body (the dev proxy, when the server is not running).
+ */
+export const isUnreachable = (e: unknown): boolean => e instanceof Unreachable || (e instanceof ApiError && e.code === 'http_error')

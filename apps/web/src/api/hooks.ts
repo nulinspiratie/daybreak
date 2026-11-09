@@ -1,7 +1,7 @@
 import type { DayView, ReviewView, TreeView } from '@daybreak/core'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { hashKey, type QueryClient, type QueryKey, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
-import { api } from './client'
+import { api, isUnreachable } from './client'
 import { createMutationQueue } from './queue'
 import { connectEvents } from './sse'
 
@@ -14,6 +14,22 @@ export interface Status {
 
 export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<Status>('/api/status') })
 
+// What the server last answered for each query that is patched optimistically (tree, day, review),
+// by query hash. A write that never reached the server is undone by putting these back.
+const confirmed = new Map<string, unknown>()
+
+function confirm<T>(key: QueryKey, fetched: T): T {
+  confirmed.set(hashKey(key), fetched)
+  return fetched
+}
+
+/** Puts the server's last answer back into every query that has one, dropping optimistic patches. */
+export function restoreConfirmed(qc: QueryClient): void {
+  for (const q of qc.getQueryCache().getAll()) {
+    if (confirmed.has(q.queryHash)) qc.setQueryData(q.queryKey, confirmed.get(q.queryHash))
+  }
+}
+
 /**
  * The tree. A fetch that answers while writes are still queued keeps the cached tree instead: it
  * predates those writes and would drop their optimistic rows. The refetch on drain reconciles.
@@ -23,7 +39,7 @@ export function useTree(completed: CompletedMode) {
   return useQuery({
     queryKey: ['tree', completed],
     queryFn: async () => {
-      const fetched = await api.get<TreeView>(`/api/tree?completed=${completed}`)
+      const fetched = confirm(['tree', completed], await api.get<TreeView>(`/api/tree?completed=${completed}`))
       const shown = qc.getQueryData<TreeView>(['tree', completed])
       return queue.busy() && shown ? shown : fetched
     },
@@ -36,7 +52,7 @@ export function useDay(date: string) {
   return useQuery({
     queryKey: ['day', date],
     queryFn: async () => {
-      const fetched = await api.get<DayView>(`/api/day/${date}`)
+      const fetched = confirm(['day', date], await api.get<DayView>(`/api/day/${date}`))
       const shown = qc.getQueryData<DayView>(['day', date])
       return queue.busy() && shown ? shown : fetched
     },
@@ -50,7 +66,7 @@ export function useReview(date: string) {
   return useQuery({
     queryKey: ['review', date],
     queryFn: async () => {
-      const fetched = await api.get<ReviewView>(`/api/review/${date}`)
+      const fetched = confirm(['review', date], await api.get<ReviewView>(`/api/review/${date}`))
       const shown = qc.getQueryData<ReviewView>(['review', date])
       return queue.busy() && shown ? shown : fetched
     },
@@ -72,10 +88,29 @@ export function useMutate(): <T>(fn: () => Promise<T>) => Promise<T> {
   return useCallback(<T>(fn: () => Promise<T>) => queue.enqueue(fn), [])
 }
 
-/** Invalidates every query each time the mutation queue drains. Mounted once, in App. */
+/**
+ * Invalidates every query each time the mutation queue drains, so a failed write's optimistic
+ * change is replaced by the server's state. If a write could not reach the server, that refetch
+ * fails too and react-query would keep the optimistic data, so the server's last answers are put
+ * back first: an unsaved edit never looks saved. Mounted once, in App.
+ */
 export function useDrainInvalidation(): void {
   const qc = useQueryClient()
-  useEffect(() => queue.onDrain(() => void qc.invalidateQueries()), [qc])
+  useEffect(() => {
+    let unreachable = false
+    const offFailure = queue.onFailure((e) => {
+      if (isUnreachable(e)) unreachable = true
+    })
+    const offDrain = queue.onDrain(() => {
+      if (unreachable) restoreConfirmed(qc)
+      unreachable = false
+      void qc.invalidateQueries()
+    })
+    return () => {
+      offFailure()
+      offDrain()
+    }
+  }, [qc])
 }
 
 const CHANGED_DEBOUNCE_MS = 100

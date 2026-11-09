@@ -4,7 +4,7 @@ import { Fragment, useCallback, useMemo, useRef } from 'react'
 import { api } from '../api/client'
 import { useMutate, useStatus, useTree } from '../api/hooks'
 import type { Command } from '../keyboard/keymap'
-import { useCommandRunner } from '../keyboard/useKeyboard'
+import { reportWriteError, useCommandRunner } from '../keyboard/useKeyboard'
 import { CONFIRM_NOTE_ID, ConfirmNote } from '../shell/ConfirmNote'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
@@ -67,7 +67,7 @@ export function TreePane() {
 
   const run = useCallback(
     (fn: () => Promise<unknown>) => {
-      mutate(fn).catch((e: unknown) => console.error(e))
+      mutate(fn).catch(reportWriteError)
     },
     [mutate],
   )

@@ -1,7 +1,7 @@
 import type { Task, TreeNode, TreeView } from '@daybreak/core'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { api } from '../api/client'
+import { ApiError, api, isUnreachable } from '../api/client'
 import { useDay, useMutate, useStatus, useTree } from '../api/hooks'
 import { toast } from '../shell/toastStore'
 import { flatten } from '../tree/flatten'
@@ -50,9 +50,20 @@ export function useCommandEnv(): () => CommandEnv | null {
   }, [mutate, cache])
 }
 
-/** Logs a failed write; the refetch when the queue drains shows the true state again. */
+/** What a failed write's toast says: the server's own message, if it sent one. */
+export function writeErrorMessage(e: unknown): string {
+  return e instanceof ApiError && !isUnreachable(e) ? e.message : "Couldn't save — is Daybreak running?"
+}
+
+/**
+ * Reports a failed write in a toast (a newer toast replaces older ones, R27). The refetch when the
+ * queue drains shows the true state again. A write skipped because its task was never created
+ * says nothing: that create's own toast already did (R29).
+ */
 export function reportWriteError(e: unknown): void {
-  if (!(e instanceof SkippedWrite)) console.error(e)
+  if (e instanceof SkippedWrite) return
+  console.error(e)
+  toast.show({ message: writeErrorMessage(e) })
 }
 
 /** Returns a stable function that runs a command against the latest rows, day and UI state. */

@@ -99,4 +99,22 @@ describe('mutation queue', () => {
     expect(err).toHaveBeenCalledTimes(2)
     err.mockRestore()
   })
+
+  it('onFailure hears each rejected write, before the drain, and not the successful ones', async () => {
+    const q = createMutationQueue()
+    const log: string[] = []
+    const off = q.onFailure((e) => log.push(`fail ${(e as Error).message}`))
+    q.onDrain(() => log.push('drain'))
+    void q.enqueue(async () => 'ok')
+    q.enqueue(async () => {
+      throw new Error('boom')
+    }).catch(() => log.push('caller'))
+    await q.idle()
+    expect(log).toEqual(['fail boom', 'drain', 'caller'])
+    off()
+    await q.enqueue(async () => {
+      throw new Error('again')
+    }).catch(() => {})
+    expect(log).not.toContain('fail again')
+  })
 })

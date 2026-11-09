@@ -6,11 +6,14 @@ export function createMutationQueue(): {
   busy(): boolean
   /** Calls cb each time the queue goes from busy to empty. Returns an unsubscribe. */
   onDrain(cb: () => void): () => void
+  /** Calls cb with the error of each write that rejects, before the drain that follows. Returns an unsubscribe. */
+  onFailure(cb: (e: unknown) => void): () => void
 } {
   let tail: Promise<unknown> = Promise.resolve()
   let pending = 0
   let waiters: Array<() => void> = []
   const drainListeners = new Set<() => void>()
+  const failureListeners = new Set<(e: unknown) => void>()
 
   const settle = () => {
     pending--
@@ -34,7 +37,16 @@ export function createMutationQueue(): {
       pending++
       const result = tail.then(fn)
       // Keep the chain alive after a rejection; the caller still sees it.
-      tail = result.then(settle, settle)
+      tail = result.then(settle, (e: unknown) => {
+        for (const cb of [...failureListeners]) {
+          try {
+            cb(e)
+          } catch (err) {
+            console.error('mutation queue: failure listener threw', err)
+          }
+        }
+        settle()
+      })
       return result
     },
     busy: () => pending > 0,
@@ -46,6 +58,12 @@ export function createMutationQueue(): {
       drainListeners.add(cb)
       return () => {
         drainListeners.delete(cb)
+      }
+    },
+    onFailure(cb: (e: unknown) => void): () => void {
+      failureListeners.add(cb)
+      return () => {
+        failureListeners.delete(cb)
       }
     },
   }
