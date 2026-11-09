@@ -2,6 +2,7 @@ import type { DayView, ReviewView, TreeView } from '@daybreak/core'
 import { hashKey, type QueryClient, type QueryKey, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { api, isUnreachable } from './client'
+import { useUi } from '../ui/store'
 import { createMutationQueue } from './queue'
 import { connectEvents } from './sse'
 
@@ -12,7 +13,9 @@ export interface Status {
   dayStartsAt: string
 }
 
-export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<Status>('/api/status') })
+// Refetched on focus, unlike the rest: a tab left open overnight must learn the new today (and so show the review).
+export const useStatus = () =>
+  useQuery({ queryKey: ['status'], queryFn: () => api.get<Status>('/api/status'), refetchOnWindowFocus: true })
 
 // What the server last answered for each query that is patched optimistically (tree, day, review),
 // by query hash. A write that never reached the server is undone by putting these back.
@@ -120,12 +123,17 @@ const CHANGED_DEBOUNCE_MS = 100
  * flag; the next window focus or keydown refetches everything, the status (and so the morning
  * review) included. A tab left open overnight shows the review when you come back to it. Keys
  * pressed until that refetch lands do nothing.
+ *
+ * While the feed is down the title bar says "Reconnecting…". When it opens again everything is
+ * refetched: changes made meanwhile were never announced, and a server restarted after the day
+ * boundary sends no `day_changed` for the day it started on.
  */
 export function useLiveUpdates(): void {
   const qc = useQueryClient()
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const dayChanged = useRef(false)
   useEffect(() => {
+    let opened = false
     const close = connectEvents(
       () => {
         clearTimeout(timer.current)
@@ -136,6 +144,14 @@ export function useLiveUpdates(): void {
       },
       () => {
         dayChanged.current = true
+      },
+      {
+        open: () => {
+          if (opened) void qc.invalidateQueries()
+          opened = true
+          useUi.getState().set({ reconnecting: false })
+        },
+        lost: () => useUi.getState().set({ reconnecting: true }),
       },
     )
     // The key that wakes the app (and any key until the refetch lands) is swallowed (R41): run

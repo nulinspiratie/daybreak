@@ -22,7 +22,10 @@ export function TitleBar({ review }: TitleBarProps = {}) {
   const { data: status } = useStatus()
   const focusDayAdd = useUi((s) => s.focusDayAdd)
   const setUi = useUi((s) => s.set)
+  const reconnecting = useUi((s) => s.reconnecting)
   const { theme, toggle } = useTheme()
+  // The live feed is down: most likely the server is not running, so writes would fail too.
+  const feedNote = reconnecting && <span className="titlebar__status">Reconnecting…</span>
 
   return (
     <header className="titlebar">
@@ -35,6 +38,7 @@ export function TitleBar({ review }: TitleBarProps = {}) {
       {review ? (
         <>
           <span className="titlebar__date">Morning review</span>
+          {feedNote}
           <span className="titlebar__spacer" />
           <button type="button" className="tb-link" onClick={review.onSkip}>
             Skip for today
@@ -43,6 +47,7 @@ export function TitleBar({ review }: TitleBarProps = {}) {
       ) : (
         <>
           <span className="titlebar__date" data-testid="today">{status ? longDate(status.today) : ''}</span>
+          {feedNote}
           <span className="titlebar__spacer" />
           <button type="button" className="tb-btn" onClick={focusDayAdd}>
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">

@@ -121,6 +121,11 @@ kbd {
   flex: 1;
 }
 
+.titlebar__status {
+  font-size: 12px;
+  color: var(--worked);
+}
+
 .tb-btn {
   display: flex;
   align-items: center;

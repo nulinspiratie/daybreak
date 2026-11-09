@@ -27,6 +27,8 @@ export interface UiState {
   pickerShown: boolean
   /** True while a row is being dragged; the global keys stand aside. */
   dragging: boolean
+  /** True from a live-feed error until it opens again; the title bar says "Reconnecting…". */
+  reconnecting: boolean
   /** Bumped by the title bar's "Add to My Day"; the My Day add field (Task 18) reacts to it. */
   dayAddNonce: number
   focusDayAdd: () => void
@@ -99,6 +101,7 @@ export const useUi = create<UiState>((set) => ({
   picker: null,
   pickerShown: false,
   dragging: false,
+  reconnecting: false,
   dayAddNonce: 0,
   focusDayAdd: () => set((s) => ({ dayAddNonce: s.dayAddNonce + 1 })),
   replaceId: (from, to) => set((s) => withId(s, from, to)),
