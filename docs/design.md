@@ -1,6 +1,6 @@
 # Daybreak: design spec
 
-Taken from the design canvas (https://claude.ai/artifact/VQCavjAkzp3vyn4wKeLoYv). The canvas still says "Work Planner"; the app is now **Daybreak**. Where this file and the canvas disagree, this file wins. In particular the canvas still shows the old review keys (A/S/D/F) and "Drop"; the keys below replace them. The mock-ups' source files are in [`design/`](design/). Ideas that came up and were left out of V1 are in [`docs/future-ideas.md`](docs/future-ideas.md).
+Taken from the design canvas (https://claude.ai/artifact/VQCavjAkzp3vyn4wKeLoYv). The canvas still says "Work Planner"; the app is now **Daybreak**. Where this file and the canvas disagree, this file wins. In particular the canvas still shows the old review keys (A/S/D/F) and "Drop"; the keys below replace them. The mock-ups' source files are in [`mockups/`](mockups/). Ideas that came up and were left out of V1 are in [`future-ideas.md`](future-ideas.md).
 
 ## Feel
 
@@ -200,7 +200,7 @@ Logseq-style: the task (with its subtree) moves one slot at a time and keeps its
 - Normally it swaps with its previous / next sibling.
 - At the edge of its siblings it carries on into the neighbouring branch at the same depth: moving up from a first child makes it the last child of the parent's previous sibling; moving down from a last child makes it the first child of the parent's next sibling. If there's no such branch, it doesn't move.
 - Between sections: moving the first top-level project up puts it at the end of Inbox, and moving the last Inbox task down makes it the first top-level project. A task with subtasks can't go into Inbox (Inbox is flat), so it stops there.
-- Depth changes only with Tab / Shift+Tab. Moving far away is a job for cut and paste, later (`docs/future-ideas.md`).
+- Depth changes only with Tab / Shift+Tab. Moving far away is a job for cut and paste, later ([future-ideas.md](future-ideas.md)).
 
 ### Closing a parent
 

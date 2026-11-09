@@ -1,6 +1,6 @@
 # Future ideas
 
-Features that came up while designing Daybreak and were deliberately left out of V1. Each entry stands on its own, so any one can be picked up without reading the others. Before building one, check it against SPEC.md section 2 and move it into scope there first.
+Features that came up while designing Daybreak and were deliberately left out of V1. Each entry stands on its own, so any one can be picked up without reading the others. Before building one, check it against [spec.md](spec.md) section 2 and move it into scope there first.
 
 Most of these were first sketched as alternative main-window layouts on the design canvas (https://claude.ai/artifact/VQCavjAkzp3vyn4wKeLoYv). Those layouts have since been removed from the canvas; the descriptions below are the record.
 

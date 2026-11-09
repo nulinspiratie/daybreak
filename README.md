@@ -6,9 +6,9 @@ A local task manager and daily planner for work, on Windows 11.
 
 One nested task tree (Inbox plus projects), a My Day list for today, and a two-minute morning review that clears yesterday's leftovers before the day starts. Keyboard and mouse both do everything. Each day is also written out as a plain Markdown log.
 
-- [SPEC.md](SPEC.md): what it does, data model, architecture, build plan, open questions
-- [DESIGN.md](DESIGN.md): visual and interaction details from the design canvas
-- [SYNC.md](SYNC.md): calls made on your behalf while building, and what needs checking on the work laptop
+- [docs/spec.md](docs/spec.md): what it does, data model, architecture, build plan, open questions
+- [docs/design.md](docs/design.md): visual and interaction details from the design canvas
+- [docs/handoff.md](docs/handoff.md): calls made on your behalf while building, and what needs checking on the work laptop
 - [context.md](context.md): where things stand
 
 Status: MVP (phases 1–5) built; Windows check, then trial use.

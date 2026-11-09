@@ -5,7 +5,7 @@ Status: ready for an MVP build. Written 2026-11-08; open questions settled and k
 Related:
 - Design canvas: https://claude.ai/artifact/VQCavjAkzp3vyn4wKeLoYv (chosen morning review: board 2, "running list with day picker")
 - Design brief: https://claude.ai/artifact/XaFzRe2BwnVA5nByaoQ74X
-- Visual and interaction details: [DESIGN.md](DESIGN.md)
+- Visual and interaction details: [design.md](design.md)
 
 ## 1. What Daybreak is
 
@@ -26,7 +26,7 @@ The one thing that decides whether it sticks: a morning review that takes about 
 ### In V1
 
 - One nested task tree: Inbox plus projects, any depth.
-- Full keyboard control and full mouse control (drag to reorder, drag to indent, drag into My Day). The keyboard has to be as good as an outliner like Logseq: adding, deleting, reordering, re-nesting and moving tasks into and around My Day all without the mouse (DESIGN.md, "Keyboard map").
+- Full keyboard control and full mouse control (drag to reorder, drag to indent, drag into My Day). The keyboard has to be as good as an outliner like Logseq: adding, deleting, reordering, re-nesting and moving tasks into and around My Day all without the mouse (design.md, "Keyboard map").
 - Delete (Del), with an undo toast. Separate from cancel: delete is for mistakes, cancel is for work you decided not to do.
 - My Day: the tasks scheduled for today, in the order they'll be done.
 - Morning review: clears yesterday's leftovers one by one, then offers suggestions.
@@ -80,7 +80,7 @@ Exactly one at a time:
 - Scheduling a parent for today puts only the parent in My Day, not its children (it shows its `done/total`). May be revisited after real use.
 - S (Doing) or W (Worked on) on a task not scheduled today also schedules it today, appended to My Day: you're working on it today, so it belongs there, and if it's still open tomorrow it comes back in the review as "Continue today?". *(Builder's call.)*
 - Inbox is flat: Tab does nothing on an Inbox task. To give it subtasks, move it into Projects first. *(Builder's call.)*
-- Moving with the keyboard (Mod+↑↓) is Logseq-style: one slot at a time at the same depth, crossing into neighbouring branches and between Inbox and Projects. Exact rules in DESIGN.md, "Moving with Mod+↑↓". Core implements this as `moveUp` / `moveDown` operations with unit tests for every boundary case.
+- Moving with the keyboard (Mod+↑↓) is Logseq-style: one slot at a time at the same depth, crossing into neighbouring branches and between Inbox and Projects. Exact rules in design.md, "Moving with Mod+↑↓". Core implements this as `moveUp` / `moveDown` operations with unit tests for every boundary case.
 - Deleting a task deletes its whole subtree. It disappears from every view, the API and the CLI, and from logs written afterwards. A toast offers Undo (Z) for about 8 seconds, which brings the subtree back exactly where it was.
 
 ## 4. The morning review
@@ -270,7 +270,7 @@ Linked Markdown docs (long task descriptions) keep their own done/open state so 
 
 ## 8. Windows integration (Tauri)
 
-- Custom title bar with Windows-style minimise, maximise and close buttons (see DESIGN.md).
+- Custom title bar with Windows-style minimise, maximise and close buttons (see design.md).
 - **Quick add:** global shortcut Ctrl+Alt+Space via `tauri-plugin-global-shortcut` opens a small borderless window centred on screen. Enter adds and closes; Shift+Enter adds and stays open; Esc closes; Tab picks where to file it; Alt+T toggles "My Day" (on by default).
 - **My Day pop-up:** a small window (380 × 560) that opens just above the taskbar, like the Windows 11 calendar flyout. V1 opens it from a **tray icon** (`tauri` tray API) with a badge for open items. The ideal is opening it from the pinned taskbar button itself; that needs window-activation tricks and is a stretch goal, not V1.
 - Autostart at login (`tauri-plugin-autostart`), off by default.
@@ -283,7 +283,7 @@ Each phase should be usable on its own. Use seed data from the design (fictional
 
 1. **Core and data.** Schema, migrations, tree operations (create, move with subtree, indent, outdent, Logseq-style move up/down, close with subtree and reopen, soft delete and restore), scheduling, statuses and marks (one Doing at a time), completed-visibility rules, events. Unit tests for all of it. Seed script.
 2. **Server.** Hono API above, token check, SSE. Integration tests against a temp DB.
-3. **Main window in the browser.** Tree with the full keyboard model (navigate and edit modes, DESIGN.md "Keyboard map"), day column, drag to reorder and indent, My Day with its own order, drag from tree to My Day, inline add in My Day, delete with undo toast, task detail panel, show completed, light and dark themes. README section on running it on Windows.
+3. **Main window in the browser.** Tree with the full keyboard model (navigate and edit modes, design.md "Keyboard map"), day column, drag to reorder and indent, My Day with its own order, drag from tree to My Day, inline add in My Day, delete with undo toast, task detail panel, show completed, light and dark themes. README section on running it on Windows.
 4. **Morning review.** Running list, T/D/B/X/Z, day picker, suggestions, start the day, skip.
 5. **Daily logs.** Writer, freezing, back-filling missed days.
 6. **Tauri shell.** Built on the laptop from source (section 8); server alongside, title bar, tray with My Day pop-up, global quick add, single instance.

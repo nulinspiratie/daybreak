@@ -109,7 +109,7 @@ describe('Daybreak facade', () => {
 })
 
 describe('seed', () => {
-  it('seed creates the Inbox and three projects from design/Main.dc.html', async () => {
+  it('seed creates the Inbox and three projects from docs/mockups/Main.dc.html', async () => {
     const { d } = await make()
     seed(d)
     const t = d.tree('all')

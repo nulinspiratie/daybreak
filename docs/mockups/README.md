@@ -1,6 +1,6 @@
 # Design files
 
-Source of the Daybreak mock-ups, copied from the design canvas at https://claude.ai/artifact/VQCavjAkzp3vyn4wKeLoYv (it still says "Work Planner"). Each `.dc.html` file is one artboard; `canvas.json` holds the layout. They're reference material for building the UI, not app code. [DESIGN.md](../DESIGN.md) wins where it and these files disagree.
+Source of the Daybreak mock-ups, copied from the design canvas at https://claude.ai/artifact/VQCavjAkzp3vyn4wKeLoYv (it still says "Work Planner"). Each `.dc.html` file is one artboard; `canvas.json` holds the layout. They're reference material for building the UI, not app code. [design.md](../design.md) wins where it and these files disagree.
 
 | File | What it shows |
 | --- | --- |

@@ -127,7 +127,7 @@ function edit(e: KeyLike, chord: Chord, tree: boolean, titleEmpty: boolean): Com
   return null
 }
 
-/** The DESIGN.md "Keyboard map" as a pure function. Null means "let the browser have it". */
+/** The docs/design.md "Keyboard map" as a pure function. Null means "let the browser have it". */
 export function resolveKey(e: KeyLike, ctx: KeyCtx): Command | null {
   const chord = chordOf(e, ctx.isMac)
   if (chord === 'other') return null

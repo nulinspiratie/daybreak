@@ -5,29 +5,29 @@ Guidance for AI assistants working in this repository.
 ## What this is
 
 Daybreak: a local Windows 11 task manager and daily planner for work. Read
-[`SPEC.md`](SPEC.md) first (scope, data model, architecture, build plan), then
-[`DESIGN.md`](DESIGN.md) for visual and interaction details. `context.md` has
-the current state.
+[`docs/spec.md`](docs/spec.md) first (scope, data model, architecture, build
+plan), then [`docs/design.md`](docs/design.md) for visual and interaction
+details. `context.md` has the current state.
 
 Phases 1–5 (the MVP) are built. Phase 6 (Tauri shell) waits for a week of real
-use on the work laptop. `PLAN.md` is the finished MVP build plan, kept for
-reference; don't execute it again.
+use on the work laptop. `docs/archive/mvp-plan.md` is the finished MVP build
+plan, kept for reference; don't execute it again.
 
 ## Conventions
 
 - Work task data must never be committed or leave the work laptop. The app's
   database and logs live in `%LOCALAPPDATA%\Daybreak\` (or
   `DAYBREAK_DATA_DIR`), never in this repo. Use fictional seed data for dev.
-- Stay inside the V1 scope in SPEC.md section 2. If something seems missing,
+- Stay inside the V1 scope in spec.md section 2. If something seems missing,
   add it to the open questions instead of building it.
 - All logic in TypeScript (`packages/core`, `packages/server`). Tauri's Rust
   side only does windowing, tray, shortcuts and launching the server.
-- Build in the phase order of SPEC.md section 9. `core` gets unit tests
+- Build in the phase order of spec.md section 9. `core` gets unit tests
   (Vitest) for every tree, scheduling and review rule.
 - Where you make a judgment call on Serwan's behalf, or something needs him or
-  the work laptop, add a line to [`SYNC.md`](SYNC.md). Open product questions
-  go in SPEC.md section 10.
-- UI copy, sizes and colours come from DESIGN.md. Colours are tokens in
+  the work laptop, add a line to [`docs/handoff.md`](docs/handoff.md). Open
+  product questions go in spec.md section 10.
+- UI copy, sizes and colours come from design.md. Colours are tokens in
   `apps/web/src/theme/tokens.css`, with light and dark values.
 
 ## Layout
@@ -38,7 +38,7 @@ reference; don't execute it again.
 | `packages/server` | Hono API, token/host/origin guards, SSE, day rollover, link opening, `main.ts` entry. |
 | `apps/web` | React 19 + Vite UI. `api/` (queries, write queue, SSE), `keyboard/` (keymap and commands), `tree/`, `myday/`, `review/`, `detail/`, `picker/`. |
 | `scripts` | `seed.ts`, `smoke.ts`, the pre-commit guard `check-staged.ts`, `install-hooks.ts`. |
-| `docs` | ai-wiki knowledge base (see below). Not app code. |
+| `docs` | Project docs: `spec.md`, `design.md`, `handoff.md`, `future-ideas.md`, the canvas mock-ups in `mockups/` and the finished MVP plan in `archive/`. Also the ai-wiki knowledge base (see below). Not app code. |
 
 Packages are consumed as TypeScript source; there is no build step except the
 web bundle.

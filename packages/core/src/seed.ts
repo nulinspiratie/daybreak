@@ -1,7 +1,7 @@
 import type { Daybreak } from './service'
 import type { Section } from './types'
 
-// Fictional data transcribed from design/Main.dc.html. `due` is a day offset from today.
+// Fictional data transcribed from docs/mockups/Main.dc.html. `due` is a day offset from today.
 interface Seed {
   title: string
   link?: string

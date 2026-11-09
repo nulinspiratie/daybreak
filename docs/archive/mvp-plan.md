@@ -1,5 +1,7 @@
 # Daybreak MVP Implementation Plan
 
+> **Archived.** This plan is finished. Since it was written the docs moved: SPEC.md is now `docs/spec.md`, DESIGN.md is `docs/design.md`, SYNC.md is `docs/handoff.md` and `design/` is `docs/mockups/`. The text below still uses the old names.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build phases 1–5 of SPEC.md section 9 (core, server, main window, morning review and daily logs), running from source in a browser tab on the Windows work laptop.
@@ -8,7 +10,7 @@
 
 **Tech Stack:** TypeScript (strict, ESM), Bun ≥ 1.2 (runtime, workspaces), Node ≥ 22.13 (tests only), Vitest, Hono, `fractional-indexing`, `nanoid`, React 19, Vite, `@tanstack/react-query`, `zustand`, `@dnd-kit/core` + `@dnd-kit/sortable`, `markdown-it`, `@testing-library/react` + `jsdom`.
 
-**Spec:** [SPEC.md](SPEC.md) (behaviour, data model, API) and [DESIGN.md](DESIGN.md) (visuals, copy, key map; it wins on interaction details). Mock-ups are in `design/*.dc.html`. Where they disagree with DESIGN.md (old A/S/D/F keys, "Drop"), DESIGN.md wins. Read both before starting any task.
+**Spec:** [SPEC.md](../spec.md) (behaviour, data model, API) and [DESIGN.md](../design.md) (visuals, copy, key map; it wins on interaction details). Mock-ups are in `design/*.dc.html`. Where they disagree with DESIGN.md (old A/S/D/F keys, "Drop"), DESIGN.md wins. Read both before starting any task.
 
 ## Global Constraints
 

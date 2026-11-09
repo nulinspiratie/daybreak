@@ -1,12 +1,12 @@
-# Things to sync on
+# Handoff
 
-A running log kept while building the MVP (PLAN.md). Each item is something
+A running log kept while building the MVP ([archive/mvp-plan.md](archive/mvp-plan.md)). Each item is something
 where I made a call on your behalf, or that needs you (or the work laptop).
 Newest at the bottom. Tick or strike items once we've talked them through.
 
 ## Needs you
 
-- [ ] **Windows run.** The final checks in PLAN.md Task 24 (fresh clone,
+- [ ] **Windows run.** The final checks in the MVP plan's Task 24 (fresh clone,
   `start.cmd`, keyboard-only checklist in Edge) need the work laptop. I'll do
   the same run on Linux with Chromium here; please do the Windows one.
 - [ ] **Links in notes on Windows.** Clicking an http(s) or mailto link in a

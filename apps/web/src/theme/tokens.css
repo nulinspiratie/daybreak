@@ -24,7 +24,7 @@
   --done: #757575;
   --chip: #efefef;
 
-  /* Review outcome tints: background / foreground (light from DESIGN.md, dark per R37) */
+  /* Review outcome tints: background / foreground (light from docs/design.md, dark per R37) */
   --rv-today-bg: #e3eefa;
   --rv-today-fg: #005fb8;
   --rv-day-bg: #efe8f8;
