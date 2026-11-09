@@ -82,3 +82,9 @@ Newest at the bottom. Tick or strike items once we've talked them through.
     soft), but the app has no other way to bring them back yet.
   - If you set the day to start between 02:00 and 03:00, the night the
     clocks go back can count as the wrong day. The default (04:00) is fine.
+- Dependencies that failed on Microsoft's npm proxy are pinned to available
+  stable versions. Root `overrides` also pin the transitive `@babel/runtime`
+  and `ws` packages; check feed availability when updating these pins.
+- Biome is pinned to 2.5.1 because 2.6.3 and 2.6.4 crash during analysis on
+  Windows ARM64. This matches the regression reported in
+  [biomejs/biome#11242](https://github.com/biomejs/biome/issues/11242).

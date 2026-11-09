@@ -329,28 +329,25 @@ describe('editing fields', () => {
   describe.each([
     ['another row', 'q'],
     ['nothing', null],
-  ])(
-    'opened from My Day for a task under a collapsed parent, tree selection on %s',
-    (_name, sel) => {
-      it("a second Ctrl+O edits that task's notes", async () => {
-        const kid = node('c', [], { title: 'Kid', notes: 'kid notes' })
-        await start(null, {
-          projects: [
-            node('p', [kid], { title: 'Parent', collapsed: true }),
-            node('q', [], { title: 'Other' }),
-          ],
-        })
-        act(() => ui().set({ pane: 'tree', treeSel: sel }))
-        await flush()
-        act(() => ui().set({ detailId: 'c' })) // as Ctrl+O from My Day leaves it: the tree selection did not follow
-        await flush()
-        await press('o', { ctrlKey: true })
-        expect(ui().detailId).toBe('c')
-        expect(ui().treeSel).toBe(sel)
-        expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Notes' }))
+  ])('opened from My Day for a task under a collapsed parent, tree selection on %s', (_name, sel) => {
+    it("a second Ctrl+O edits that task's notes", async () => {
+      const kid = node('c', [], { title: 'Kid', notes: 'kid notes' })
+      await start(null, {
+        projects: [
+          node('p', [kid], { title: 'Parent', collapsed: true }),
+          node('q', [], { title: 'Other' }),
+        ],
       })
-    },
-  )
+      act(() => ui().set({ pane: 'tree', treeSel: sel }))
+      await flush()
+      act(() => ui().set({ detailId: 'c' })) // as Ctrl+O from My Day leaves it: the tree selection did not follow
+      await flush()
+      await press('o', { ctrlKey: true })
+      expect(ui().detailId).toBe('c')
+      expect(ui().treeSel).toBe(sel)
+      expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Notes' }))
+    })
+  })
 
   it('title: saves on Enter only when changed, reverts when empty, Esc reverts and blurs', async () => {
     await start('p', { projects: [node('p', [], { title: 'Parent' })] })

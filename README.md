@@ -23,6 +23,10 @@ cd daybreak
 bun install
 ```
 
+The committed lockfile uses versions verified on Microsoft's npm proxy.
+Keep `bun.lock` when installing; `bun install --frozen-lockfile` installs its
+exact resolutions without updating it. Registry settings remain local to your machine.
+
 Then double-click `start.cmd`. It builds the web app, starts the server and opens http://127.0.0.1:47815.
 
 Your data lives in `%LOCALAPPDATA%\Daybreak`: the database (`daybreak.db`), `logs\`, `token` and `config.json`.
@@ -45,6 +49,14 @@ bun run --cwd apps/web dev     # second terminal, same DAYBREAK_DATA_DIR: Vite o
 Vite proxies `/api` and `/events` to the server, adding the token from the data folder, so start the server first. `bun run start` instead builds the web app and serves everything from the server, as `start.cmd` does.
 
 Code is formatted and linted with [Biome](https://biomejs.dev) (`biome.json`; `bun run format` fixes everything it can). Before you commit, `bun run check` runs the lint, the typecheck, the Vitest suite (on Node 22.13+) and the `bun:sqlite` smoke test. `bun run smoke` builds the web app, starts the real server on a scratch folder and checks that it answers.
+
+If you installed Bun through npm on Windows, Node-based tests need the actual
+`bun.exe` on `PATH`, not just npm's launcher. Add its directory for the current
+PowerShell session before running checks or committing:
+
+```powershell
+$env:Path = "$(Split-Path (bun -p 'process.execPath'));$env:Path"
+```
 
 `bun install` also turns on a pre-commit hook (`.githooks/pre-commit`). It refuses anything that looks like task data (database files, a `token`, daily logs), formats the staged code with Biome, and runs the typecheck and tests when code changed. CI runs the same checks, plus the smoke test, on Windows and Linux for every push and pull request.
 
