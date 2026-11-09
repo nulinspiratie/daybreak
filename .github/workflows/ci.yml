@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check (${{ matrix.os }})
+    # Windows is where Daybreak runs; Linux is where it's developed.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - run: bun install --frozen-lockfile
+
+      - name: Data guard (no task data in the repo)
+        run: bun scripts/check-staged.ts --all
+
+      - run: bun run typecheck
+
+      - name: Tests (Vitest)
+        run: bun run test
+
+      - name: Tests (bun:sqlite)
+        run: bun run test:bun
+
+      - name: Smoke test (build, start, ping)
+        run: bun run smoke

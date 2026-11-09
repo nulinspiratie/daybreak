@@ -1,1 +1,7 @@
+# LF everywhere, so a Windows checkout matches CI and the shell hook in
+# .githooks/ still runs. Batch files need CRLF.
+* text=auto eol=lf
 *.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
