@@ -1,6 +1,6 @@
-// Fill a fresh Daybreak database with fictional data: bun run seed
-// Uses the real data dir (DAYBREAK_DATA_DIR, else the platform default); refuses a dir inside the repo
-// or a database that already holds tasks. Point DAYBREAK_DATA_DIR at a scratch dir for dev.
+// Fill a fresh Daybreak database with fictional data: DAYBREAK_DATA_DIR=<scratch dir> bun run seed
+// Needs DAYBREAK_DATA_DIR, so fictional tasks never land in the real data dir by default; refuses a
+// dir inside the repo or a database that already holds tasks.
 import { mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -15,6 +15,9 @@ function fail(message: string): never {
   process.exit(1)
 }
 
+if (!process.env.DAYBREAK_DATA_DIR) {
+  fail('Refusing to seed: set DAYBREAK_DATA_DIR to a scratch folder (outside this repo) first, e.g. DAYBREAK_DATA_DIR=$(mktemp -d) bun run seed')
+}
 const dataDir = resolveDataDir(process.env, process.platform, homedir())
 try {
   assertOutsideRepo(dataDir, repoRoot)
