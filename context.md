@@ -8,6 +8,7 @@ Daybreak is Serwan's planned work task manager and daily planner. It replaces Lo
 
 - 2026-11-08: requirements settled in a long design conversation, mock-ups made on a design canvas, spec and design notes written. No code yet. Next: MVP with Claude Code, phases 1–5 of SPEC.md section 9.
 - 2026-11-09: the MVP (phases 1–5) is built and tested on Linux. The Windows check (SYNC.md) is next, then one week of real use before phase 6.
+  - For phase 6: the server only accepts writes from its own page (`http://127.0.0.1:<port>` or `http://localhost:<port>`). The Tauri window's origin must be added to `originGuard` in `packages/server/src/auth.ts`, or every write is refused with 403.
 
 ## Conventions
 
