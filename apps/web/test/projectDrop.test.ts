@@ -1,7 +1,13 @@
 import type { TreeView } from '@daybreak/core'
 import { describe, expect, it } from 'vitest'
 import { flatten } from '../src/tree/flatten'
-import { isUnchanged, PROJECTS_HEAD, projectDayDrop, projectDrop } from '../src/tree/projectDrop'
+import {
+  INBOX_EMPTY,
+  isUnchanged,
+  PROJECTS_HEAD,
+  projectDayDrop,
+  projectDrop,
+} from '../src/tree/projectDrop'
 import { node } from './helpers'
 
 // Rows (id@depth): i1@0 i2@0 | p@0 a@1 w@2 r@1 r1@2 q@0 (collapsed: q1, q2) x@0
@@ -242,5 +248,27 @@ describe('projectDayDrop', () => {
     expect(projectDayDrop(ids, 'b', 'c', 'before')).toBeNull()
     expect(projectDayDrop(ids, 'b', 'a', 'after')).toBeNull()
     expect(projectDayDrop(ids, 'd', null, 'after')).toBeNull()
+  })
+})
+
+describe('projectDrop into an empty Inbox', () => {
+  const empty = flatten({ ...view, inbox: [] })
+
+  it('a task without subtasks dropped on the empty-Inbox line goes to Inbox', () => {
+    expect(projectDrop(empty, 'x', INBOX_EMPTY, 0)).toEqual({
+      parentId: null,
+      section: 'inbox',
+      depth: 0,
+      label: 'Level 1 · goes to Inbox',
+    })
+    expect(projectDrop(empty, 'w', INBOX_EMPTY, 40)?.section).toBe('inbox')
+  })
+
+  it('a task with subtasks is refused there, as anywhere in Inbox', () => {
+    expect(projectDrop(empty, 'a', INBOX_EMPTY, 0)).toBeNull()
+  })
+
+  it('once Inbox has rows the line is gone, and a stale target lands nowhere', () => {
+    expect(projectDrop(rows, 'x', INBOX_EMPTY, 0)).toBeNull()
   })
 })

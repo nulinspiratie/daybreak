@@ -166,10 +166,10 @@ describe('reportWriteError', () => {
 
   it('a newer toast replaces older ones: an error after a delete replaces its Undo, an earlier one does not', () => {
     reportWriteError(new Unreachable(null))
-    toast.show({ message: "Deleted 'Task a'", restoreId: 'a', restoreIn: ['tree'] })
-    expect(toast.current()?.restoreId).toBe('a')
+    toast.show({ message: "Deleted 'Task a'", undoId: 1 })
+    expect(toast.current()?.undoId).toBe(1)
     reportWriteError(new Unreachable(null))
     expect(toast.current()).toMatchObject({ message: RUNNING })
-    expect(toast.current()?.restoreId).toBeUndefined()
+    expect(toast.current()?.undoId).toBeUndefined()
   })
 })

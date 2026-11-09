@@ -1,6 +1,6 @@
 # Daybreak MVP Implementation Plan
 
-> **Archived.** This plan is finished. Since it was written the docs moved: SPEC.md is now `docs/spec.md`, DESIGN.md is `docs/design.md`, SYNC.md is `docs/handoff.md` and `design/` is `docs/mockups/`. The text below still uses the old names.
+> **Archived.** This plan is finished. Since it was written the docs moved: SPEC.md is now `docs/spec.md`, DESIGN.md is `docs/design.md`, SYNC.md became `docs/handoff.md`, since removed (its open items are in `context.md`) and `design/` is `docs/mockups/`. The text below still uses the old names.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

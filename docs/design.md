@@ -44,12 +44,14 @@ All text meets 4.5:1 contrast, including the palest day labels. Keep it that way
 - Custom title bar, 40 px: app icon (a sun rising over a horizon on a dawn-sky rounded square; `apps/web/public/daybreak-small.svg` at this size, `daybreak.svg` from 32 px up), app name, today's date, an "Add to My Day" button showing Ctrl+Alt+Space, a "Morning review" button, then Windows-style minimise / maximise / close (46 × 40 each).
 - Body: **tree on the left (~60%)**, **My Day on the right (~40%)**.
 - **Task detail opens in place of My Day**, so the tree never shrinks. Esc returns to My Day.
-- A bar of key hints sits under the tree: Enter Edit · N New · Tab Indent · Ctrl+↑↓ Move · Ctrl+←→ Fold · M My Day · T Today · D Day · B Backlog · S Doing · W Worked on · Space Done · X Cancel · Del Delete · Ctrl+O Details. It shows the edit-mode hints (Enter New below · Tab Indent · Esc Done) while a title is being edited.
+- A bar of key hints sits under the tree: Enter Edit · N New · I Inbox · Tab Indent · Ctrl+↑↓ Move · Ctrl+←→ Fold · M My Day · T Today · D Day · B Backlog · S Doing · W Worked on · Space Done · X Cancel · Del Delete · Ctrl+O Details · Z Undo. In My Day, Del reads "Off My Day". While a title is being edited it shows an accent "EDITING" badge and the edit-mode hints (Enter New below · Tab Indent · Esc Done).
 
 ### Tree
 
-- Header: "Tasks", a "Show completed" toggle with the count of hidden done tasks, "New task" (N), collapse all.
-- Two section headers: **INBOX** (with open count) and **PROJECTS** (with count). 11 px, semibold, uppercase, 0.04em letter spacing, text2.
+- Header: "Tasks", a "Show completed" toggle with the count of hidden done tasks, "New task" (N), and one fold button: "Collapse all" while any parent is open, then "Expand all" (chevrons turned round) to open every parent again.
+- Two section headers: **INBOX** (with open count and a small "+" that adds a task to Inbox, like I) and **PROJECTS** (with count). 11 px, semibold, uppercase, 0.04em letter spacing, text2.
+- An empty Inbox shows a dashed 26 px line in its place: "Inbox is empty · I or click to add a task". Clicking it adds a task. It is also the drop target for an empty Inbox: while a task that can go there is dragged over it (or over the Projects heading from below), it turns accentSoft with an accent border, says "Moves to Inbox", and shows the usual insertion line with its ring at level 1; the rows stay put.
+- Double-click on a title edits it. Double-click elsewhere on a parent row folds or unfolds it.
 - **Rows are 26 px tall**, about 30 visible at 900 px. 22 px per nesting level, drawn with faint vertical guide lines (1 px `line` colour every 22 px).
 - Row anatomy, left to right: day column, drag handle (visible on hover), indent, chevron (if it has children), 16 px square checkbox (4 px radius), title, then on hover the quick actions with their keys (S, T, D), plus small icons if it has notes or a link. Collapsed parents show `done/total`.
 - Top-level projects are semibold.
@@ -70,6 +72,9 @@ A fixed column (about 40–52 px, right-aligned, tabular numbers, 11 px) left of
 - **Rows are 44–46 px**: drag handle on hover, 18 px round checkbox, then two lines: the grey path (10.5–12 px, text3) above the title (13.5 px).
 - A Doing row gets the `doing` fill and a semibold title. A "Start" (S) action appears on hover for open items.
 - Inline add at the bottom ("N" to focus): new items go to Inbox, scheduled today.
+- Del (or B) takes the selected task off today and shows "Removed '…' from My Day · Undo (Z)". The task stays in the tree. Shift+Del deletes the task itself.
+- Dragging a My Day row onto the tree also takes it off today. While it's over the tree, the tree gets a grey frame, the card's title is struck through with "Remove from My Day" in red under it, and the bar under the tree says "Remove from My Day · the task stays in the tree · Esc cancels".
+- Double-click on a title edits it.
 - Empty state: "Drag tasks in from the tree, or press T on a selected task".
 
 ### Task detail panel
@@ -109,6 +114,8 @@ While dragging, the pointer's horizontal offset picks the depth: every 22 px to 
 ### Drag from tree into My Day
 
 The source row stays in the tree. My Day shows an insertion line; a dashed "Today" chip previews the result. On drop, the tree row gains its Today label in the day column.
+
+A task with subtasks can't go into Inbox (Inbox is flat). Dragged there, the rows stay put and the bar under the tree says "Can't drop here · Inbox only takes tasks without subtasks".
 
 ## Morning review (chosen design: running list)
 
@@ -150,14 +157,16 @@ The bar: as good as an outliner like Logseq without touching the mouse. One lett
 
 ### Two modes in the tree and My Day
 
-- **Navigate mode** (default): one row is selected (grey fill, accent ring). Single letters are commands, so typing a letter never starts editing.
-- **Edit mode**: the caret is in a row's title. Letters type. Changes save on Enter, Esc, Tab or leaving the row.
+- **Navigate mode** (default): one row is selected (grey fill, 1 px accent ring). Single letters are commands, so typing a letter never starts editing.
+- **Edit mode**: the caret is in a row's title. Letters type. Changes save on Enter, Esc, Tab or leaving the row. The row looks like a text field so the two modes are never confused: `pane` fill, a 2 px accent ring, an accent caret, and an "Editing · Esc" tag (accentSoft pill, accent text, 10.5 px) on the right where the quick actions were. The key-hint bar starts with an accent "EDITING" badge. (Option A of three in [mockups/edit-mode-options.png](mockups/edit-mode-options.png).)
+- Enter, F2 or a double-click on the title starts edit mode.
 
 ### Navigate mode
 
 | Key | Action |
 | --- | --- |
 | ↑ ↓ | Previous / next visible row, regardless of hierarchy |
+| Alt+↑ / Alt+↓ | Previous / next row at the same level or higher, skipping nested rows: up is the previous sibling, else the parent; down is the next sibling, else the row after the parent's subtree (tree; in My Day the same as ↑↓). On macOS: Option+Shift+↑↓ |
 | ← | Go to parent (tree only) |
 | → | Go to first child; on a collapsed parent, expand it first (tree only) |
 | Home / End | First / last row |
@@ -167,6 +176,7 @@ The bar: as good as an outliner like Logseq without touching the mouse. One lett
 | M | Jump between the tree and My Day (keeps each pane's last selection; a pane with none, or whose selection is gone, selects its first row) |
 | Enter or F2 | Edit title |
 | N | New task below the selected one (tree) / focus the add field (My Day) |
+| I | New task at the end of Inbox, from anywhere (also the "+" on the Inbox heading) |
 | T | Schedule today (append to the end of My Day) |
 | D | Pick a day |
 | B | Backlog: clear the scheduled day (in My Day: take it off today) |
@@ -174,13 +184,15 @@ The bar: as good as an outliner like Logseq without touching the mouse. One lett
 | W | Worked on |
 | Space | Done / undone. On a task with open subtasks, see "Closing a parent" |
 | X | Cancel / reopen. Same double-press rule as Space |
-| Del | Delete the task and its subtree (undo toast) |
+| Del | Delete the task and its subtree (undo toast). In My Day: take it off today (undo toast); the task stays |
+| Shift+Del | Delete the task and its subtree, from My Day too |
 | Ctrl+O | Open the detail panel; again to edit its notes |
 | O | Open the task's link |
 | Esc | Close detail panel, cancel drag, clear selection. In the notes: save and return to the tree with the panel still open; a second Esc closes it |
-| Ctrl+Z | Undo last change (stretch goal) |
+| Z or Ctrl+Z | Undo the last change; press again to keep going back (see "Undo") |
+| Ctrl+Shift+Z or Ctrl+Y | Redo what Z undid |
 
-Plain letters (T, D, B, S, W, X, N, M, O) and Space work the same in the tree and My Day. Ctrl+N and Ctrl+1–9 are deliberately not used: browsers keep them for new window and tab switching, and the MVP runs in a browser tab. Ctrl+N can be added as an alias in the Tauri shell.
+Plain letters (T, D, B, S, W, X, N, I, M, O, Z) and Space work the same in the tree and My Day. Ctrl+N and Ctrl+1–9 are deliberately not used: browsers keep them for new window and tab switching, and the MVP runs in a browser tab. Ctrl+N can be added as an alias in the Tauri shell.
 
 ### Edit mode
 
@@ -206,9 +218,15 @@ Logseq-style: the task (with its subtree) moves one slot at a time and keeps its
 
 Space (or X) on a task with open subtasks doesn't act straight away. The first press shows an inline note under the row: "4 open subtasks. Press Space again to close them all." A second press within about 4 seconds closes the task and all its open subtasks; any other key or the timeout dismisses the note. The toast then says "Done 'Milestone 2' and 4 subtasks". Pressing Space again on that task reopens it and exactly the subtasks closed with it. Finishing the last open child never closes the parent automatically. Clicking a parent's checkbox follows the same rule: the first click shows the note, the second closes.
 
+### Undo
+
+Z (or Ctrl+Z) undoes the last change made in the main window, and keeps going back one change per press: scheduling (T, D, B, drops into My Day, reordering My Day, taking a task off today), moves (Mod+↑↓, Tab, Shift+Tab, drags), Done / Cancel / reopen, Doing / Worked on, deletes, new tasks and title edits. Each undo shows a toast saying what it put back ("Undone: Scheduled 'Order coax' for today"); with nothing left it says "Nothing to undo". Ctrl+Shift+Z or Ctrl+Y redoes what was undone ("Redone: …"), one change per press; any new change clears what could be redone. In edit mode Z types and Ctrl+Z, Ctrl+Y are the text field's own.
+
+Not undone: folding, notes and link edits in the detail panel (their fields have their own undo while you type), and changes made elsewhere (the CLI, another window). The morning review has its own Z. The history lasts until the window is reloaded. Two results are approximate, by choice: a task moved back goes after the sibling that was visible above it (a hidden completed sibling can make it land one slot off), and undoing a reopen closes the task again with all its open subtasks, not only those closed with it.
+
 ### Delete toast
 
-Dark toast at the bottom of the window, same style as the quick-add toast: "Deleted 'Port fit routines' and 6 subtasks · Undo (Z)". Stays about 8 seconds; Z or clicking Undo restores the subtree exactly where it was. A newer delete replaces the toast, and Z then undoes the newest one.
+Dark toast at the bottom of the window, same style as the quick-add toast: "Deleted 'Port fit routines' and 6 subtasks · Undo (Z)". Stays about 8 seconds; Z or clicking Undo restores the subtree exactly where it was. Clicking Undo reverts that delete even if newer changes came after it; Z always undoes the newest change. Taking a task off My Day shows the same toast: "Removed 'Call facilities' from My Day · Undo (Z)".
 
 ### Morning review
 
@@ -217,6 +235,16 @@ T Today · D Another day · B Backlog (Not today for suggestions) · X Cancel ·
 ### Global
 
 Ctrl+Alt+Space opens quick add from anywhere in Windows.
+
+## Installed app (PWA)
+
+Added at Serwan's request, outside V1 scope. A thin PWA: a manifest, icons, and a service worker that only shows a "Daybreak isn't running" page when a page load can't reach the server, and reloads into the app once it's back. It caches nothing and works nothing offline: the server is the only source of truth, so there's no stale data and an update is just a reload.
+
+- The app's own title bar stays below the browser's for now; Edge's "window controls overlay" could merge them, but Tauri does that properly in phase 6.
+- The installed window's title bar colour follows the theme (`--win`).
+- Icons come from the sunrise `apps/web/public/daybreak.svg`: 192 and 512 px PNGs, and a 512 px maskable one (sky to the edges, sun inside the safe zone). `daybreak-small.svg` is the simpler 16–24 px version; `favicon.ico` holds 16–256 px. Phase 6 can feed `daybreak.svg` to `tauri icon`.
+- The offline page carries the icon inline, since the server that would serve it is down.
+- Opening the app again focuses the open window rather than starting a second one (`launch_handler: focus-existing`).
 
 ## Accessibility
 

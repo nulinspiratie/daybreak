@@ -112,16 +112,24 @@ const NAV: Row[] = [
     pane: 'both',
     want: 'detail.open',
   },
-  { name: 'Z', ev: () => key('z'), mode: 'navigate', pane: 'both', want: 'toast.undo' },
+  { name: 'Z', ev: () => key('z'), mode: 'navigate', pane: 'both', want: 'undo' },
   { name: 'Enter', ev: () => key('Enter'), mode: 'navigate', pane: 'both', want: 'edit.start' },
   { name: 'F2', ev: () => key('F2'), mode: 'navigate', pane: 'both', want: 'edit.start' },
   { name: 'Esc', ev: () => key('Escape'), mode: 'navigate', pane: 'both', want: 'escape' },
+  { name: 'I', ev: () => key('i'), mode: 'navigate', pane: 'both', want: 'new.inbox' },
   {
-    name: 'Ctrl+Z (stretch, unbound)',
+    name: 'Shift+Del',
+    ev: () => key('Delete', { shiftKey: true }),
+    mode: 'navigate',
+    pane: 'both',
+    want: 'delete.task',
+  },
+  {
+    name: 'Ctrl+Z',
     ev: () => key('z', { ctrlKey: true }),
     mode: 'navigate',
     pane: 'both',
-    want: null,
+    want: 'undo',
   },
   {
     name: 'Ctrl+T',
@@ -214,8 +222,10 @@ describe('the Mod key per platform', () => {
     for (const ctx of [win, { ...win, pane: 'day' as const }, { ...win, mode: 'edit' as const }]) {
       expect(resolveKey(key('ArrowLeft', { altKey: true }), ctx)).toBeNull()
       expect(resolveKey(key('ArrowRight', { altKey: true }), ctx)).toBeNull()
-      expect(resolveKey(key('ArrowUp', { altKey: true }), ctx)).toBeNull()
     }
+    // Alt+↑↓ is the skip-nesting move (navigate mode only).
+    expect(resolveKey(key('ArrowUp', { altKey: true }), win)).toBe('nav.upLevel')
+    expect(resolveKey(key('ArrowUp', { altKey: true }), { ...win, mode: 'edit' })).toBeNull()
   })
   it('Mac folds with Option+←/→; Cmd+← (browser Back) and Ctrl+arrows are not bound', () => {
     const mac = { ...tree, isMac: true }
@@ -233,6 +243,27 @@ describe('the Mod key per platform', () => {
     expect(resolveKey(key('t', { altKey: true }), win)).toBeNull()
     expect(resolveKey(key(' ', { metaKey: true }), win)).toBeNull()
     expect(resolveKey(key('Tab', { ctrlKey: true }), win)).toBeNull()
+  })
+
+  it('Alt+↑↓ skip nested rows on Windows; Option+Shift+↑↓ on macOS', () => {
+    const win = { ...tree, isMac: false }
+    const mac = { ...tree, isMac: true }
+    expect(resolveKey(key('ArrowUp', { altKey: true }), win)).toBe('nav.upLevel')
+    expect(resolveKey(key('ArrowDown', { altKey: true }), win)).toBe('nav.downLevel')
+    expect(resolveKey(key('ArrowUp', { altKey: true }), mac)).toBe('move.up')
+    expect(resolveKey(key('ArrowUp', { altKey: true, shiftKey: true }), mac)).toBe('nav.upLevel')
+    expect(resolveKey(key('ArrowUp', { ctrlKey: true, shiftKey: true }), win)).toBeNull()
+    expect(resolveKey(key('ArrowLeft', { altKey: true }), win)).toBeNull() // browser Back
+    expect(resolveKey(key('ArrowUp', { altKey: true }), { ...win, mode: 'edit' })).toBeNull()
+  })
+
+  it('redo is Ctrl+Shift+Z or Ctrl+Y, on both platforms; not in edit mode', () => {
+    for (const isMac of [false, true]) {
+      const ctx = { ...tree, isMac }
+      expect(resolveKey(key('Z', { ctrlKey: true, shiftKey: true }), ctx)).toBe('redo')
+      expect(resolveKey(key('y', { ctrlKey: true }), ctx)).toBe('redo')
+      expect(resolveKey(key('y', { ctrlKey: true }), { ...ctx, mode: 'edit' })).toBeNull()
+    }
   })
 })
 

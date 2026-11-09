@@ -14,3 +14,5 @@ Source of the Daybreak mock-ups, copied from the design canvas at https://claude
 | `QuickAdd.dc.html` | Quick add from anywhere (Ctrl+Alt+Space) |
 | `RowStates.dc.html` | A task row in every state, plus the drag moments |
 | `DatePlacement.dc.html` | Day column colour scale |
+
+`edit-mode-options.png` is not from the canvas: screenshots of the running app comparing three looks for edit mode (A is built).

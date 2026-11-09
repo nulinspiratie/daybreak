@@ -13,6 +13,7 @@ import { TOAST_MS, toast, toastText, useToastStore } from '../src/shell/toastSto
 import { flatten } from '../src/tree/flatten'
 import { pendingId, settlePendingId, type TreeCache } from '../src/tree/optimistic'
 import { useUi } from '../src/ui/store'
+import { undoHistory } from '../src/undo/history'
 import { createFakeApi, node } from './helpers'
 
 const TODAY = '2026-11-09'
@@ -102,6 +103,7 @@ beforeEach(() => {
     draft: null,
   })
   toast.dismiss()
+  undoHistory.clear()
 })
 
 describe('closing a parent: the double-press rule', () => {
@@ -212,7 +214,7 @@ describe('closing a parent: the double-press rule', () => {
     await run('delete')
     select('c1')
     await run('status.done')
-    expect(toast.current()?.restoreId).toBe('p3')
+    expect(toast.current()?.message).toBe("Deleted 'p3'")
   })
 
   it('R26: Space toggles done, X toggles cancelled; the other closed status is switched, not reopened', async () => {
@@ -248,9 +250,9 @@ describe('delete and undo', () => {
     )
     expect(ui().treeSel).toBe('p2') // the next visible row after the subtree
 
-    await run('toast.undo')
+    await run('undo')
     expect(calls[1]).toEqual(['POST', '/api/tasks/p1/restore', undefined])
-    expect(toast.current()).toBeNull()
+    expect(toast.current()?.message).toBe("Undone: Deleted 'Port fit routines'")
     expect(ui().treeSel).toBe('p1')
   })
 
@@ -268,18 +270,18 @@ describe('delete and undo', () => {
     await run('delete')
     select('p3')
     await run('delete')
-    await run('toast.undo')
+    await run('undo')
     expect(calls.at(-1)).toEqual(['POST', '/api/tasks/p3/restore', undefined])
   })
 
-  it('toast.undo selects the restored task only in a pane it belongs to', async () => {
+  it('undo selects the restored task only in a pane it belongs to', async () => {
     fake.reply = (method) =>
       method === 'DELETE' ? { deletedIds: ['c5'] } : { restoredIds: ['c5'] }
     ui().set({ daySel: 'd1' })
     select('c5')
     await run('delete')
     await run('pane.toggle') // to My Day, where c5 is not scheduled
-    await run('toast.undo')
+    await run('undo')
     expect(calls.at(-1)).toEqual(['POST', '/api/tasks/c5/restore', undefined])
     expect(ui()).toMatchObject({ pane: 'day', daySel: 'd1', treeSel: 'p2' })
 
@@ -289,24 +291,26 @@ describe('delete and undo', () => {
     select('d2', 'day')
     await run('delete')
     expect(ui().daySel).toBe('d3')
-    await run('toast.undo')
+    await run('undo')
     expect(ui().daySel).toBe('d2')
   })
 
-  it('toast.undo keeps the toast when the restore fails, so Z can be tried again', async () => {
+  it('undo keeps the toast and the change when the restore fails, so Z can be tried again', async () => {
     fake.reply = (method) => {
       if (method === 'DELETE') return { deletedIds: ['p3'] }
       throw new ApiError(500, 'internal', 'boom')
     }
     select('p3')
     await run('delete')
-    await expect(run('toast.undo')).rejects.toThrow('boom')
-    expect(toast.current()?.restoreId).toBe('p3')
+    await expect(run('undo')).rejects.toThrow('boom')
+    expect(toast.current()?.undoId).toBeDefined()
+    expect(undoHistory.size()).toBe(1)
   })
 
-  it('toast.undo with no toast does nothing', async () => {
-    await run('toast.undo')
+  it('undo with nothing to undo sends nothing and says so', async () => {
+    await run('undo')
     expect(calls).toEqual([])
+    expect(toast.current()?.message).toBe('Nothing to undo')
   })
 })
 
@@ -365,7 +369,7 @@ describe('moves', () => {
     fake.reply = () => ({ items: DAY })
     select('d1', 'day')
     await run('move.up')
-    expect(calls).toEqual([['GET', `/api/day/${TODAY}`]])
+    expect(calls).toEqual([])
   })
 })
 
@@ -591,7 +595,7 @@ describe('toast store', () => {
 
   it('lasts 8 s and a newer toast replaces the older one', () => {
     vi.useFakeTimers()
-    toast.show({ message: 'one', restoreId: 'a' })
+    toast.show({ message: 'one', undoId: 1 })
     vi.advanceTimersByTime(5000)
     toast.show({ message: 'two' })
     expect(useToastStore.getState().toast?.message).toBe('two')
@@ -649,5 +653,244 @@ describe('drag and drop writes', () => {
       ['POST', '/api/tasks/c5/schedule', { date: TODAY, beforeId: 'd2' }],
       ['POST', '/api/tasks/d3/schedule', { date: TODAY }],
     ])
+  })
+})
+
+describe('undo history (Z)', () => {
+  const ok = () => ({ task: node('x'), changedIds: ['x'] })
+
+  it('My Day: Del takes the task off today, not out of the tree, with an undo toast', async () => {
+    fake.reply = ok
+    select('d2', 'day')
+    await run('delete')
+    expect(calls).toEqual([['POST', '/api/tasks/d2/schedule', { date: null }]])
+    expect(toastText(toast.current()!)).toBe("Removed 'Day two' from My Day · Undo (Z)")
+    expect(ui().daySel).toBe('d3')
+
+    // Z puts it back where it was: after d1.
+    await run('undo')
+    expect(calls.at(-1)).toEqual(['POST', '/api/tasks/d2/schedule', { date: TODAY, afterId: 'd1' }])
+    expect(ui().daySel).toBe('d2')
+    expect(toast.current()?.message).toBe("Undone: Removed 'Day two' from My Day")
+  })
+
+  it('My Day: Shift+Del deletes the task itself', async () => {
+    fake.reply = () => ({ deletedIds: ['d1'] })
+    select('d1', 'day')
+    await run('delete.task')
+    expect(calls).toEqual([['DELETE', '/api/tasks/d1', undefined]])
+  })
+
+  it('Z undoes T: the task goes back to having no day', async () => {
+    fake.reply = ok
+    select('c5')
+    await run('schedule.today')
+    await run('undo')
+    expect(calls).toEqual([
+      ['POST', '/api/tasks/c5/schedule', { date: TODAY }],
+      ['POST', '/api/tasks/c5/schedule', { date: null }],
+    ])
+  })
+
+  it('Z keeps undoing, newest first', async () => {
+    fake.reply = ok
+    select('c5')
+    await run('schedule.today')
+    await run('mark.worked')
+    select('p3')
+    await run('move.up')
+    await run('undo')
+    await run('undo')
+    await run('undo')
+    expect(calls.slice(3)).toEqual([
+      // The move: back after p2, its previous sibling.
+      ['POST', '/api/tasks/p3/move', { parentId: null, section: 'projects', afterId: 'p2' }],
+      // The mark: cleared again.
+      ['POST', '/api/tasks/c5/mark', { mark: null }],
+      ['POST', '/api/tasks/c5/schedule', { date: null }],
+      ['POST', '/api/tasks/c5/schedule', { date: null }],
+    ])
+    expect(undoHistory.size()).toBe(0)
+  })
+
+  it('Z undoes indent with the task back under its old parent, after its old sibling', async () => {
+    fake.reply = ok
+    select('c5')
+    await run('indent')
+    await run('undo')
+    expect(calls.at(-1)).toEqual([
+      'POST',
+      '/api/tasks/c5/move',
+      { parentId: 'p1', section: 'projects', afterId: 'm2' },
+    ])
+  })
+
+  it('a move whose old neighbour has gone goes back to the old parent without one', async () => {
+    fake.reply = (_method, path, body) => {
+      if (path.endsWith('/move') && (body as { afterId?: string }).afterId)
+        throw new ApiError(400, 'invalid', 'gone')
+      return ok()
+    }
+    select('c5')
+    await run('outdent')
+    await run('undo')
+    expect(calls.slice(-2)).toEqual([
+      ['POST', '/api/tasks/c5/move', { parentId: 'p1', section: 'projects', afterId: 'm2' }],
+      ['POST', '/api/tasks/c5/move', { parentId: 'p1', section: 'projects' }],
+    ])
+  })
+
+  it('Z undoes Space (reopens) and the reopen of a closed task (closes again)', async () => {
+    fake.reply = ok
+    select('c1')
+    await run('status.done')
+    await run('undo')
+    expect(calls.at(-1)).toEqual(['PATCH', '/api/tasks/c1', { status: 'open' }])
+
+    const done = flatten(view()).map((r) =>
+      r.id === 'c1' ? { ...r, node: { ...r.node, status: 'done' as const } } : r,
+    )
+    await run('status.done', { rows: done })
+    await run('undo')
+    expect(calls.at(-1)).toEqual(['PATCH', '/api/tasks/c1', { status: 'done' }])
+  })
+
+  it('S demotes the Doing task; Z clears the new mark and makes the old one Doing again', async () => {
+    fake.reply = ok
+    const items = DAY.map((i) => (i.task.id === 'd1' ? { ...i, mark: 'doing' as const } : i))
+    select('d2', 'day')
+    await run('mark.doing', { dayItems: items })
+    await run('undo', { dayItems: items })
+    expect(calls).toEqual([
+      ['POST', '/api/tasks/d2/mark', { mark: 'doing' }],
+      ['POST', '/api/tasks/d2/mark', { mark: null }],
+      ['POST', '/api/tasks/d1/mark', { mark: 'doing' }],
+    ])
+  })
+
+  it('a refused change leaves nothing to undo', async () => {
+    fake.reply = () => {
+      throw new ApiError(400, 'invalid', 'no')
+    }
+    select('c5')
+    await expect(run('schedule.today')).rejects.toThrow('no')
+    expect(undoHistory.size()).toBe(0)
+  })
+
+  it('a parent close that only asked for confirmation records nothing', async () => {
+    fake.reply = () => {
+      throw needsConfirmation(4)
+    }
+    select('m2')
+    await run('status.done')
+    expect(undoHistory.size()).toBe(0)
+  })
+
+  it('the toast Undo reverts its own change even after newer ones', async () => {
+    fake.reply = (method) => (method === 'DELETE' ? { deletedIds: ['p3'] } : ok())
+    select('p3')
+    await run('delete')
+    const undoId = toast.current()!.undoId!
+    select('c5')
+    await run('schedule.today')
+    const { undo } = await import('../src/keyboard/commands')
+    await undo(env(), undoId)
+    expect(calls.at(-1)).toEqual(['POST', '/api/tasks/p3/restore', undefined])
+    expect(undoHistory.size()).toBe(1) // T is still there for Z
+  })
+
+  it('a title change is undone back to the old title', async () => {
+    fake.reply = ok
+    ui().set({ editing: { id: 'p3', initial: 'p3', text: 'Renamed' }, treeSel: 'p3' })
+    await run('edit.exit')
+    await run('undo')
+    expect(calls).toEqual([
+      ['PATCH', '/api/tasks/p3', { title: 'Renamed' }],
+      ['PATCH', '/api/tasks/p3', { title: 'p3' }],
+    ])
+  })
+})
+
+describe('I: new task in Inbox', () => {
+  it('opens a draft at the end of Inbox whatever is selected, also from My Day', async () => {
+    select('k1')
+    await run('new.inbox')
+    expect(ui().draft).toEqual({ section: 'inbox', parentId: null })
+    expect(ui().editing?.id).toBe('draft')
+    ui().set({ draft: null, editing: null })
+    select('d1', 'day')
+    await run('new.inbox')
+    expect(ui()).toMatchObject({ pane: 'tree', draft: { section: 'inbox', parentId: null } })
+  })
+})
+
+describe('redo', () => {
+  const ok = () => ({ task: node('x'), changedIds: ['x'] })
+
+  it('redo makes an undone change again; a new change clears what could be redone', async () => {
+    fake.reply = ok
+    select('c5')
+    await run('schedule.today')
+    await run('undo')
+    await run('redo')
+    expect(calls).toEqual([
+      ['POST', '/api/tasks/c5/schedule', { date: TODAY }],
+      ['POST', '/api/tasks/c5/schedule', { date: null }],
+      ['POST', '/api/tasks/c5/schedule', { date: TODAY }],
+    ])
+    expect(toast.current()?.message).toBe("Redone: Scheduled 'c5' for today")
+    // Redone, it can be undone again.
+    await run('undo')
+    expect(calls.at(-1)).toEqual(['POST', '/api/tasks/c5/schedule', { date: null }])
+    select('p3')
+    await run('status.done')
+    await run('redo')
+    expect(toast.current()?.message).toBe('Nothing to redo')
+  })
+
+  it('a delete is redone by deleting again; a new task by restoring it', async () => {
+    fake.reply = (method) => (method === 'DELETE' ? { deletedIds: ['p3'] } : ok())
+    select('p3')
+    await run('delete')
+    await run('undo')
+    await run('redo')
+    expect(calls.map((c) => `${c[0]} ${c[1]}`)).toEqual([
+      'DELETE /api/tasks/p3',
+      'POST /api/tasks/p3/restore',
+      'DELETE /api/tasks/p3',
+    ])
+  })
+})
+
+describe('Ctrl+Shift+↑↓: skip over nested rows', () => {
+  // Rows: i1 | p1 (m2 (c1..c4), c5), p2 (collapsed), p3
+  it('up goes to the previous sibling, past its subtree, else to the parent', async () => {
+    select('c5')
+    await run('nav.upLevel')
+    expect(ui().treeSel).toBe('m2')
+    await run('nav.upLevel')
+    expect(ui().treeSel).toBe('p1')
+    await run('nav.upLevel')
+    expect(ui().treeSel).toBe('i1') // the row above at the top level, across the sections
+  })
+
+  it('down goes to the next sibling, else the row after the parent’s subtree', async () => {
+    select('m2')
+    await run('nav.downLevel')
+    expect(ui().treeSel).toBe('c5')
+    await run('nav.downLevel')
+    expect(ui().treeSel).toBe('p2')
+    select('c4')
+    await run('nav.downLevel')
+    expect(ui().treeSel).toBe('c5')
+    select('p3')
+    await run('nav.downLevel')
+    expect(ui().treeSel).toBe('p3') // nothing below: stays
+  })
+
+  it('in My Day it is plain ↑↓', async () => {
+    select('d2', 'day')
+    await run('nav.upLevel')
+    expect(ui().daySel).toBe('d1')
   })
 })

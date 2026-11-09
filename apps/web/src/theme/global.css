@@ -274,6 +274,107 @@ kbd {
   opacity: 0.85;
 }
 
+/*
+ * Edit mode: the row turns into a text field (pane-coloured, a 2 px accent ring) and says
+ * "Editing · Esc" on the right, so it never looks like a plain selection. Wins over Doing's fill.
+ */
+.row.row--editing,
+.row.row--editing:hover {
+  background: var(--pane);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.row__editor {
+  caret-color: var(--accent);
+}
+
+.row__editing {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--accentSoft);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.row__editing kbd {
+  font: inherit;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* The key-hint bar names the mode while a title is edited. */
+.keyhints__mode {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--onAccent);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Inbox's "+" and the empty-Inbox line. */
+.tree__section-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text3);
+  cursor: pointer;
+}
+
+.tree__section-add:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tree__empty-slot {
+  position: relative;
+}
+
+.tree__empty {
+  display: block;
+  width: calc(100% - 76px);
+  height: 26px;
+  margin: 0 0 0 76px;
+  padding: 0 8px;
+  border: 1px dashed var(--line2);
+  border-radius: 5px;
+  background: none;
+  color: var(--text3);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree__empty:hover {
+  background: var(--hover);
+  color: var(--text2);
+}
+
+.tree__empty--drop {
+  border: 1px solid var(--accent);
+  background: var(--accentSoft);
+  color: var(--accent);
+}
+
 .day {
   width: 48px;
   flex: none;
@@ -1266,6 +1367,35 @@ kbd {
   width: auto;
   height: 46px;
   cursor: grabbing;
+}
+
+/* A My Day row over the tree: dropping takes it off today. */
+.dragcard.dragcard--removing {
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.16),
+    0 0 0 1px var(--overdue);
+}
+
+.dragcard--fill.dragcard--removing {
+  height: auto;
+  min-height: 46px;
+}
+
+.dragcard--removing .dragcard__title {
+  text-decoration: line-through;
+  color: var(--text3);
+}
+
+.dragcard__remove {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--overdue);
+}
+
+.pane--remove .tree {
+  background: var(--pane2);
+  box-shadow: inset 0 0 0 2px var(--line2);
+  border-radius: 6px;
 }
 
 .dragcard__path {

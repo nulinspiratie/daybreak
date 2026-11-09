@@ -5,6 +5,7 @@ type Hint = readonly [key: string, label: string]
 const NAVIGATE: readonly Hint[] = [
   ['Enter', 'Edit'],
   ['N', 'New'],
+  ['I', 'Inbox'],
   ['Tab', 'Indent'],
   ['Ctrl+↑↓', 'Move'],
   ['Ctrl+←→', 'Fold'],
@@ -18,7 +19,13 @@ const NAVIGATE: readonly Hint[] = [
   ['X', 'Cancel'],
   ['Del', 'Delete'],
   ['Ctrl+O', 'Details'],
+  ['Z', 'Undo'],
 ]
+
+/** In My Day, Del takes the task off today; Shift+Del deletes it. */
+const NAVIGATE_DAY: readonly Hint[] = NAVIGATE.map(
+  ([key, label]): Hint => (key === 'Del' ? ['Del', 'Off My Day'] : [key, label]),
+)
 
 const EDIT: readonly Hint[] = [
   ['Enter', 'New below'],
@@ -36,9 +43,10 @@ const EDIT_DAY: readonly Hint[] = [
 export function KeyHints() {
   const editing = useUi((s) => s.editing !== null)
   const inDay = useUi((s) => s.pane === 'day')
-  const hints = editing ? (inDay ? EDIT_DAY : EDIT) : NAVIGATE
+  const hints = editing ? (inDay ? EDIT_DAY : EDIT) : inDay ? NAVIGATE_DAY : NAVIGATE
   return (
     <div className="keyhints" role="group" aria-label="Keyboard hints">
+      {editing && <span className="keyhints__mode">Editing</span>}
       {hints.map(([key, label]) => (
         <span className="keyhints__item" key={key}>
           <kbd className="keyhints__key">{key}</kbd>

@@ -25,7 +25,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { type CommandEnv, moveTo, scheduleAt } from '../keyboard/commands'
+import { type CommandEnv, moveTo, removeFromDay, scheduleAt } from '../keyboard/commands'
 import { reportWriteError, useCommandEnv } from '../keyboard/useKeyboard'
 import { PATH_SEPARATOR } from '../myday/DayRow'
 import { useUi } from '../ui/store'
@@ -53,9 +53,11 @@ export interface DragState {
   tree: DropProjection | null
   /** Over My Day: where it would land (null: nowhere new). */
   day: DayAt | null
+  /** A My Day row over the tree: dropping it takes it off today. */
+  removing: boolean
 }
 
-const IDLE: DragState = { active: null, over: null, tree: null, day: null }
+const IDLE: DragState = { active: null, over: null, tree: null, day: null, removing: false }
 const DragContext = createContext<DragState>(IDLE)
 export const useDrag = () => useContext(DragContext)
 
@@ -79,12 +81,11 @@ function project(env: CommandEnv, e: DragMoveEvent): DragState {
   if (!active || !over) return { ...IDLE, active }
   const overPane: Pane = over.pane === 'pane' ? (over.id as Pane) : over.pane
   if (overPane === 'tree') {
-    // A My Day item dropped on the tree does nothing.
-    const tree =
-      active.pane === 'tree' && over.pane === 'tree'
-        ? projectDrop(env.rows, active.id, over.id, e.delta.x)
-        : null
-    return { active, over: 'tree', tree, day: null }
+    // A My Day item dropped on the tree comes off today.
+    if (active.pane === 'day')
+      return { active, over: 'tree', tree: null, day: null, removing: true }
+    const tree = over.pane === 'tree' ? projectDrop(env.rows, active.id, over.id, e.delta.x) : null
+    return { active, over: 'tree', tree, day: null, removing: false }
   }
   const ids = env.dayItems.map((i) => i.task.id)
   const overId = over.pane === 'day' ? over.id : null
@@ -98,7 +99,13 @@ function project(env: CommandEnv, e: DragMoveEvent): DragState {
     const middle = e.over.rect.top + e.over.rect.height / 2
     side = card && card.top + card.height / 2 < middle ? 'before' : 'after'
   }
-  return { active, over: 'day', tree: null, day: projectDayDrop(ids, active.id, overId, side) }
+  return {
+    active,
+    over: 'day',
+    tree: null,
+    day: projectDayDrop(ids, active.id, overId, side),
+    removing: false,
+  }
 }
 
 /** Sends the drop and shows it at once in the cached tree and day. */
@@ -124,6 +131,15 @@ function drop(env: CommandEnv, s: DragState): void {
     moveTo(env, active.id, to, expand).catch(reportWriteError)
     return
   }
+  if (s.removing) {
+    const item = env.dayItems.find((i) => i.task.id === active.id)
+    if (!item) return
+    const ids = env.dayItems.map((i) => i.task.id)
+    const k = ids.indexOf(active.id)
+    ui.set({ daySel: ids[k + 1] ?? ids[k - 1] ?? null, pane: 'day' })
+    removeFromDay(env, item.task).catch(reportWriteError)
+    return
+  }
   if (s.over === 'day') {
     ui.set({ daySel: active.id, pane: 'day' })
     if (!s.day) return
@@ -144,12 +160,19 @@ function DragCard({ env, s, grabX }: { env: CommandEnv; s: DragState; grabX: num
     const title = item?.task.title ?? row?.node.title ?? ''
     return (
       <div
-        className={`dragcard dragcard--day${active.pane === 'day' ? ' dragcard--fill' : ''}`}
+        className={[
+          'dragcard dragcard--day',
+          active.pane === 'day' && 'dragcard--fill',
+          s.removing && 'dragcard--removing',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         // From the tree, the small card sits just right of the pointer, wherever on the row it grabbed.
         style={active.pane === 'tree' ? { marginLeft: Math.max(0, grabX - 24) } : undefined}
       >
         <span className="dragcard__path">{path.join(PATH_SEPARATOR)}</span>
         <span className="dragcard__title">{title}</span>
+        {s.removing && <span className="dragcard__remove">Remove from My Day</span>}
       </div>
     )
   }
@@ -377,7 +400,7 @@ export function DropHeading({ id, children }: { id: string; children: ReactNode 
 }
 
 /** The insertion line: a 2 px accent line, in the tree with a ring where the task will land. */
-function DropLine({ depth, at = 'top' }: Indicator) {
+export function DropLine({ depth, at = 'top' }: Indicator) {
   const cls = [
     'dropline',
     depth === 'full' && 'dropline--full',

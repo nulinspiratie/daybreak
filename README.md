@@ -8,7 +8,7 @@ One nested task tree (Inbox plus projects), a My Day list for today, and a two-m
 
 - [docs/spec.md](docs/spec.md): what it does, data model, architecture, build plan, open questions
 - [docs/design.md](docs/design.md): visual and interaction details from the design canvas
-- [docs/handoff.md](docs/handoff.md): calls made on your behalf while building, and what needs checking on the work laptop
+- [docs/keyboard.md](docs/keyboard.md): every key and mouse action, and the decisions behind them
 - [context.md](context.md): where things stand
 
 Status: MVP (phases 1–5) built; Windows check, then trial use.

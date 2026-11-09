@@ -2,10 +2,8 @@ import { create } from 'zustand'
 
 export interface ToastInput {
   message: string
-  /** Set on a delete toast: Z or the Undo button restores this task's subtree. */
-  restoreId?: string
-  /** The panes the deleted task was listed in; undo reselects it only there. */
-  restoreIn?: Array<'tree' | 'day'>
+  /** The undo history entry this toast offers to undo (its Undo button reverts that one). */
+  undoId?: number
 }
 export interface Toast extends ToastInput {
   id: number
@@ -22,7 +20,7 @@ export const useToastStore = create<{ toast: Toast | null }>(() => ({ toast: nul
 
 /** The full line as shown, e.g. "Deleted 'Port fit routines' and 6 subtasks · Undo (Z)". */
 export const toastText = (t: ToastInput): string =>
-  t.restoreId ? `${t.message} · Undo (Z)` : t.message
+  t.undoId !== undefined ? `${t.message} · Undo (Z)` : t.message
 
 let seq = 0
 let timer: ReturnType<typeof setTimeout> | undefined

@@ -1,4 +1,5 @@
 import type { TreeNode } from '@daybreak/core'
+import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Fragment, useCallback, useMemo, useRef } from 'react'
 import { api } from '../api/client'
@@ -8,11 +9,31 @@ import { reportWriteError, useCommandRunner } from '../keyboard/useKeyboard'
 import { CONFIRM_NOTE_ID, ConfirmNote } from '../shell/ConfirmNote'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
-import { DragRow, DropHeading, DropLabel, dndId, STAY_PUT, useDrag, usePaneDrop } from './Dnd'
+import {
+  DragRow,
+  DropHeading,
+  DropLabel,
+  DropLine,
+  dndId,
+  STAY_PUT,
+  useDrag,
+  usePaneDrop,
+} from './Dnd'
 import { type FlatRow, flatten } from './flatten'
 import { rowKey } from './optimistic'
-import { PROJECTS_HEAD, withoutDescendants } from './projectDrop'
+import { INBOX_EMPTY, PROJECTS_HEAD, withoutDescendants } from './projectDrop'
+import { rowControlClick } from './rowControlClick'
 import { TreeRow } from './TreeRow'
+
+function collapsedParents(nodes: TreeNode[], out: string[] = []): string[] {
+  for (const n of nodes) {
+    if (n.children.length > 0) {
+      if (n.collapsed) out.push(n.id)
+      collapsedParents(n.children, out)
+    }
+  }
+  return out
+}
 
 function expandedParents(nodes: TreeNode[], out: string[] = []): string[] {
   for (const n of nodes) {
@@ -24,11 +45,58 @@ function expandedParents(nodes: TreeNode[], out: string[] = []): string[] {
   return out
 }
 
-function SectionHead({ title, count }: { title: string; count: number }) {
+function SectionHead({
+  title,
+  count,
+  onAdd,
+}: {
+  title: string
+  count: number
+  /** Shows a "+" that adds a task to this section. */
+  onAdd?: () => void
+}) {
   return (
     <div className="tree__section" role="none">
       <span>{title}</span>
       <span className="tree__section-count">{count}</span>
+      {onAdd && (
+        <button
+          type="button"
+          className="tree__section-add"
+          aria-label={`Add to ${title} (I)`}
+          title={`Add to ${title} (I)`}
+          onClick={(e) => rowControlClick(e, onAdd)}
+        >
+          <svg aria-hidden="true" width="10" height="10" viewBox="0 0 16 16">
+            <path
+              d="M8 2.5v11M2.5 8h11"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Where an empty Inbox's rows would be: a hint, a click target that adds a task, and a drop
+ * target. While a drop would land in Inbox it shows the insertion line, as between rows.
+ */
+function EmptyInbox({ onAdd, dropping }: { onAdd: () => void; dropping: boolean }) {
+  const { setNodeRef } = useDroppable({ id: dndId('tree', INBOX_EMPTY) })
+  return (
+    <div ref={setNodeRef} role="none" className="tree__empty-slot">
+      <button
+        type="button"
+        className={`tree__empty${dropping ? ' tree__empty--drop' : ''}`}
+        onClick={(e) => rowControlClick(e, onAdd)}
+      >
+        {dropping ? 'Moves to Inbox' : 'Inbox is empty · I or click to add a task'}
+      </button>
+      {dropping && <DropLine depth={0} />}
     </div>
   )
 }
@@ -65,8 +133,20 @@ export function TreePane() {
     ids.splice(projectsAt, 0, dndId('tree', PROJECTS_HEAD))
     return ids
   }, [rows, projectsAt])
-  const dropLabel = drag.over === 'tree' && drag.tree ? drag.tree.label : null
-  const stayPut = dragged !== null && drag.over === 'tree' && !drag.tree
+  // Into an empty Inbox the line is drawn in the empty slot; the rows stay where they are.
+  const intoEmptyInbox =
+    dragged !== null && drag.over === 'tree' && drag.tree?.section === 'inbox' && projectsAt === 0
+  const stayPut = (dragged !== null && drag.over === 'tree' && !drag.tree) || intoEmptyInbox
+  const dropLabel =
+    drag.over !== 'tree'
+      ? null
+      : drag.removing
+        ? 'Remove from My Day · the task stays in the tree'
+        : drag.tree
+          ? drag.tree.label
+          : stayPut
+            ? "Can't drop here · Inbox only takes tasks without subtasks"
+            : null
 
   const run = useCallback(
     (fn: () => Promise<unknown>) => {
@@ -112,6 +192,10 @@ export function TreePane() {
     setUi({ pane: 'tree' })
     runCommand('new.below')
   }, [setUi, runCommand])
+  // Same as I: a draft at the end of Inbox.
+  const onNewInbox = useCallback(() => runCommand('new.inbox'), [runCommand])
+  // Double-click on a title edits it (Enter); elsewhere on a row, folds or unfolds it.
+  const onEditTitle = useCallback((id: string) => onRowCommand(id, 'edit.start'), [onRowCommand])
   // Blur from the title editor; one that comes after editing moved elsewhere is ignored.
   const onLeaveEdit = useCallback(
     (id: string) => {
@@ -119,10 +203,15 @@ export function TreePane() {
     },
     [runCommand],
   )
-  const collapseAll = () => {
+  // One button: collapses every open parent, or, once nothing is open, expands them all.
+  const anyExpanded = tree ? expandedParents([...tree.inbox, ...tree.projects]).length > 0 : false
+  const toggleAll = () => {
     if (!tree) return
-    for (const id of expandedParents([...tree.inbox, ...tree.projects])) {
-      run(() => api.send('PATCH', `/api/tasks/${id}`, { collapsed: true }))
+    const ids = anyExpanded
+      ? expandedParents([...tree.inbox, ...tree.projects])
+      : collapsedParents([...tree.inbox, ...tree.projects])
+    for (const id of ids) {
+      run(() => api.send('PATCH', `/api/tasks/${id}`, { collapsed: anyExpanded }))
     }
   }
 
@@ -138,7 +227,9 @@ export function TreePane() {
           id={r.id}
           disabled={dragOff || r.isDraft === true}
           indicator={
-            isDragged && drag.over === 'tree' && drag.tree ? { depth: drag.tree.depth } : undefined
+            isDragged && drag.over === 'tree' && drag.tree && !intoEmptyInbox
+              ? { depth: drag.tree.depth }
+              : undefined
           }
           activeClass={drag.over === 'day' ? 'dragrow--origin' : 'dragrow--source'}
         >
@@ -152,6 +243,7 @@ export function TreePane() {
             onScheduleToday={onScheduleToday}
             onDoing={onDoing}
             onPickDay={onPickDay}
+            onEditTitle={onEditTitle}
             describedBy={confirmId === r.id ? CONFIRM_NOTE_ID : undefined}
             editing={editingId === r.id}
             onLeaveEdit={onLeaveEdit}
@@ -164,7 +256,11 @@ export function TreePane() {
   }
 
   return (
-    <section ref={paneDrop} className="pane pane--tree" aria-label="Task tree">
+    <section
+      ref={paneDrop}
+      className={`pane pane--tree${drag.removing ? ' pane--remove' : ''}`}
+      aria-label="Task tree"
+    >
       <div className="pane__head tree__head">
         <h1>Tasks</h1>
         <span className="tree__grow" />
@@ -199,12 +295,18 @@ export function TreePane() {
         <button
           type="button"
           className="btn btn--icon"
-          aria-label="Collapse all"
-          onClick={collapseAll}
+          aria-label={anyExpanded ? 'Collapse all' : 'Expand all'}
+          title={anyExpanded ? 'Collapse all' : 'Expand all'}
+          onClick={toggleAll}
         >
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
             <path
-              d="M4.5 6 8 2.5 11.5 6M4.5 10 8 13.5 11.5 10"
+              d={
+                // Collapse keeps the design's icon; Expand turns its chevrons round.
+                anyExpanded
+                  ? 'M4.5 6 8 2.5 11.5 6M4.5 10 8 13.5 11.5 10'
+                  : 'M4.5 2.5 8 6 11.5 2.5M4.5 13.5 8 10 11.5 13.5'
+              }
               fill="none"
               stroke="currentColor"
               strokeWidth="1.3"
@@ -235,7 +337,8 @@ export function TreePane() {
             items={dndIds}
             strategy={stayPut ? STAY_PUT : verticalListSortingStrategy}
           >
-            <SectionHead title="Inbox" count={inboxOpen} />
+            <SectionHead title="Inbox" count={inboxOpen} onAdd={onNewInbox} />
+            {projectsAt === 0 && <EmptyInbox onAdd={onNewInbox} dropping={intoEmptyInbox} />}
             {rows.slice(0, projectsAt).map(renderRow)}
             <DropHeading id={PROJECTS_HEAD}>
               <SectionHead title="Projects" count={tree.projects.length} />

@@ -1,6 +1,8 @@
 export type Command =
   | 'nav.up'
   | 'nav.down'
+  | 'nav.upLevel'
+  | 'nav.downLevel'
   | 'nav.parent'
   | 'nav.child'
   | 'nav.first'
@@ -22,10 +24,13 @@ export type Command =
   | 'status.done'
   | 'status.cancel'
   | 'delete'
+  | 'delete.task'
   | 'detail.open'
   | 'link.open'
   | 'escape'
-  | 'toast.undo'
+  | 'undo'
+  | 'redo'
+  | 'new.inbox'
   | 'edit.commitNew'
   | 'edit.prev'
   | 'edit.next'
@@ -48,21 +53,28 @@ export interface KeyLike {
 }
 
 /** Which modifiers are held, with Mod resolved per platform (Ctrl on Windows, Option on macOS). */
-type Chord = 'plain' | 'shift' | 'mod' | 'ctrl' | 'other'
+type Chord = 'plain' | 'shift' | 'mod' | 'modShift' | 'ctrl' | 'ctrlShift' | 'alt' | 'other'
 
 function chordOf(e: KeyLike, isMac: boolean): Chord {
   const { ctrlKey: c, altKey: a, shiftKey: s, metaKey: m } = e
   if (m) return 'other'
   if (!c && !a) return s ? 'shift' : 'plain'
-  if (s) return 'other'
-  if (isMac ? a && !c : c && !a) return 'mod'
-  if (c && !a) return 'ctrl'
+  if (isMac ? a && !c : c && !a) return s ? 'modShift' : 'mod'
+  if (c && !a) return s ? 'ctrlShift' : 'ctrl'
+  // Alt on its own is only free on Windows: on macOS Option is Mod.
+  if (a && !c && !s) return 'alt'
   return 'other'
 }
+
+/** Ctrl held (with or without Shift), whichever key Mod is on this platform. */
+const ctrlChord = (e: KeyLike, chord: Chord, shift: boolean) =>
+  e.ctrlKey &&
+  (shift ? chord === 'ctrlShift' || chord === 'modShift' : chord === 'ctrl' || chord === 'mod')
 
 const LETTERS: Record<string, Command> = {
   m: 'pane.toggle',
   n: 'new.below',
+  i: 'new.inbox',
   t: 'schedule.today',
   d: 'schedule.pick',
   b: 'schedule.backlog',
@@ -70,7 +82,7 @@ const LETTERS: Record<string, Command> = {
   w: 'mark.worked',
   x: 'status.cancel',
   o: 'link.open',
-  z: 'toast.undo',
+  z: 'undo',
 }
 
 const NAVIGATE_PLAIN: Record<string, Command> = {
@@ -85,7 +97,7 @@ const NAVIGATE_PLAIN: Record<string, Command> = {
   Escape: 'escape',
 }
 
-function navigate(e: KeyLike, chord: Chord, tree: boolean): Command | null {
+function navigate(e: KeyLike, chord: Chord, tree: boolean, isMac: boolean): Command | null {
   const k = e.key
   if (chord === 'mod') {
     if (k === 'ArrowUp') return 'move.up'
@@ -94,8 +106,19 @@ function navigate(e: KeyLike, chord: Chord, tree: boolean): Command | null {
     if (tree && k === 'ArrowRight') return 'fold.expand'
   }
   // Ctrl+O is Ctrl on every platform (DESIGN says Ctrl+O, not Mod+O).
-  if ((chord === 'ctrl' || (chord === 'mod' && e.ctrlKey)) && k.toLowerCase() === 'o')
-    return 'detail.open'
+  if (ctrlChord(e, chord, false) && k.toLowerCase() === 'o') return 'detail.open'
+  // Ctrl+Z is the usual undo (plain Z does the same); Ctrl+Shift+Z and Ctrl+Y redo. In edit
+  // mode they stay the text field's.
+  if (ctrlChord(e, chord, false) && k.toLowerCase() === 'z') return 'undo'
+  if (ctrlChord(e, chord, false) && k.toLowerCase() === 'y') return 'redo'
+  if (ctrlChord(e, chord, true) && k.toLowerCase() === 'z') return 'redo'
+  // Alt+↑↓: the previous / next row at the same level or higher, skipping nested rows. On macOS,
+  // where Option+↑↓ moves the task, it is Option+Shift+↑↓.
+  const level = chord === (isMac ? 'modShift' : 'alt')
+  if (level && k === 'ArrowUp') return 'nav.upLevel'
+  if (level && k === 'ArrowDown') return 'nav.downLevel'
+  // Shift+Del deletes the task itself, also from My Day (where Del only takes it off today).
+  if (chord === 'shift' && k === 'Delete') return 'delete.task'
   if (k === 'Tab' && tree && (chord === 'plain' || chord === 'shift'))
     return chord === 'plain' ? 'indent' : 'outdent'
   if (chord === 'plain' || chord === 'shift') {
@@ -132,5 +155,7 @@ export function resolveKey(e: KeyLike, ctx: KeyCtx): Command | null {
   const chord = chordOf(e, ctx.isMac)
   if (chord === 'other') return null
   const tree = ctx.pane === 'tree'
-  return ctx.mode === 'edit' ? edit(e, chord, tree, ctx.titleEmpty) : navigate(e, chord, tree)
+  return ctx.mode === 'edit'
+    ? edit(e, chord, tree, ctx.titleEmpty)
+    : navigate(e, chord, tree, ctx.isMac)
 }
