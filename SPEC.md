@@ -307,3 +307,4 @@ Still open:
 
 6. Suggestions rule (section 4) is a first guess. Tune after a week.
 10. Backspace on an emptied title in edit mode deletes the task (and its subtree) and moves editing to the row above, so pressing Z, as the toast suggests, types "z" into that title instead of undoing. Undo still works through the toast's button, or Z after Esc. Revisit after real use.
+11. Daily logs are written only for days that have events (section 6). A day the app was never opened, such as a sick day, gets no log, even if tasks were scheduled for it and the next morning's review moved or cancelled them. Those decisions do record which day the task was planned for, so such days could get a log listing just the missed work. Decide after real use.
