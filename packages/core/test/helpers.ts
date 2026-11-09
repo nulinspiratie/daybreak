@@ -1,5 +1,5 @@
-import { createTask, fixedClock, liveChildren, openDatabase, migrate } from '../src/index'
 import type { Config, Ctx, Section } from '../src/index'
+import { createTask, fixedClock, liveChildren, migrate, openDatabase } from '../src/index'
 
 /** In-memory database with the schema applied and a fixed clock. */
 export async function makeCtx(

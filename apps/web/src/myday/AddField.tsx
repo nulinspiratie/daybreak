@@ -26,7 +26,9 @@ export function AddField({ today }: { today: string }) {
     const title = text.trim()
     if (title === '' || today === '') return
     setText('')
-    mutate(() => api.send('POST', '/api/tasks', { title, section: 'inbox', scheduledOn: today })).catch((e: unknown) => {
+    mutate(() =>
+      api.send('POST', '/api/tasks', { title, section: 'inbox', scheduledOn: today }),
+    ).catch((e: unknown) => {
       console.error(e)
       toast.show({ message: `Couldn't save '${title}'` })
       // Put the title back for a retry, unless something else has been typed meanwhile.
@@ -48,7 +50,12 @@ export function AddField({ today }: { today: string }) {
   return (
     <label className="dayadd">
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
-        <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path
+          d="M8 2.5v11M2.5 8h11"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
       </svg>
       <input
         ref={ref}
@@ -62,7 +69,9 @@ export function AddField({ today }: { today: string }) {
         onKeyDown={onKeyDown}
         onFocus={() => setUi({ pane: 'day' })}
       />
-      <span className="dayadd__key" aria-hidden="true">N</span>
+      <span className="dayadd__key" aria-hidden="true">
+        N
+      </span>
     </label>
   )
 }

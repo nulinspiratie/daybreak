@@ -33,12 +33,26 @@ let failDecide = false
 function item(id: string, group: ReviewItem['group'], over: Partial<ReviewItem> = {}): ReviewItem {
   return {
     task: node(id, [], { title: `Task ${id}`, scheduledOn: group === 'leftover' ? FRIDAY : null }),
-    path: ['Fridge 3 readout upgrade', 'Milestone 2'], group, decision: null, workedOn: null,
-    scheduledOn: group === 'leftover' ? FRIDAY : null, leftoverFrom: group === 'leftover' ? FRIDAY : null, ...over,
+    path: ['Fridge 3 readout upgrade', 'Milestone 2'],
+    group,
+    decision: null,
+    workedOn: null,
+    scheduledOn: group === 'leftover' ? FRIDAY : null,
+    leftoverFrom: group === 'leftover' ? FRIDAY : null,
+    ...over,
   }
 }
 function build(leftovers: ReviewItem[], suggestions: ReviewItem[]): ReviewView {
-  return { date: MONDAY, leftovers, suggestions, sortedCount: 0, totalCount: leftovers.length + suggestions.length, todayCount: 2, finished: false, skipped: false }
+  return {
+    date: MONDAY,
+    leftovers,
+    suggestions,
+    sortedCount: 0,
+    totalCount: leftovers.length + suggestions.length,
+    todayCount: 2,
+    finished: false,
+    skipped: false,
+  }
 }
 const items = () => [...server.leftovers, ...server.suggestions]
 function recount() {
@@ -54,7 +68,10 @@ function reply(method: string, path: string, body?: unknown): unknown {
     const b = body as { taskId: string; choice: ReviewChoice; targetDate?: string }
     const it = items().find((i) => i.task.id === b.taskId)
     if (!it || it.decision) throw new ApiError(400, 'invalid', 'not waiting')
-    it.decision = { choice: b.choice, ...(b.choice === 'today' ? { date: MONDAY } : b.targetDate ? { date: b.targetDate } : {}) }
+    it.decision = {
+      choice: b.choice,
+      ...(b.choice === 'today' ? { date: MONDAY } : b.targetDate ? { date: b.targetDate } : {}),
+    }
     // Like the server, the item shows the task's day as it is now.
     if (b.choice === 'today') it.scheduledOn = MONDAY
     if (b.choice === 'day') it.scheduledOn = b.targetDate!
@@ -116,7 +133,10 @@ async function mount() {
 const rowOf = (title: string) => screen.getByText(title).closest('li') as HTMLElement
 
 beforeEach(() => {
-  server = build([item('a', 'leftover'), item('b', 'leftover')], [item('s', 'suggestion', { path: ['Inbox'] })])
+  server = build(
+    [item('a', 'leftover'), item('b', 'leftover')],
+    [item('s', 'suggestion', { path: ['Inbox'] })],
+  )
   order = []
   needsReview = true
   statusToday = MONDAY
@@ -169,7 +189,11 @@ describe('ReviewScreen', () => {
   })
 
   it('the heading reads the original days of leftovers sorted before the screen opened (a reload mid-review)', async () => {
-    server.leftovers[0] = item('a', 'leftover', { scheduledOn: MONDAY, leftoverFrom: THURSDAY, decision: { choice: 'today', date: MONDAY } })
+    server.leftovers[0] = item('a', 'leftover', {
+      scheduledOn: MONDAY,
+      leftoverFrom: THURSDAY,
+      decision: { choice: 'today', date: MONDAY },
+    })
     order = ['a']
     recount()
     await mount()
@@ -230,7 +254,8 @@ describe('ReviewScreen', () => {
     expect(order).toEqual(['a', 'b', 's'])
     expect(screen.getByText('3 of 3 done')).toBeTruthy()
     expect(screen.getByText('5 tasks for today')).toBeTruthy()
-    for (const t of ['Task a', 'Task b', 'Task s']) expect(within(rowOf(t)).getByText('Today')).toBeTruthy()
+    for (const t of ['Task a', 'Task b', 'Task s'])
+      expect(within(rowOf(t)).getByText('Today')).toBeTruthy()
     expect(document.querySelector('.rv-card')).toBeNull()
   })
 
@@ -245,7 +270,9 @@ describe('ReviewScreen', () => {
     await press('3')
     await press('Enter')
     await flush()
-    expect(writes()).toEqual([['POST', `${R}/decide`, { taskId: 'a', choice: 'day', targetDate: '2026-11-11' }]])
+    expect(writes()).toEqual([
+      ['POST', `${R}/decide`, { taskId: 'a', choice: 'day', targetDate: '2026-11-11' }],
+    ])
     expect(screen.queryByRole('textbox', { name: 'Day' })).toBeNull()
     expect(within(rowOf('Task a')).getByText('Wed')).toBeTruthy()
   })
@@ -272,7 +299,15 @@ describe('ReviewScreen', () => {
   })
 
   it('shows the worked-on chip and the note on the current card', async () => {
-    server = build([item('a', 'leftover', { workedOn: FRIDAY, task: node('a', [], { title: 'Task a', notes: 'Sweeps still fail.' }) })], [])
+    server = build(
+      [
+        item('a', 'leftover', {
+          workedOn: FRIDAY,
+          task: node('a', [], { title: 'Task a', notes: 'Sweeps still fail.' }),
+        }),
+      ],
+      [],
+    )
     await mount()
     expect(screen.getByText('Worked on Friday')).toBeTruthy()
     expect(screen.getByText('Continue today?')).toBeTruthy()

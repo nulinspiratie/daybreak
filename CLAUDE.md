@@ -47,7 +47,8 @@ web bundle.
 
 ```bash
 bun install                  # also points git at .githooks/
-bun run check                # typecheck + Vitest + bun:sqlite smoke test
+bun run check                # Biome lint + typecheck + Vitest + bun:sqlite smoke test
+bun run format               # Biome: format and apply safe lint fixes everywhere
 bun run smoke                # build the web app, start the server on a scratch folder, ping it
 bun run test                 # Vitest only (needs Node 22.13+)
 bun run typecheck
@@ -67,11 +68,18 @@ bun run --cwd apps/web dev   # second terminal, same DAYBREAK_DATA_DIR: http://l
 
 ## Checks
 
+- **Formatting and lint: Biome** (`biome.json`). 100 columns, 2 spaces,
+  single quotes, no semicolons, trailing commas. Code only (TS, TSX, CSS,
+  JSON, HTML); Markdown and YAML are left alone. When a rule is wrong for a
+  line, suppress it with `// biome-ignore lint/<group>/<rule>: <reason>`;
+  don't turn the rule off for everyone.
 - **Pre-commit hook** (`.githooks/pre-commit`, installed by `bun install`):
-  refuses database files, a data folder's `token` and daily logs; runs
-  typecheck and Vitest when code is staged. Docs-only commits skip the tests.
+  refuses database files, a data folder's `token` and daily logs; formats the
+  staged code with Biome and stages the result (a file that also has unstaged
+  changes is only checked); then runs typecheck and Vitest. Docs-only commits
+  skip all of that but the data check.
   Don't bypass it with `--no-verify` to get a commit through; fix the cause.
-- **CI** (`.github/workflows/ci.yml`) runs the data guard, typecheck, both test
+- **CI** (`.github/workflows/ci.yml`) runs the data guard, `biome ci`, typecheck, both test
   suites and `bun run smoke` on Windows and Linux for pushes and PRs.
 
 ## Gotchas

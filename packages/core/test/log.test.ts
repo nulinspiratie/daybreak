@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { setIdGenerator } from '../src/ids'
 import type { Ctx, ISODate } from '../src/index'
 import {
   buildDayLog,
@@ -16,7 +17,6 @@ import {
   updateTask,
   writeMissingLogs,
 } from '../src/index'
-import { setIdGenerator } from '../src/ids'
 import { makeCtx } from './helpers'
 
 type TestCtx = Awaited<ReturnType<typeof makeCtx>>
@@ -42,14 +42,18 @@ function on(ctx: TestCtx, date: ISODate): void {
 }
 
 function lastLogged(ctx: Ctx): string | null {
-  return ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_logged_date'")?.value ?? null
+  return (
+    ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_logged_date'")?.value ??
+    null
+  )
 }
 
 function service(ctx: TestCtx, logsDir: string) {
   return createDaybreak({ db: ctx.db, clock: ctx.clock, config: ctx.config, logsDir })
 }
 
-const read = (logsDir: string, date: ISODate) => fs.readFileSync(path.join(logsDir, `${date}.md`), 'utf8')
+const read = (logsDir: string, date: ISODate) =>
+  fs.readFileSync(path.join(logsDir, `${date}.md`), 'utf8')
 const files = (logsDir: string) => (fs.existsSync(logsDir) ? fs.readdirSync(logsDir).sort() : [])
 
 /** Rename `id` on `date`: an event that fills no section, so the day has events. */
@@ -66,7 +70,16 @@ const inbox = (ctx: Ctx, title: string, scheduledOn?: ISODate) =>
 describe('buildDayLog', () => {
   it('matches the SPEC §6 example', async () => {
     const queue = [
-      'prj001', 'k3f9a2', 'prj002', 'prj003', 'p2a1x7', 'prj004', 'prj005', 'm2c8d1', 'l6q0z3', 'n7c2e9',
+      'prj001',
+      'k3f9a2',
+      'prj002',
+      'prj003',
+      'p2a1x7',
+      'prj004',
+      'prj005',
+      'm2c8d1',
+      'l6q0z3',
+      'n7c2e9',
     ]
     setIdGenerator(() => queue.shift()!)
     const ctx = await makeCtx()
@@ -267,7 +280,10 @@ describe('buildDayLog', () => {
     setMark(ctx, movedWorked, 'worked')
     setStatus(ctx, done, 'done')
     // Closing drops today's mark, so put one back to see that Done wins over Worked on.
-    ctx.db.run("INSERT INTO day_marks (date, task_id, mark) VALUES ('2026-11-09', ?, 'worked')", done)
+    ctx.db.run(
+      "INSERT INTO day_marks (date, task_id, mark) VALUES ('2026-11-09', ?, 'worked')",
+      done,
+    )
     on(ctx, '2026-11-10')
     decide(ctx, '2026-11-10', movedWorked, 'day', '2026-11-12')
     expect(buildDayLog(ctx, '2026-11-09')).toBe(`# 2026-11-09 · Monday

@@ -39,6 +39,9 @@ jobs:
       - name: Data guard (no task data in the repo)
         run: bun scripts/check-staged.ts --all
 
+      - name: Format and lint (Biome)
+        run: bun run lint
+
       - run: bun run typecheck
 
       - name: Tests (Vitest)

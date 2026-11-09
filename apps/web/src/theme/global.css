@@ -12,7 +12,7 @@ body,
 }
 
 body {
-  font: 13px/1.4 var(--font);
+  font: 13px / 1.4 var(--font);
   color: var(--text);
   background: var(--win);
   overflow: hidden;
@@ -184,7 +184,7 @@ kbd {
   background: var(--hover);
 }
 
-.btn--toggle[aria-pressed='true'] {
+.btn--toggle[aria-pressed="true"] {
   background: var(--accentSoft);
   color: var(--accent);
   border-color: var(--accent);
@@ -322,7 +322,12 @@ kbd {
 .row__indent {
   height: 26px;
   flex: none;
-  background-image: repeating-linear-gradient(to right, transparent 0 7px, var(--line) 7px 8px, transparent 8px 22px);
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0 7px,
+    var(--line) 7px 8px,
+    transparent 8px 22px
+  );
 }
 
 .row__chev,
@@ -518,7 +523,7 @@ kbd {
   border-bottom-width: 2px;
   background: var(--pane);
   color: var(--text2);
-  font: 500 10.5px/1 var(--font);
+  font: 500 10.5px / 1 var(--font);
 }
 
 /* "4 open subtasks. Press Space again to close them all." under the row */
@@ -1089,7 +1094,9 @@ kbd {
   border-radius: 12px;
   background: var(--pane);
   border: 1px solid var(--line);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .picker-host__head {
@@ -1171,7 +1178,7 @@ kbd {
 }
 
 .dropline:not(.dropline--full)::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -4px;
   top: -4px;
@@ -1215,7 +1222,9 @@ kbd {
   padding: 0 10px 0 4px;
   border-radius: 6px;
   background: var(--pane);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--line);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.16),
+    0 0 0 1px var(--line);
   color: var(--text);
   font-size: 13px;
   transform: rotate(-0.6deg);
@@ -1443,11 +1452,11 @@ kbd {
 
 .detail__seg:hover,
 .detail__btn:hover:not(:disabled),
-.detail__st:hover:not(:disabled):not([aria-pressed='true']) {
+.detail__st:hover:not(:disabled):not([aria-pressed="true"]) {
   background: var(--hover);
 }
 
-.detail__seg[aria-pressed='true'] {
+.detail__seg[aria-pressed="true"] {
   border-color: var(--accent);
   background: var(--accentSoft);
   color: var(--accent);
@@ -1493,18 +1502,18 @@ kbd {
   opacity: 0.6;
 }
 
-.detail__st[aria-pressed='true'] {
+.detail__st[aria-pressed="true"] {
   background: var(--accentSoft);
   color: var(--accent);
   font-weight: 600;
 }
 
-.detail__st--worked[aria-pressed='true'] {
+.detail__st--worked[aria-pressed="true"] {
   background: var(--workedSoft);
   color: var(--worked);
 }
 
-.detail__st--cancelled[aria-pressed='true'] {
+.detail__st--cancelled[aria-pressed="true"] {
   background: var(--chip);
   color: var(--text);
 }
@@ -1516,7 +1525,7 @@ kbd {
   color: var(--text3);
 }
 
-.detail__st[aria-pressed='true'] .detail__stkey {
+.detail__st[aria-pressed="true"] .detail__stkey {
   color: inherit;
   opacity: 0.8;
 }
@@ -1806,7 +1815,7 @@ kbd {
 }
 
 .rv-section__sub::before {
-  content: '· ';
+  content: "· ";
 }
 
 /* Decided rows, tinted by outcome */
@@ -1891,7 +1900,9 @@ kbd {
   padding: 18px 20px;
   border-radius: 12px;
   background: var(--pane);
-  box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 6px 18px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
   gap: 10px;

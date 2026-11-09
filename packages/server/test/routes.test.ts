@@ -35,7 +35,11 @@ describe('status, tree and day routes', () => {
     const h = await testApp({ seed: true })
     const res = await h.req('/api/status')
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ today: '2026-11-10', needsReview: true, dayStartsAt: '04:00' })
+    expect(await res.json()).toEqual({
+      today: '2026-11-10',
+      needsReview: true,
+      dayStartsAt: '04:00',
+    })
   })
   it('GET /api/tree honours ?completed=', async () => {
     const h = await testApp({ seed: true })
@@ -51,7 +55,9 @@ describe('status, tree and day routes', () => {
     expect(res.status).toBe(200)
     const view = (await res.json()) as { date: string; items: { task: Task }[] }
     expect(view.date).toBe('2026-11-10')
-    expect(view.items.map((i) => i.task.title)).toContain('Call facilities about the helium delivery')
+    expect(view.items.map((i) => i.task.title)).toContain(
+      'Call facilities about the helium delivery',
+    )
   })
   it('GET /api/days?from=&to=', async () => {
     const h = await testApp({ seed: true })
@@ -92,10 +98,19 @@ describe('task routes', () => {
   it('PATCH updates fields and returns the Task', async () => {
     const h = await testApp({ seed: true })
     const t = byTitle(h, INBOX_TASK)
-    const res = await h.req(`/api/tasks/${t.id}`, patch({ title: 'Renamed', notes: 'n', tags: ['a'], collapsed: true, link: null }))
+    const res = await h.req(
+      `/api/tasks/${t.id}`,
+      patch({ title: 'Renamed', notes: 'n', tags: ['a'], collapsed: true, link: null }),
+    )
     expect(res.status).toBe(200)
     const task = (await res.json()) as Task
-    expect(task).toMatchObject({ title: 'Renamed', notes: 'n', tags: ['a'], collapsed: true, link: null })
+    expect(task).toMatchObject({
+      title: 'Renamed',
+      notes: 'n',
+      tags: ['a'],
+      collapsed: true,
+      link: null,
+    })
     expect((await h.req(`/api/tasks/${t.id}`, patch({}))).status).toBe(400)
     expect((await h.req(`/api/tasks/${t.id}`, patch({ title: 5 }))).status).toBe(400)
   })
@@ -107,7 +122,10 @@ describe('task routes', () => {
     const body = (await res.json()) as { error: string; details: { openCount: number } }
     expect(body.error).toBe('needs_confirmation')
     expect(body.details.openCount).toBeGreaterThan(0)
-    const ok = await h.req(`/api/tasks/${parent.id}`, patch({ status: 'done', withOpenDescendants: true }))
+    const ok = await h.req(
+      `/api/tasks/${parent.id}`,
+      patch({ status: 'done', withOpenDescendants: true }),
+    )
     expect(ok.status).toBe(200)
     const out = (await ok.json()) as { task: Task; changedIds: string[] }
     expect(out.task.status).toBe('done')
@@ -131,17 +149,31 @@ describe('task routes', () => {
     const h = await testApp({ seed: true })
     const t = byTitle(h, INBOX_TASK)
     for (const raw of ['[]', 'null', '"x"']) {
-      const res = await h.req(`/api/tasks/${t.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: raw })
+      const res = await h.req(`/api/tasks/${t.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: raw,
+      })
       expect(res.status, raw).toBe(400)
     }
-    expect((await h.req(`/api/tasks/${t.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' } })).status).toBe(400)
+    expect(
+      (
+        await h.req(`/api/tasks/${t.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      ).status,
+    ).toBe(400)
     expect((await h.req(`/api/tasks/${t.id}`, patch({ colour: 'red' }))).status).toBe(400)
   })
   it('POST move', async () => {
     const h = await testApp({ seed: true })
     const t = byTitle(h, INBOX_TASK)
     const project = byTitle(h, PROJECT)
-    const res = await h.req(`/api/tasks/${t.id}/move`, post({ parentId: project.id, section: 'projects' }))
+    const res = await h.req(
+      `/api/tasks/${t.id}/move`,
+      post({ parentId: project.id, section: 'projects' }),
+    )
     expect(res.status).toBe(200)
     expect(((await res.json()) as Task).parentId).toBe(project.id)
     expect((await h.req(`/api/tasks/${t.id}/move`, post({ section: 'projects' }))).status).toBe(400)
@@ -151,7 +183,10 @@ describe('task routes', () => {
     const before = await (await h.req('/api/tree?completed=all')).text()
     const project = byTitle(h, PROJECT)
     const child = byTitle(h, PARENT)
-    const res = await h.req(`/api/tasks/${project.id}/move`, post({ parentId: child.id, section: 'projects' }))
+    const res = await h.req(
+      `/api/tasks/${project.id}/move`,
+      post({ parentId: child.id, section: 'projects' }),
+    )
     expect(res.status).toBe(400)
     expect(await (await h.req('/api/tree?completed=all')).text()).toBe(before)
   })
@@ -162,7 +197,9 @@ describe('task routes', () => {
     const res = await h.req(`/api/tasks/${t.id}/nudge`, post({ direction: 'up' }))
     expect(res.status).toBe(200)
     expect(((await res.json()) as Task).position).not.toBe(before)
-    expect((await h.req(`/api/tasks/${t.id}/nudge`, post({ direction: 'sideways' }))).status).toBe(400)
+    expect((await h.req(`/api/tasks/${t.id}/nudge`, post({ direction: 'sideways' }))).status).toBe(
+      400,
+    )
   })
   it('POST schedule sets and clears the date', async () => {
     const h = await testApp({ seed: true })
@@ -172,7 +209,9 @@ describe('task routes', () => {
     expect(((await res.json()) as Task).scheduledOn).toBe('2026-11-12')
     const clear = await h.req(`/api/tasks/${t.id}/schedule`, post({ date: null }))
     expect(((await clear.json()) as Task).scheduledOn).toBeNull()
-    expect((await h.req(`/api/tasks/${t.id}/schedule`, post({ date: '2026-02-30' }))).status).toBe(400)
+    expect((await h.req(`/api/tasks/${t.id}/schedule`, post({ date: '2026-02-30' }))).status).toBe(
+      400,
+    )
     expect((await h.req(`/api/tasks/${t.id}/schedule`, post({}))).status).toBe(400)
   })
   it('POST mark returns 204', async () => {
@@ -194,7 +233,9 @@ describe('task routes', () => {
     expect(deletedIds).toContain(parent.id)
     const res = await h.req(`/api/tasks/${parent.id}/restore`, { method: 'POST' })
     expect(res.status).toBe(200)
-    expect(((await res.json()) as { restoredIds: string[] }).restoredIds.sort()).toEqual([...deletedIds].sort())
+    expect(((await res.json()) as { restoredIds: string[] }).restoredIds.sort()).toEqual(
+      [...deletedIds].sort(),
+    )
   })
   it('unknown id gives 404', async () => {
     const h = await testApp({ seed: true })
@@ -206,7 +247,11 @@ describe('task routes', () => {
   it('malformed JSON body gives 400', async () => {
     const h = await testApp({ seed: true })
     const t = byTitle(h, INBOX_TASK)
-    const res = await h.req(`/api/tasks/${t.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: '{nope' })
+    const res = await h.req(`/api/tasks/${t.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{nope',
+    })
     expect(res.status).toBe(400)
   })
   it('POST open-link opens the link and returns 204', async () => {
@@ -241,7 +286,10 @@ describe('review routes', () => {
   it('decide, undo, skip and finish', async () => {
     const h = await testApp({ seed: true })
     const first = h.daybreak.review(DATE).leftovers[0]!.task
-    const dec = await h.req(`/api/review/${DATE}/decide`, post({ taskId: first.id, choice: 'today' }))
+    const dec = await h.req(
+      `/api/review/${DATE}/decide`,
+      post({ taskId: first.id, choice: 'today' }),
+    )
     expect(dec.status).toBe(200)
     expect(((await dec.json()) as { sortedCount: number }).sortedCount).toBe(1)
     expect(h.daybreak.getTask(first.id).scheduledOn).toBe(DATE)
@@ -250,7 +298,10 @@ describe('review routes', () => {
     expect(undo.status).toBe(200)
     expect(((await undo.json()) as { sortedCount: number }).sortedCount).toBe(0)
 
-    const day = await h.req(`/api/review/${DATE}/decide`, post({ taskId: first.id, choice: 'day', targetDate: '2026-11-12' }))
+    const day = await h.req(
+      `/api/review/${DATE}/decide`,
+      post({ taskId: first.id, choice: 'day', targetDate: '2026-11-12' }),
+    )
     expect(day.status).toBe(200)
     expect(h.daybreak.getTask(first.id).scheduledOn).toBe('2026-11-12')
 
@@ -267,9 +318,19 @@ describe('review routes', () => {
   it('decide rejects unknown choices and bad targetDate', async () => {
     const h = await testApp({ seed: true })
     const first = h.daybreak.review(DATE).leftovers[0]!.task
-    expect((await h.req(`/api/review/${DATE}/decide`, post({ taskId: first.id, choice: 'later' }))).status).toBe(400)
+    expect(
+      (await h.req(`/api/review/${DATE}/decide`, post({ taskId: first.id, choice: 'later' })))
+        .status,
+    ).toBe(400)
     expect((await h.req(`/api/review/${DATE}/decide`, post({ choice: 'today' }))).status).toBe(400)
-    expect((await h.req(`/api/review/${DATE}/decide`, post({ taskId: first.id, choice: 'day', targetDate: '2026-02-30' }))).status).toBe(400)
+    expect(
+      (
+        await h.req(
+          `/api/review/${DATE}/decide`,
+          post({ taskId: first.id, choice: 'day', targetDate: '2026-02-30' }),
+        )
+      ).status,
+    ).toBe(400)
   })
 })
 
@@ -323,9 +384,17 @@ describe('POST /api/open-link', () => {
     const h = await testApp({ openLink: (l) => opened.push(l) })
     const body = JSON.stringify({ target: 'https://example.com' })
     const bare = (headers: Record<string, string>) =>
-      Promise.resolve(h.app.request(`http://127.0.0.1:${TEST_PORT}/api/open-link`, { method: 'POST', body, headers: { 'Content-Type': 'application/json', ...headers } }))
+      Promise.resolve(
+        h.app.request(`http://127.0.0.1:${TEST_PORT}/api/open-link`, {
+          method: 'POST',
+          body,
+          headers: { 'Content-Type': 'application/json', ...headers },
+        }),
+      )
     expect((await bare({ Host: `127.0.0.1:${TEST_PORT}` })).status).toBe(401)
-    expect((await bare({ Host: 'evil.example', Authorization: `Bearer ${TEST_TOKEN}` })).status).toBe(403)
+    expect(
+      (await bare({ Host: 'evil.example', Authorization: `Bearer ${TEST_TOKEN}` })).status,
+    ).toBe(403)
     expect(opened).toEqual([])
   })
 })

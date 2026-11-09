@@ -38,7 +38,10 @@ export function useCommandEnv(): () => CommandEnv | null {
   const rows = useMemo(() => (tree ? flatten(tree, draft) : []), [tree, draft])
 
   const detailTask = useMemo(
-    () => (detailId === null ? undefined : (findTask(tree, detailId) ?? day?.items.find((i) => i.task.id === detailId)?.task)),
+    () =>
+      detailId === null
+        ? undefined
+        : (findTask(tree, detailId) ?? day?.items.find((i) => i.task.id === detailId)?.task),
     [tree, day, detailId],
   )
   const latest = useRef({ rows, dayItems: day?.items ?? [], today, detailTask })
@@ -52,7 +55,9 @@ export function useCommandEnv(): () => CommandEnv | null {
 
 /** What a failed write's toast says: the server's own message, if it sent one. */
 export function writeErrorMessage(e: unknown): string {
-  return e instanceof ApiError && !isUnreachable(e) ? e.message : "Couldn't save — is Daybreak running?"
+  return e instanceof ApiError && !isUnreachable(e)
+    ? e.message
+    : "Couldn't save — is Daybreak running?"
 }
 
 /**
@@ -79,7 +84,12 @@ export function useCommandRunner(): (cmd: Command) => void {
 }
 
 function isTextField(el: HTMLElement): boolean {
-  return el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'
+  return (
+    el.isContentEditable ||
+    el.tagName === 'INPUT' ||
+    el.tagName === 'TEXTAREA' ||
+    el.tagName === 'SELECT'
+  )
 }
 
 /** Only these repeat while a key is held (moving, and ↑↓ between titles); one-shot commands (Space, X, Del, letters…) fire once per press. */
@@ -121,7 +131,11 @@ export function createKeyHandler(run: (cmd: Command) => void): (e: KeyboardEvent
     }
     // With nothing selected, or from a control in the detail panel, Tab moves focus as usual.
     const selected = ui.pane === 'tree' ? ui.treeSel : ui.daySel
-    if ((cmd === 'indent' || cmd === 'outdent') && (selected === null || el?.closest('.pane--detail'))) return
+    if (
+      (cmd === 'indent' || cmd === 'outdent') &&
+      (selected === null || el?.closest('.pane--detail'))
+    )
+      return
     e.preventDefault()
     // A held Space must not count as the second press of a parent close, nor a held Del delete row after row.
     if (e.repeat && !repeats(cmd)) return

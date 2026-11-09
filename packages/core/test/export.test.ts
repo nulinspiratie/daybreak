@@ -22,7 +22,9 @@ describe('exportProject', () => {
     const plan = m2.children[3]!
     expect(lines).toContain(`- [ ] Milestone 2 — Install and cooldown (#${m2.id})`)
     expect(lines).toContain(`  - [x] Order replacement coax lines (#${coax.id})`)
-    expect(lines).toContain(`    - [ ] Verify pump tone frequency with the VNA (#${pump.id}) · Today`)
+    expect(lines).toContain(
+      `    - [ ] Verify pump tone frequency with the VNA (#${pump.id}) · Today`,
+    )
     expect(lines).toContain(`  - [ ] Plan cooldown window with Anja (#${plan.id}) · Wed`)
     // project notes follow the heading; item notes sit 2 spaces past the item's "- "
     expect(lines[1]).toBe('')

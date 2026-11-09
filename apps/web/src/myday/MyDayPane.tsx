@@ -41,7 +41,8 @@ export function MyDayPane() {
 
   // The edited task left the list (rescheduled elsewhere, deleted): end editing so keys work again.
   useEffect(() => {
-    if (day && editingId !== undefined && !day.items.some((i) => i.task.id === editingId)) setUi({ editing: null })
+    if (day && editingId !== undefined && !day.items.some((i) => i.task.id === editingId))
+      setUi({ editing: null })
   }, [day, editingId, setUi])
 
   const onSelect = useCallback((id: string) => setUi({ daySel: id, pane: 'day' }), [setUi])
@@ -72,7 +73,9 @@ export function MyDayPane() {
         </div>
         <span className="dayhead__grow" />
         <div className="dayhead__progress">
-          <span className="dayhead__count">{done} of {total} done</span>
+          <span className="dayhead__count">
+            {done} of {total} done
+          </span>
           <div
             className="progress"
             role="progressbar"
@@ -119,7 +122,14 @@ export function MyDayPane() {
         {day && items.length === 0 && (
           <p className="dayempty">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
-              <path d="M2 8h9M8 4.5 11.5 8 8 11.5M14 3v10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M2 8h9M8 4.5 11.5 8 8 11.5M14 3v10"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             Drag tasks in from the tree, or press T on a selected task
           </p>

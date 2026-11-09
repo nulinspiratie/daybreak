@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { createTask, dayCounts, dayView, eventsOn, getTask, schedule, scheduleToday } from '../src/index'
+import {
+  createTask,
+  dayCounts,
+  dayView,
+  eventsOn,
+  getTask,
+  schedule,
+  scheduleToday,
+} from '../src/index'
 import { build, makeCtx } from './helpers'
 
 const D = '2026-11-10'
@@ -104,13 +112,17 @@ describe('schedule', () => {
 
   it('allows scheduling a closed task', async () => {
     const { ctx, ids } = await setup()
-    ctx.db.run("UPDATE tasks SET status = 'done', closed_at = ? WHERE id = ?", '2026-11-10T01:00:00Z', ids.a!)
+    ctx.db.run(
+      "UPDATE tasks SET status = 'done', closed_at = ? WHERE id = ?",
+      '2026-11-10T01:00:00Z',
+      ids.a!,
+    )
     expect(schedule(ctx, ids.a!, D).scheduledOn).toBe(D)
   })
 })
 
 describe('dayView', () => {
-  it('lists in day order with paths and today\'s marks', async () => {
+  it("lists in day order with paths and today's marks", async () => {
     const { ctx, ids } = await setup()
     schedule(ctx, ids.b!, D)
     schedule(ctx, ids.x!, D)
@@ -128,8 +140,14 @@ describe('dayView', () => {
   it('done stays listed; cancelled is listed but not counted', async () => {
     const { ctx, ids } = await setup()
     for (const k of ['a', 'b', 'c']) schedule(ctx, ids[k]!, D)
-    ctx.db.run("UPDATE tasks SET status = 'done', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?", ids.a!)
-    ctx.db.run("UPDATE tasks SET status = 'cancelled', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?", ids.b!)
+    ctx.db.run(
+      "UPDATE tasks SET status = 'done', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?",
+      ids.a!,
+    )
+    ctx.db.run(
+      "UPDATE tasks SET status = 'cancelled', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?",
+      ids.b!,
+    )
     const v = dayView(ctx, D)
     expect(v.items).toHaveLength(3)
     expect(v.doneCount).toBe(1)
@@ -138,8 +156,14 @@ describe('dayView', () => {
 
   it('a parent scheduled today shows alone with done/total of its subtree', async () => {
     const { ctx, ids } = await setup()
-    ctx.db.run("UPDATE tasks SET status = 'done', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?", ids.a!)
-    ctx.db.run("UPDATE tasks SET status = 'cancelled', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?", ids.b!)
+    ctx.db.run(
+      "UPDATE tasks SET status = 'done', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?",
+      ids.a!,
+    )
+    ctx.db.run(
+      "UPDATE tasks SET status = 'cancelled', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?",
+      ids.b!,
+    )
     schedule(ctx, ids.P!, D)
     const v = dayView(ctx, D)
     expect(v.items).toHaveLength(1)
@@ -165,7 +189,10 @@ describe('dayCounts', () => {
     schedule(ctx, ids.c!, '2026-11-12')
     schedule(ctx, ids.x!, '2026-11-12')
     schedule(ctx, ids.y!, '2026-11-20')
-    ctx.db.run("UPDATE tasks SET status = 'done', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?", ids.b!)
+    ctx.db.run(
+      "UPDATE tasks SET status = 'done', closed_at = '2026-11-10T01:00:00Z' WHERE id = ?",
+      ids.b!,
+    )
     ctx.db.run("UPDATE tasks SET deleted_at = '2026-11-10T02:00:00Z' WHERE id = ?", ids.x!)
     createTask(ctx, { title: 'late', section: 'inbox', scheduledOn: '2026-11-09' })
     expect(dayCounts(ctx, '2026-11-10', '2026-11-13')).toEqual({

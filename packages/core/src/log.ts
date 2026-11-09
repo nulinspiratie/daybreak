@@ -2,9 +2,9 @@ import { existsSync, linkSync, mkdirSync, renameSync, rmSync, writeFileSync } fr
 import { join } from 'node:path'
 import type { Ctx } from './ctx'
 import { today } from './ctx'
-import { addDays, weekdayName, type ISODate } from './dates'
-import { eventsOn, type EventRow } from './events'
-import { decisionsLeaving, type Decision } from './review'
+import { addDays, type ISODate, weekdayName } from './dates'
+import { type EventRow, eventsOn } from './events'
+import { type Decision, decisionsLeaving } from './review'
 import { marksOn } from './tasks/marks'
 import { pathOf, rowToTask, TASK_COLUMNS, type TaskRow } from './tasks/rows'
 import type { Task } from './types'
@@ -22,7 +22,10 @@ interface Entry {
 const byOrder = (a: Entry, b: Entry) => a.order[0] - b.order[0] || a.order[1] - b.order[1]
 
 function lastLoggedDate(ctx: Ctx): ISODate | null {
-  return ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_logged_date'")?.value ?? null
+  return (
+    ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_logged_date'")?.value ??
+    null
+  )
 }
 
 function setLastLoggedDate(ctx: Ctx, date: ISODate): void {
@@ -75,14 +78,18 @@ function closeStates(events: EventRow[]): Map<string, CloseState> {
   const byId = new Map(events.map((e) => [e.id, e]))
   const states = new Map<string, CloseState>()
   const touch = (e: EventRow, kind: CloseState['kind'], ids: string[]) =>
-    ids.forEach((id, i) => states.set(id, { kind, order: [e.id, i] }))
+    ids.forEach((id, i) => {
+      states.set(id, { kind, order: [e.id, i] })
+    })
   for (const e of events) {
     if (e.taskId === null) continue
-    if (e.kind === 'done' || e.kind === 'cancelled') touch(e, e.kind, e.data.closedIds ?? [e.taskId])
+    if (e.kind === 'done' || e.kind === 'cancelled')
+      touch(e, e.kind, e.data.closedIds ?? [e.taskId])
     if (e.kind === 'reopened') touch(e, 'reopened', e.data.ids ?? [e.taskId])
     if (e.kind === 'review_undo') {
       const undone = byId.get(e.data.undoneEventId)
-      if (undone?.kind === 'review_cancel') touch(e, 'reopened', undone.data.closedIds ?? [undone.taskId!])
+      if (undone?.kind === 'review_cancel')
+        touch(e, 'reopened', undone.data.closedIds ?? [undone.taskId!])
     }
   }
   return states
@@ -125,7 +132,11 @@ export function buildDayLog(ctx: Ctx, date: ISODate): string | null {
 
   const firstMark = new Map<string, number>()
   for (const e of events) {
-    if (e.taskId !== null && (e.kind === 'worked' || e.kind === 'doing') && !firstMark.has(e.taskId)) {
+    if (
+      e.taskId !== null &&
+      (e.kind === 'worked' || e.kind === 'doing') &&
+      !firstMark.has(e.taskId)
+    ) {
       firstMark.set(e.taskId, e.id)
     }
   }
@@ -133,7 +144,11 @@ export function buildDayLog(ctx: Ctx, date: ISODate): string | null {
   for (const id of marksOn(ctx, date).keys()) {
     const task = liveTask(id)
     if (!task || listed.has(id)) continue
-    worked.push({ task, order: [firstMark.get(id) ?? Number.MAX_SAFE_INTEGER, 0], suffix: decisionSuffix(id) })
+    worked.push({
+      task,
+      order: [firstMark.get(id) ?? Number.MAX_SAFE_INTEGER, 0],
+      suffix: decisionSuffix(id),
+    })
   }
   worked.sort((a, b) => byOrder(a, b) || (a.task.id < b.task.id ? -1 : 1))
   for (const x of worked) listed.add(x.task.id)
@@ -142,11 +157,13 @@ export function buildDayLog(ctx: Ctx, date: ISODate): string | null {
   // Ended the day cancelled, and was scheduled on it when cancelled (Rulings R43, R45, R46).
   for (const { task, kind, order } of closes) {
     if (kind !== 'cancelled' || listed.has(task.id)) continue
-    if (scheduledOnAfter(ctx, task, order[0]) === date) missed.set(task.id, { task, order, suffix: ' → cancelled' })
+    if (scheduledOnAfter(ctx, task, order[0]) === date)
+      missed.set(task.id, { task, order, suffix: ' → cancelled' })
   }
   for (const d of decisions.values()) {
     const task = liveTask(d.taskId)
-    if (task && !listed.has(task.id)) missed.set(task.id, { task, order: [d.eventId, 0], suffix: outcome(d) })
+    if (task && !listed.has(task.id))
+      missed.set(task.id, { task, order: [d.eventId, 0], suffix: outcome(d) })
   }
   const notDone = [...missed.values()].sort(byOrder)
   for (const x of notDone) listed.add(x.task.id)
@@ -180,7 +197,7 @@ export function buildDayLog(ctx: Ctx, date: ISODate): string | null {
     .filter(([, entries]) => entries.length > 0)
     .map(([heading, entries, box]) => [`## ${heading}`, ...entries.map(line(box))].join('\n'))
   if (body.length === 0) return null
-  return [`# ${date} · ${weekdayName(date, 'long')}`, ...body].join('\n\n') + '\n'
+  return `${[`# ${date} · ${weekdayName(date, 'long')}`, ...body].join('\n\n')}\n`
 }
 
 /** Error codes for a file system without hard links (e.g. FAT). */

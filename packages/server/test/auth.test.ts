@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import { DaybreakError } from '@daybreak/core'
+import { describe, expect, it } from 'vitest'
 import { createApp } from '../src/app'
 import { ChangeBroker } from '../src/sse'
 import { TEST_PORT, TEST_TOKEN, testApp } from './helpers'
@@ -13,7 +13,9 @@ describe('auth', () => {
   })
   it('401 without token', async () => {
     const { app } = await testApp()
-    const res = await app.request('http://x/api/ping', { headers: { Host: `127.0.0.1:${TEST_PORT}` } })
+    const res = await app.request('http://x/api/ping', {
+      headers: { Host: `127.0.0.1:${TEST_PORT}` },
+    })
     expect(res.status).toBe(401)
     const bad = await app.request('http://x/api/ping', {
       headers: { Host: `127.0.0.1:${TEST_PORT}`, Authorization: `Bearer ${'b'.repeat(64)}` },
@@ -27,7 +29,9 @@ describe('auth', () => {
   it('200 with Bearer', async () => {
     const { req } = await testApp()
     expect((await req('/api/ping')).status).toBe(200)
-    expect((await req('/api/ping', { headers: { Host: `localhost:${TEST_PORT}` } })).status).toBe(200)
+    expect((await req('/api/ping', { headers: { Host: `localhost:${TEST_PORT}` } })).status).toBe(
+      200,
+    )
   })
   it('200 with cookie', async () => {
     const { app } = await testApp()
@@ -49,17 +53,35 @@ describe('auth', () => {
   })
   it('extraHosts are accepted only when configured', async () => {
     const { daybreak } = await testApp()
-    const base = { daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00', broker: new ChangeBroker() }
+    const base = {
+      daybreak,
+      token: TEST_TOKEN,
+      port: TEST_PORT,
+      dayStartsAt: '04:00',
+      broker: new ChangeBroker(),
+    }
     const headers = { Host: 'localhost:5173', Authorization: `Bearer ${TEST_TOKEN}` }
     const without = createApp(base)
     expect((await without.request('http://x/api/ping', { headers })).status).toBe(403)
     const withDev = createApp({ ...base, extraHosts: ['localhost:5173', '127.0.0.1:5173'] })
     expect((await withDev.request('http://x/api/ping', { headers })).status).toBe(200)
-    expect((await withDev.request('http://x/api/ping', { headers: { ...headers, Host: 'evil.example:5173' } })).status).toBe(403)
+    expect(
+      (
+        await withDev.request('http://x/api/ping', {
+          headers: { ...headers, Host: 'evil.example:5173' },
+        })
+      ).status,
+    ).toBe(403)
   })
   it('DaybreakError maps to status and JSON body', async () => {
     const { daybreak } = await testApp()
-    const app = createApp({ daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00', broker: new ChangeBroker() })
+    const app = createApp({
+      daybreak,
+      token: TEST_TOKEN,
+      port: TEST_PORT,
+      dayStartsAt: '04:00',
+      broker: new ChangeBroker(),
+    })
     const mapped = [
       ['not_found', 404],
       ['invalid', 400],
@@ -75,7 +97,11 @@ describe('auth', () => {
         headers: { Host: `127.0.0.1:${TEST_PORT}`, Authorization: `Bearer ${TEST_TOKEN}` },
       })
       expect(res.status).toBe(status)
-      expect(await res.json()).toEqual({ error: code, message: `msg ${code}`, details: { id: 'abc' } })
+      expect(await res.json()).toEqual({
+        error: code,
+        message: `msg ${code}`,
+        details: { id: 'abc' },
+      })
     }
   })
 })

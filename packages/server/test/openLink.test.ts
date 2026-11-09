@@ -6,7 +6,11 @@ import { openLink } from '../src/openLink'
 function fakeSpawn() {
   const child = Object.assign(new EventEmitter(), { unref: vi.fn() })
   const fn = vi.fn(() => child)
-  return { fn: fn as unknown as typeof spawn, calls: fn.mock.calls as unknown as unknown[][], child }
+  return {
+    fn: fn as unknown as typeof spawn,
+    calls: fn.mock.calls as unknown as unknown[][],
+    child,
+  }
 }
 
 describe('openLink', () => {
@@ -14,7 +18,9 @@ describe('openLink', () => {
     const s = fakeSpawn()
     const link = 'https://x.example/?a=1&b=2'
     openLink(link, 'win32', s.fn)
-    expect(s.calls).toEqual([['explorer.exe', [link], { detached: true, stdio: 'ignore', shell: false }]])
+    expect(s.calls).toEqual([
+      ['explorer.exe', [link], { detached: true, stdio: 'ignore', shell: false }],
+    ])
     expect(s.child.unref).toHaveBeenCalledOnce()
   })
   it('darwin uses open, other platforms use xdg-open', () => {
@@ -37,7 +43,9 @@ describe('openLink', () => {
   it('rejects NUL bytes and leading dashes as invalid without spawning', () => {
     const s = fakeSpawn()
     for (const bad of ['a\0b', '-rf', '--help']) {
-      expect(() => openLink(bad, 'linux', s.fn)).toThrow(expect.objectContaining({ code: 'invalid' }))
+      expect(() => openLink(bad, 'linux', s.fn)).toThrow(
+        expect.objectContaining({ code: 'invalid' }),
+      )
     }
     expect(s.calls).toEqual([])
   })
@@ -45,7 +53,9 @@ describe('openLink', () => {
     const boom = (() => {
       throw new Error('spawn exploded')
     }) as unknown as typeof spawn
-    expect(() => openLink('/x', 'linux', boom)).toThrow(expect.objectContaining({ code: 'invalid' }))
+    expect(() => openLink('/x', 'linux', boom)).toThrow(
+      expect.objectContaining({ code: 'invalid' }),
+    )
   })
   it('an empty or null link throws invalid', () => {
     const s = fakeSpawn()

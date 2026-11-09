@@ -12,9 +12,9 @@ describe('resolveDataDir', () => {
     expect(resolveDataDir(env, 'win32', '/home/u')).toBe(resolve('/x/data'))
   })
   it('win32 uses LOCALAPPDATA\\Daybreak', () => {
-    expect(resolveDataDir({ LOCALAPPDATA: 'C:\\Users\\u\\AppData\\Local' }, 'win32', 'C:\\Users\\u')).toBe(
-      'C:\\Users\\u\\AppData\\Local\\Daybreak',
-    )
+    expect(
+      resolveDataDir({ LOCALAPPDATA: 'C:\\Users\\u\\AppData\\Local' }, 'win32', 'C:\\Users\\u'),
+    ).toBe('C:\\Users\\u\\AppData\\Local\\Daybreak')
   })
   it('linux uses XDG_DATA_HOME/daybreak, else ~/.local/share/daybreak', () => {
     expect(resolveDataDir({ XDG_DATA_HOME: '/xdg' }, 'linux', '/home/u')).toBe('/xdg/daybreak')
@@ -40,7 +40,9 @@ describe('assertOutsideRepo', () => {
     symlinkSync(repo, link)
     expect(() => assertOutsideRepo(link, repo)).toThrow(/inside the repo/)
     expect(() => assertOutsideRepo(join(link, 'inner'), repo)).toThrow(/inside the repo/)
-    expect(() => assertOutsideRepo(join(link, 'not-yet', 'deeper'), repo)).toThrow(/inside the repo/)
+    expect(() => assertOutsideRepo(join(link, 'not-yet', 'deeper'), repo)).toThrow(
+      /inside the repo/,
+    )
   })
   it('catches a repo reached through a symlink', () => {
     const base = scratch()

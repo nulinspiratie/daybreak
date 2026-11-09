@@ -25,8 +25,11 @@ export async function open(path: string): Promise<Db> {
   raw.exec('PRAGMA foreign_keys = ON')
   return {
     exec: (sql) => raw.exec(sql),
-    run: (sql, ...params: SqlValue[]) => ({ changes: Number(raw.prepare(sql).run(...params).changes) }),
-    get: <T>(sql: string, ...params: SqlValue[]) => raw.prepare(sql).get(...params) as T | undefined,
+    run: (sql, ...params: SqlValue[]) => ({
+      changes: Number(raw.prepare(sql).run(...params).changes),
+    }),
+    get: <T>(sql: string, ...params: SqlValue[]) =>
+      raw.prepare(sql).get(...params) as T | undefined,
     all: <T>(sql: string, ...params: SqlValue[]) => raw.prepare(sql).all(...params) as T[],
     close: () => raw.close(),
   }

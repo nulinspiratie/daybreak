@@ -1,6 +1,6 @@
 :root {
-  --font: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif;
-  --mono: Consolas, 'Cascadia Mono', monospace;
+  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", Inter, system-ui, sans-serif;
+  --mono: Consolas, "Cascadia Mono", monospace;
 
   --win: #f3f3f3;
   --pane: #ffffff;
@@ -39,7 +39,7 @@
   color-scheme: light;
 }
 
-:root[data-theme='dark'] {
+:root[data-theme="dark"] {
   --win: #1c1c1c;
   --pane: #272727;
   --pane2: #232323;

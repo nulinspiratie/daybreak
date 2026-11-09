@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
-  createTask, DaybreakError, eventsOn, getTask, indent, moveDown, moveTask, moveUp, outdent,
+  createTask,
+  DaybreakError,
+  eventsOn,
+  getTask,
+  indent,
+  moveDown,
+  moveTask,
+  moveUp,
+  outdent,
 } from '../src/index'
 import { build, makeCtx, outline } from './helpers'
 
@@ -17,6 +25,7 @@ const TREE = 'projects:\n  A\n    A1\n    A2\n  B\n    B1\ninbox:\n  i1\n  i2'
 
 async function setup(text = TREE) {
   const ctx = await makeCtx()
+  // biome-ignore lint/suspicious/noExplicitAny: test ids are looked up by name and always exist.
   return { ctx, ids: build(ctx, text) as Record<string, any> }
 }
 
@@ -30,16 +39,24 @@ describe('moveTask', () => {
   it('rejects own descendant and itself', async () => {
     const { ctx, ids } = await setup()
     const before = outline(ctx)
-    expect(codeOf(() => moveTask(ctx, ids.A, { parentId: ids.A1, section: 'projects' }))).toBe('invalid')
-    expect(codeOf(() => moveTask(ctx, ids.A, { parentId: ids.A, section: 'projects' }))).toBe('invalid')
+    expect(codeOf(() => moveTask(ctx, ids.A, { parentId: ids.A1, section: 'projects' }))).toBe(
+      'invalid',
+    )
+    expect(codeOf(() => moveTask(ctx, ids.A, { parentId: ids.A, section: 'projects' }))).toBe(
+      'invalid',
+    )
     expect(outline(ctx)).toBe(before)
   })
 
   it('into inbox requires no children and parentId null', async () => {
     const { ctx, ids } = await setup()
     expect(codeOf(() => moveTask(ctx, ids.A, { parentId: null, section: 'inbox' }))).toBe('invalid')
-    expect(codeOf(() => moveTask(ctx, ids.B1, { parentId: ids.i1, section: 'inbox' }))).toBe('invalid')
-    expect(codeOf(() => moveTask(ctx, ids.B1, { parentId: ids.A, section: 'inbox' }))).toBe('invalid')
+    expect(codeOf(() => moveTask(ctx, ids.B1, { parentId: ids.i1, section: 'inbox' }))).toBe(
+      'invalid',
+    )
+    expect(codeOf(() => moveTask(ctx, ids.B1, { parentId: ids.A, section: 'inbox' }))).toBe(
+      'invalid',
+    )
     moveTask(ctx, ids.B1, { parentId: null, section: 'inbox', beforeId: ids.i1 })
     expect(outline(ctx)).toBe('projects:\n  A\n    A1\n    A2\n  B\ninbox:\n  B1\n  i1\n  i2')
   })
@@ -62,10 +79,16 @@ describe('moveTask', () => {
 
   it('missing or deleted parent is not_found, inbox parent is invalid', async () => {
     const { ctx, ids } = await setup()
-    expect(codeOf(() => moveTask(ctx, ids.A1, { parentId: 'zzzzzz', section: 'projects' }))).toBe('not_found')
+    expect(codeOf(() => moveTask(ctx, ids.A1, { parentId: 'zzzzzz', section: 'projects' }))).toBe(
+      'not_found',
+    )
     ctx.db.run("UPDATE tasks SET deleted_at = '2026-11-10T00:00:00Z' WHERE id = ?", ids.B1)
-    expect(codeOf(() => moveTask(ctx, ids.A1, { parentId: ids.B1, section: 'projects' }))).toBe('not_found')
-    expect(codeOf(() => moveTask(ctx, ids.A1, { parentId: ids.i1, section: 'projects' }))).toBe('invalid')
+    expect(codeOf(() => moveTask(ctx, ids.A1, { parentId: ids.B1, section: 'projects' }))).toBe(
+      'not_found',
+    )
+    expect(codeOf(() => moveTask(ctx, ids.A1, { parentId: ids.i1, section: 'projects' }))).toBe(
+      'invalid',
+    )
   })
 
   it('records a moved event with from and to, none for a no-op', async () => {
@@ -159,7 +182,9 @@ describe('moveUp / moveDown', () => {
     expect(outline(ctx)).toBe(before)
     const c = createTask(ctx, { title: 'C', section: 'projects', beforeId: ids.A })
     moveUp(ctx, c.id)
-    expect(outline(ctx)).toBe('projects:\n  A\n    A1\n    A2\n  B\n    B1\ninbox:\n  i1\n  i2\n  C')
+    expect(outline(ctx)).toBe(
+      'projects:\n  A\n    A1\n    A2\n  B\n    B1\ninbox:\n  i1\n  i2\n  C',
+    )
     expect(getTask(ctx, c.id).section).toBe('inbox')
   })
 
@@ -185,7 +210,10 @@ describe('moveUp / moveDown', () => {
 
   it('moveDown skips a sibling closed 2 days ago (hidden under the recent rule)', async () => {
     const { ctx, ids } = await setup('projects:\n  A\n  X\n  B\n  C')
-    ctx.db.run("UPDATE tasks SET status = 'done', closed_at = '2026-11-08T07:00:00Z' WHERE id = ?", ids.X)
+    ctx.db.run(
+      "UPDATE tasks SET status = 'done', closed_at = '2026-11-08T07:00:00Z' WHERE id = ?",
+      ids.X,
+    )
     moveDown(ctx, ids.A)
     expect(outline(ctx)).toBe('projects:\n  X\n  B\n  A\n  C\ninbox:')
   })

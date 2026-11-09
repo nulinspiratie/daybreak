@@ -1,7 +1,7 @@
 import type { Ctx } from './ctx'
 import { nowIso, today } from './ctx'
-import { transaction } from './db/adapter'
 import { addDays, type ISODate } from './dates'
+import { transaction } from './db/adapter'
 import { DaybreakError } from './errors'
 import { recordEvent } from './events'
 import { lastWorkedBefore } from './tasks/marks'
@@ -27,13 +27,22 @@ export interface Decision {
   reviewDate: ISODate
   choice: ReviewChoice
   group: Group
-  previous: { scheduledOn: ISODate | null; dayPosition: string | null; status: Status; closedAt: string | null }
+  previous: {
+    scheduledOn: ISODate | null
+    dayPosition: string | null
+    status: Status
+    closedAt: string | null
+  }
   to?: ISODate
   closedIds?: string[]
 }
 
 /** Decisions whose data at `jsonPath` equals `value`, oldest first, skipping undone ones. */
-function liveDecisions(ctx: Ctx, jsonPath: '$.reviewDate' | '$.previous.scheduledOn', value: ISODate): Decision[] {
+function liveDecisions(
+  ctx: Ctx,
+  jsonPath: '$.reviewDate' | '$.previous.scheduledOn',
+  value: ISODate,
+): Decision[] {
   const rows = ctx.db.all<{ id: number; task_id: string; kind: string; data: string }>(
     `SELECT e.id, e.task_id, e.kind, e.data FROM events e
      WHERE e.kind IN ('review_today', 'review_day', 'review_backlog', 'review_cancel')
@@ -119,7 +128,10 @@ function candidates(
 }
 
 export function lastReviewDate(ctx: Ctx): string | null {
-  return ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_review_date'")?.value ?? null
+  return (
+    ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_review_date'")?.value ??
+    null
+  )
 }
 
 function setLastReviewDate(ctx: Ctx, date: ISODate): void {
@@ -203,7 +215,8 @@ export function decide(
   choice: ReviewChoice,
   targetDate?: ISODate,
 ): ReviewView {
-  if (!CHOICES.includes(choice)) throw new DaybreakError('invalid', `Unknown review choice: ${choice}`)
+  if (!CHOICES.includes(choice))
+    throw new DaybreakError('invalid', `Unknown review choice: ${choice}`)
   if (choice === 'day' && targetDate === undefined) {
     throw new DaybreakError('invalid', 'Another day needs a target date')
   }
@@ -211,9 +224,13 @@ export function decide(
     const view = reviewView(ctx, date)
     const current = [...view.leftovers, ...view.suggestions].find((i) => i.task.id === taskId)
     if (!current || current.decision !== null) {
-      throw new DaybreakError('invalid', `Task #${taskId} is not waiting for a decision in this review`, {
-        id: taskId,
-      })
+      throw new DaybreakError(
+        'invalid',
+        `Task #${taskId} is not waiting for a decision in this review`,
+        {
+          id: taskId,
+        },
+      )
     }
     const { task, group } = current
     const data: Record<string, unknown> = {
@@ -244,7 +261,8 @@ export function decide(
 export function undoDecision(ctx: Ctx, date: ISODate): ReviewView {
   return transaction(ctx.db, () => {
     // A decision on a task deleted since is not shown, so Z passes over it.
-    const live = (d: Decision) => ctx.db.get('SELECT 1 FROM tasks WHERE id = ? AND deleted_at IS NULL', d.taskId) !== undefined
+    const live = (d: Decision) =>
+      ctx.db.get('SELECT 1 FROM tasks WHERE id = ? AND deleted_at IS NULL', d.taskId) !== undefined
     const last = decisionsOn(ctx, date).filter(live).at(-1)
     if (last) {
       const p = last.previous

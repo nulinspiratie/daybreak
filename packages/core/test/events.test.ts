@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { DaybreakError, eventsOn, eventsSince, newId, nowIso, recordEvent, today } from '../src/index'
+import {
+  DaybreakError,
+  eventsOn,
+  eventsSince,
+  newId,
+  nowIso,
+  recordEvent,
+  today,
+} from '../src/index'
 import { makeCtx } from './helpers'
 
 describe('events', () => {

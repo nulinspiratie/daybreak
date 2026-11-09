@@ -50,7 +50,10 @@ async function press(key: string, init: KeyboardEventInit = {}) {
   })
 }
 
-async function start(detailId: string | null, tasks: { inbox?: TreeNode[]; projects?: TreeNode[] }) {
+async function start(
+  detailId: string | null,
+  tasks: { inbox?: TreeNode[]; projects?: TreeNode[] },
+) {
   inbox = tasks.inbox ?? []
   projects = tasks.projects ?? []
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -68,12 +71,24 @@ beforeEach(() => {
   resetPendingIds()
   fake().calls.length = 0
   fake().reply = async (method, path) => {
-    if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
-    if (method === 'GET' && path.startsWith('/api/day/')) return { date: TODAY, items: [], doneCount: 0, totalCount: 0 }
-    if (method === 'GET' && path.startsWith('/api/tree')) return { today: TODAY, inbox, projects, hiddenCompletedCount: 0 }
+    if (method === 'GET' && path === '/api/status')
+      return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+    if (method === 'GET' && path.startsWith('/api/day/'))
+      return { date: TODAY, items: [], doneCount: 0, totalCount: 0 }
+    if (method === 'GET' && path.startsWith('/api/tree'))
+      return { today: TODAY, inbox, projects, hiddenCompletedCount: 0 }
     return {}
   }
-  useUi.getState().set({ pane: 'tree', treeSel: null, daySel: null, editing: null, draft: null, confirm: null, detailId: null, picker: null })
+  useUi.getState().set({
+    pane: 'tree',
+    treeSel: null,
+    daySel: null,
+    editing: null,
+    draft: null,
+    confirm: null,
+    detailId: null,
+    picker: null,
+  })
 })
 afterEach(async () => {
   await act(async () => {
@@ -83,17 +98,26 @@ afterEach(async () => {
 })
 
 const panel = () => screen.getByRole('region', { name: 'Task detail' })
-const kid = (id: string, over: Partial<Task> = {}) => node(id, [], { title: `Kid ${id}`, parentId: 'p', ...over })
-const parent = (over: Partial<Task> = {}) => node('p', [kid('k1'), kid('k2', { status: 'done' })], { title: 'Parent', notes: 'Some **notes**', ...over })
+const kid = (id: string, over: Partial<Task> = {}) =>
+  node(id, [], { title: `Kid ${id}`, parentId: 'p', ...over })
+const parent = (over: Partial<Task> = {}) =>
+  node('p', [kid('k1'), kid('k2', { status: 'done' })], {
+    title: 'Parent',
+    notes: 'Some **notes**',
+    ...over,
+  })
 
 describe('status segments', () => {
   it('Done on a parent goes through the same confirm flow as Space', async () => {
     fake().reply = async (method, path, body) => {
-      if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
-      if (method === 'GET' && path.startsWith('/api/day/')) return { date: TODAY, items: [], doneCount: 0, totalCount: 0 }
+      if (method === 'GET' && path === '/api/status')
+        return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+      if (method === 'GET' && path.startsWith('/api/day/'))
+        return { date: TODAY, items: [], doneCount: 0, totalCount: 0 }
       if (method === 'GET') return { today: TODAY, inbox, projects, hiddenCompletedCount: 0 }
       const b = body as { withOpenDescendants?: boolean } | undefined
-      if (method === 'PATCH' && !b?.withOpenDescendants) throw new ApiError(409, 'needs_confirmation', 'x', { openCount: 1 })
+      if (method === 'PATCH' && !b?.withOpenDescendants)
+        throw new ApiError(409, 'needs_confirmation', 'x', { openCount: 1 })
       return { changedIds: ['p', 'k1'] }
     }
     await start('p', { projects: [parent()] })
@@ -101,7 +125,9 @@ describe('status segments', () => {
     fireEvent.click(done())
     await flush()
     expect(ui().confirm).toMatchObject({ id: 'p', status: 'done', openCount: 1 })
-    expect(screen.getAllByText('1 open subtask. Press Space again to close them all.').length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText('1 open subtask. Press Space again to close them all.').length,
+    ).toBeGreaterThan(0)
     fireEvent.click(done())
     await flush()
     expect(writes()).toEqual([
@@ -126,7 +152,10 @@ describe('status segments', () => {
 
   it('shows the mark and status as the pressed segment; Open clears a mark or reopens; marks are disabled on a closed task', async () => {
     await start('p', { projects: [node('p', [], { title: 'Parent', mark: 'doing' })] })
-    const pressed = () => within(panel()).getAllByRole('button', { pressed: true }).map((b) => b.textContent)
+    const pressed = () =>
+      within(panel())
+        .getAllByRole('button', { pressed: true })
+        .map((b) => b.textContent)
     expect(pressed().some((t) => t?.startsWith('Doing'))).toBe(true)
     fireEvent.click(within(panel()).getByRole('button', { name: 'Open' }))
     await flush()
@@ -134,7 +163,9 @@ describe('status segments', () => {
     cleanup()
     fake().calls.length = 0
     await start('p', { projects: [node('p', [], { title: 'Parent', status: 'done' })] })
-    expect((within(panel()).getByRole('button', { name: /^Doing/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(
+      (within(panel()).getByRole('button', { name: /^Doing/ }) as HTMLButtonElement).disabled,
+    ).toBe(true)
     fireEvent.click(within(panel()).getByRole('button', { name: 'Open' }))
     await flush()
     expect(writes()).toEqual([['PATCH', '/api/tasks/p', { status: 'open' }]])
@@ -179,10 +210,14 @@ describe('segments', () => {
 
   it('Pick a day shows a day other than today and tomorrow', async () => {
     await start('p', { projects: [node('p', [], { title: 'Parent', scheduledOn: '2026-11-10' })] })
-    expect(within(panel()).getByRole('button', { name: 'Tomorrow' }).getAttribute('aria-pressed')).toBe('true')
+    expect(
+      within(panel()).getByRole('button', { name: 'Tomorrow' }).getAttribute('aria-pressed'),
+    ).toBe('true')
     cleanup()
     await start('p', { projects: [node('p', [], { title: 'Parent', scheduledOn: '2026-11-17' })] })
-    expect(within(panel()).getByRole('button', { name: 'Tue 17 Nov' }).getAttribute('aria-pressed')).toBe('true')
+    expect(
+      within(panel()).getByRole('button', { name: 'Tue 17 Nov' }).getAttribute('aria-pressed'),
+    ).toBe('true')
   })
 })
 
@@ -217,8 +252,10 @@ describe('keys act on the shown task (R35)', () => {
   it('Del deletes the shown task and keeps the tree selection', async () => {
     fake().reply = async (method, path) => {
       if (method === 'DELETE') return { deletedIds: ['h'] }
-      if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
-      if (method === 'GET' && path.startsWith('/api/day/')) return { date: TODAY, items: [], doneCount: 0, totalCount: 0 }
+      if (method === 'GET' && path === '/api/status')
+        return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+      if (method === 'GET' && path.startsWith('/api/day/'))
+        return { date: TODAY, items: [], doneCount: 0, totalCount: 0 }
       if (method === 'GET') return { today: TODAY, inbox, projects, hiddenCompletedCount: 0 }
       return {}
     }
@@ -289,20 +326,31 @@ describe('editing fields', () => {
     expect(ui().detailId).toBeNull()
   })
 
-  describe.each([['another row', 'q'], ['nothing', null]])('opened from My Day for a task under a collapsed parent, tree selection on %s', (_name, sel) => {
-    it('a second Ctrl+O edits that task\'s notes', async () => {
-      const kid = node('c', [], { title: 'Kid', notes: 'kid notes' })
-      await start(null, { projects: [node('p', [kid], { title: 'Parent', collapsed: true }), node('q', [], { title: 'Other' })] })
-      act(() => ui().set({ pane: 'tree', treeSel: sel }))
-      await flush()
-      act(() => ui().set({ detailId: 'c' })) // as Ctrl+O from My Day leaves it: the tree selection did not follow
-      await flush()
-      await press('o', { ctrlKey: true })
-      expect(ui().detailId).toBe('c')
-      expect(ui().treeSel).toBe(sel)
-      expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Notes' }))
-    })
-  })
+  describe.each([
+    ['another row', 'q'],
+    ['nothing', null],
+  ])(
+    'opened from My Day for a task under a collapsed parent, tree selection on %s',
+    (_name, sel) => {
+      it("a second Ctrl+O edits that task's notes", async () => {
+        const kid = node('c', [], { title: 'Kid', notes: 'kid notes' })
+        await start(null, {
+          projects: [
+            node('p', [kid], { title: 'Parent', collapsed: true }),
+            node('q', [], { title: 'Other' }),
+          ],
+        })
+        act(() => ui().set({ pane: 'tree', treeSel: sel }))
+        await flush()
+        act(() => ui().set({ detailId: 'c' })) // as Ctrl+O from My Day leaves it: the tree selection did not follow
+        await flush()
+        await press('o', { ctrlKey: true })
+        expect(ui().detailId).toBe('c')
+        expect(ui().treeSel).toBe(sel)
+        expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Notes' }))
+      })
+    },
+  )
 
   it('title: saves on Enter only when changed, reverts when empty, Esc reverts and blurs', async () => {
     await start('p', { projects: [node('p', [], { title: 'Parent' })] })
@@ -351,7 +399,9 @@ describe('editing fields', () => {
   })
 
   it('a click on a notes link goes through open-link, not a window', async () => {
-    await start('p', { projects: [node('p', [], { title: 'Parent', notes: '[d](https://example.com)' })] })
+    await start('p', {
+      projects: [node('p', [], { title: 'Parent', notes: '[d](https://example.com)' })],
+    })
     fireEvent.click(screen.getByRole('link', { name: 'd' }))
     await flush()
     expect(writes()).toEqual([['POST', '/api/open-link', { target: 'https://example.com' }]])
@@ -361,7 +411,9 @@ describe('editing fields', () => {
 
 describe('following and closing', () => {
   it('follows the tree selection', async () => {
-    await start('a', { projects: [node('a', [], { title: 'Alpha' }), node('b', [], { title: 'Beta' })] })
+    await start('a', {
+      projects: [node('a', [], { title: 'Alpha' }), node('b', [], { title: 'Beta' })],
+    })
     expect(screen.getByRole('textbox', { name: 'Title' })).toHaveProperty('value', 'Alpha')
     act(() => ui().set({ treeSel: 'b' }))
     expect(screen.getByRole('textbox', { name: 'Title' })).toHaveProperty('value', 'Beta')

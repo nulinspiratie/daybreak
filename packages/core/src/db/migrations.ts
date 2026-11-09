@@ -1,4 +1,4 @@
-import { transaction, type Db } from './adapter'
+import { type Db, transaction } from './adapter'
 
 const SCHEMA_V1 = `
 CREATE TABLE tasks (

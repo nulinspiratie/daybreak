@@ -12,7 +12,11 @@ function press(target: EventTarget, key: string, init: KeyboardEventInit = {}): 
   target.dispatchEvent(e)
   return e
 }
-function add<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}, parent: HTMLElement = document.body) {
+function add<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  attrs: Record<string, string> = {},
+  parent: HTMLElement = document.body,
+) {
   const el = document.createElement(tag)
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v)
   parent.appendChild(el)
@@ -23,7 +27,17 @@ beforeEach(() => {
   run = vi.fn<(cmd: Command) => void>()
   handler = createKeyHandler((cmd) => run(cmd))
   window.addEventListener('keydown', handler)
-  useUi.getState().set({ pane: 'tree', treeSel: 't1', daySel: null, editing: null, confirm: null, reviewOpen: false, picker: null, pickerShown: false, dragging: false })
+  useUi.getState().set({
+    pane: 'tree',
+    treeSel: 't1',
+    daySel: null,
+    editing: null,
+    confirm: null,
+    reviewOpen: false,
+    picker: null,
+    pickerShown: false,
+    dragging: false,
+  })
 })
 afterEach(() => {
   window.removeEventListener('keydown', handler)
@@ -48,7 +62,9 @@ describe('the global keydown filter', () => {
     press(document.body, 'ArrowUp', { repeat: true, ctrlKey: true })
     press(document.body, 'ArrowUp', { repeat: true, altKey: true })
     expect(run.mock.calls).toHaveLength(2) // nav.down, and move.up for this platform's Mod
-    expect(run.mock.calls.map((c) => c[0]).every((c) => c.startsWith('nav.') || c.startsWith('move.'))).toBe(true)
+    expect(
+      run.mock.calls.map((c) => c[0]).every((c) => c.startsWith('nav.') || c.startsWith('move.')),
+    ).toBe(true)
     run.mockClear()
     for (const key of [' ', 'x', 'Delete', 'z', 'm', 't', 'b', 's', 'w', 'o', 'Enter', 'n']) {
       const e = press(document.body, key, { repeat: true })
@@ -174,7 +190,9 @@ describe('the global keydown filter', () => {
   })
 
   it('any unhandled key dismisses the confirm note; a bare modifier does not', () => {
-    useUi.getState().set({ confirm: { id: 't1', status: 'done', openCount: 2, until: Date.now() + 4000 } })
+    useUi
+      .getState()
+      .set({ confirm: { id: 't1', status: 'done', openCount: 2, until: Date.now() + 4000 } })
     press(document.body, 'Shift')
     expect(useUi.getState().confirm).not.toBeNull()
     press(document.body, 'q')

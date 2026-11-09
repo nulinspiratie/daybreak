@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createTask, treeView } from '../src/index'
 import type { Task, TreeNode } from '../src/index'
+import { createTask, treeView } from '../src/index'
 import { makeCtx } from './helpers'
 
 const NOW = '2026-11-10T09:00:00Z'
@@ -8,10 +8,20 @@ const hoursAgo = (h: number) => new Date(new Date(NOW).getTime() - h * 3600_000)
 
 type Ctx = Awaited<ReturnType<typeof makeCtx>>
 
-function mk(ctx: Ctx, title: string, parent?: Task, opts: { status?: 'done' | 'cancelled'; closedHoursAgo?: number } = {}): Task {
+function mk(
+  ctx: Ctx,
+  title: string,
+  parent?: Task,
+  opts: { status?: 'done' | 'cancelled'; closedHoursAgo?: number } = {},
+): Task {
   const t = createTask(ctx, { title, section: 'projects', parentId: parent?.id ?? null })
   if (opts.status) {
-    ctx.db.run('UPDATE tasks SET status = ?, closed_at = ? WHERE id = ?', opts.status, hoursAgo(opts.closedHoursAgo ?? 1), t.id)
+    ctx.db.run(
+      'UPDATE tasks SET status = ?, closed_at = ? WHERE id = ?',
+      opts.status,
+      hoursAgo(opts.closedHoursAgo ?? 1),
+      t.id,
+    )
   }
   return t
 }
@@ -31,7 +41,10 @@ describe('treeView', () => {
     // p's descendants: c (open), gc-done, gc-open count; gc-cancelled does not
     expect(tree.projects[0]).toMatchObject({ doneCount: 1, totalCount: 3 })
     expect(tree.projects[0]!.children[0]).toMatchObject({ doneCount: 1, totalCount: 2 })
-    expect(tree.projects[0]!.children[0]!.children[2]).toMatchObject({ doneCount: 0, totalCount: 0 })
+    expect(tree.projects[0]!.children[0]!.children[2]).toMatchObject({
+      doneCount: 0,
+      totalCount: 0,
+    })
   })
 
   it('recent hides tasks closed more than 24 h ago', async () => {
@@ -82,10 +95,10 @@ describe('treeView', () => {
     const p = mk(ctx, 'p')
     const gone = mk(ctx, 'gone', p, { status: 'done', closedHoursAgo: 100 })
     mk(ctx, 'gone-child', gone, { status: 'done' })
-    ctx.db.run("UPDATE tasks SET deleted_at = ? WHERE id = ?", NOW, gone.id)
+    ctx.db.run('UPDATE tasks SET deleted_at = ? WHERE id = ?', NOW, gone.id)
     ctx.db.run("UPDATE tasks SET deleted_at = ? WHERE title = 'gone-child'", NOW)
     const inboxGone = createTask(ctx, { title: 'inbox-gone', section: 'inbox' })
-    ctx.db.run("UPDATE tasks SET deleted_at = ? WHERE id = ?", NOW, inboxGone.id)
+    ctx.db.run('UPDATE tasks SET deleted_at = ? WHERE id = ?', NOW, inboxGone.id)
     for (const mode of ['recent', 'all', 'none'] as const) {
       const tree = treeView(ctx, mode)
       expect(titles(tree.projects)).toEqual(['p'])
@@ -100,8 +113,14 @@ describe('treeView', () => {
     const a = mk(ctx, 'a')
     const b = mk(ctx, 'b')
     const c = mk(ctx, 'c')
-    ctx.db.run("INSERT INTO day_marks (date, task_id, mark) VALUES ('2026-11-10', ?, 'doing')", a.id)
-    ctx.db.run("INSERT INTO day_marks (date, task_id, mark) VALUES ('2026-11-09', ?, 'worked')", b.id)
+    ctx.db.run(
+      "INSERT INTO day_marks (date, task_id, mark) VALUES ('2026-11-10', ?, 'doing')",
+      a.id,
+    )
+    ctx.db.run(
+      "INSERT INTO day_marks (date, task_id, mark) VALUES ('2026-11-09', ?, 'worked')",
+      b.id,
+    )
     const tree = treeView(ctx, 'all')
     expect(tree.today).toBe('2026-11-10')
     expect(tree.projects.map((n) => n.mark)).toEqual(['doing', null, null])

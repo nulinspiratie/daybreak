@@ -11,13 +11,22 @@ export function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(ha, hb)
 }
 
-export function hostAllowed(host: string | undefined, port: number, extraHosts: string[] = []): boolean {
-  return host === `127.0.0.1:${port}` || host === `localhost:${port}` || (host !== undefined && extraHosts.includes(host))
+export function hostAllowed(
+  host: string | undefined,
+  port: number,
+  extraHosts: string[] = [],
+): boolean {
+  return (
+    host === `127.0.0.1:${port}` ||
+    host === `localhost:${port}` ||
+    (host !== undefined && extraHosts.includes(host))
+  )
 }
 
 export function hostGuard(port: number, extraHosts: string[] = []): MiddlewareHandler {
   return async (c, next) => {
-    if (!hostAllowed(c.req.header('host'), port, extraHosts)) return c.json({ error: 'forbidden', message: 'Bad Host header' }, 403)
+    if (!hostAllowed(c.req.header('host'), port, extraHosts))
+      return c.json({ error: 'forbidden', message: 'Bad Host header' }, 403)
     await next()
   }
 }
@@ -37,9 +46,13 @@ export function originGuard(port: number, extraHosts: string[] = []): Middleware
     if (!SAFE_METHODS.has(c.req.method)) {
       const origin = c.req.header('origin')
       const site = c.req.header('sec-fetch-site')
-      const ownOrigin = origin === undefined || (origin.startsWith('http://') && hostAllowed(origin.slice('http://'.length), port, extraHosts))
+      const ownOrigin =
+        origin === undefined ||
+        (origin.startsWith('http://') &&
+          hostAllowed(origin.slice('http://'.length), port, extraHosts))
       const ownSite = site === undefined || site === 'same-origin' || site === 'none'
-      if (!ownOrigin || !ownSite) return c.json({ error: 'forbidden', message: 'Cross-origin write refused' }, 403)
+      if (!ownOrigin || !ownSite)
+        return c.json({ error: 'forbidden', message: 'Cross-origin write refused' }, 403)
     }
     await next()
   }

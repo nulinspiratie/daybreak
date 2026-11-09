@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { TEST_PORT, TEST_TOKEN, testApp } from './helpers'
 
-async function readUntil(reader: { read(): Promise<{ value?: Uint8Array; done: boolean }> }, needle: string): Promise<string> {
+async function readUntil(
+  reader: { read(): Promise<{ value?: Uint8Array; done: boolean }> },
+  needle: string,
+): Promise<string> {
   const dec = new TextDecoder()
   let text = ''
   while (!text.includes(needle)) {
@@ -56,13 +59,17 @@ describe('GET /events/stream', () => {
     await until(() => broker.listenerCount === 1)
     broker.publish('day_changed', { today: '2026-11-11' })
     const reader = await opened(res)
-    expect(await readUntil(reader, '\n\n')).toBe('event: day_changed\ndata: {"today":"2026-11-11"}\n\n')
+    expect(await readUntil(reader, '\n\n')).toBe(
+      'event: day_changed\ndata: {"today":"2026-11-11"}\n\n',
+    )
     await reader.cancel()
   })
 
   it('requires auth', async () => {
     const { app } = await testApp()
-    const res = await app.request('http://x/events/stream', { headers: { Host: `127.0.0.1:${TEST_PORT}` } })
+    const res = await app.request('http://x/events/stream', {
+      headers: { Host: `127.0.0.1:${TEST_PORT}` },
+    })
     expect(res.status).toBe(401)
     const ok = await app.request('http://x/events/stream', {
       headers: { Host: `127.0.0.1:${TEST_PORT}`, Authorization: `Bearer ${TEST_TOKEN}` },

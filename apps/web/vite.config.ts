@@ -12,7 +12,9 @@ function readToken(): string | undefined {
   try {
     return readFileSync(file, 'utf8').trim()
   } catch {
-    console.warn(`Daybreak: no token at ${file}. Run the server once first (bun run dev), then restart Vite.`)
+    console.warn(
+      `Daybreak: no token at ${file}. Run the server once first (bun run dev), then restart Vite.`,
+    )
     return undefined
   }
 }

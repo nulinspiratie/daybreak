@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DayPicker, QUICK_PICK_MS } from '../src/picker/DayPicker'
-import { type FakeApi } from './helpers'
+import type { FakeApi } from './helpers'
 
 const shared = vi.hoisted(() => ({ fake: null as FakeApi | null }))
 vi.mock('../src/api/client', async (importOriginal) => {
@@ -20,12 +20,19 @@ function mount(props: { allowNoDay?: boolean; initial?: string | null } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={qc}>
-      <DayPicker today={TODAY} allowNoDay={props.allowNoDay ?? true} initial={props.initial} onPick={onPick} onClose={onClose} />
+      <DayPicker
+        today={TODAY}
+        allowNoDay={props.allowNoDay ?? true}
+        initial={props.initial}
+        onPick={onPick}
+        onClose={onClose}
+      />
     </QueryClientProvider>,
   )
   return screen.getByRole('textbox') as HTMLInputElement
 }
-const type = (input: HTMLInputElement, value: string) => fireEvent.change(input, { target: { value } })
+const type = (input: HTMLInputElement, value: string) =>
+  fireEvent.change(input, { target: { value } })
 /** One real key press into the field: keydown, and, if the picker let it through, the input it would make. */
 function key(input: HTMLInputElement, k: string) {
   const proceeded = fireEvent.keyDown(input, { key: k })
@@ -37,7 +44,8 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   onPick = vi.fn<(d: string | null) => void>()
   onClose = vi.fn<() => void>()
-  shared.fake!.reply = (_m, path) => (path.startsWith('/api/days') ? { '2026-11-10': 5, '2026-11-12': 2 } : undefined)
+  shared.fake!.reply = (_m, path) =>
+    path.startsWith('/api/days') ? { '2026-11-10': 5, '2026-11-12': 2 } : undefined
 })
 afterEach(() => {
   cleanup()
@@ -188,7 +196,8 @@ describe('DayPicker', () => {
 
   it('shows dots up to 4 tasks and the number above', async () => {
     vi.useRealTimers()
-    shared.fake!.reply = (_m, path) => (path.startsWith('/api/days') ? { '2026-11-10': 4, '2026-11-12': 12 } : undefined)
+    shared.fake!.reply = (_m, path) =>
+      path.startsWith('/api/days') ? { '2026-11-10': 4, '2026-11-12': 12 } : undefined
     mount()
     const label = (name: RegExp) => screen.findByRole('button', { name })
     expect((await label(/Tomorrow · Tue 10, 4 tasks/)).textContent).toContain('••••')

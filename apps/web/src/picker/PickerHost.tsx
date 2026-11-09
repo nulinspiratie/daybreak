@@ -26,7 +26,11 @@ function place(row: Element | null, height: number): { left: number; top: number
   const width = Math.min(WIDTH, vw - 2 * MARGIN)
   const maxTop = Math.max(MARGIN, vh - height - MARGIN)
   const r = row?.getBoundingClientRect()
-  if (!r) return { left: Math.max(MARGIN, (vw - width) / 2), top: Math.min(maxTop, Math.max(MARGIN, (vh - height) / 3)) }
+  if (!r)
+    return {
+      left: Math.max(MARGIN, (vw - width) / 2),
+      top: Math.min(maxTop, Math.max(MARGIN, (vh - height) / 3)),
+    }
   const below = r.bottom + GAP
   const top = below + height + MARGIN <= vh ? below : r.top - GAP - height
   return {
@@ -131,7 +135,13 @@ function Card(p: {
             Close <span className="kbd">Esc</span>
           </button>
         </div>
-        <DayPicker today={p.today} initial={p.task.scheduledOn} allowNoDay={p.allowNoDay} onPick={p.pick} onClose={p.close} />
+        <DayPicker
+          today={p.today}
+          initial={p.task.scheduledOn}
+          allowNoDay={p.allowNoDay}
+          onPick={p.pick}
+          onClose={p.close}
+        />
       </div>
     </div>
   )

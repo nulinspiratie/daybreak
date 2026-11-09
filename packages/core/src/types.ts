@@ -6,9 +6,24 @@ export type Status = 'open' | 'done' | 'cancelled'
 export type Mark = 'doing' | 'worked'
 
 export type EventKind =
-  | 'created' | 'renamed' | 'moved' | 'scheduled' | 'unscheduled' | 'done' | 'reopened'
-  | 'cancelled' | 'doing' | 'worked' | 'deleted' | 'restored'
-  | 'review_today' | 'review_day' | 'review_backlog' | 'review_cancel' | 'review_skip' | 'review_undo'
+  | 'created'
+  | 'renamed'
+  | 'moved'
+  | 'scheduled'
+  | 'unscheduled'
+  | 'done'
+  | 'reopened'
+  | 'cancelled'
+  | 'doing'
+  | 'worked'
+  | 'deleted'
+  | 'restored'
+  | 'review_today'
+  | 'review_day'
+  | 'review_backlog'
+  | 'review_cancel'
+  | 'review_skip'
+  | 'review_undo'
 
 export interface Task {
   id: string

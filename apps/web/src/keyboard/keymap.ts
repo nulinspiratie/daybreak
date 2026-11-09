@@ -1,10 +1,36 @@
 export type Command =
-  | 'nav.up' | 'nav.down' | 'nav.parent' | 'nav.child' | 'nav.first' | 'nav.last'
-  | 'fold.collapse' | 'fold.expand' | 'move.up' | 'move.down' | 'indent' | 'outdent'
-  | 'pane.toggle' | 'edit.start' | 'new.below' | 'schedule.today' | 'schedule.pick' | 'schedule.backlog'
-  | 'mark.doing' | 'mark.worked' | 'status.done' | 'status.cancel' | 'delete' | 'detail.open' | 'link.open'
-  | 'escape' | 'toast.undo'
-  | 'edit.commitNew' | 'edit.prev' | 'edit.next' | 'edit.deleteEmpty' | 'edit.exit'
+  | 'nav.up'
+  | 'nav.down'
+  | 'nav.parent'
+  | 'nav.child'
+  | 'nav.first'
+  | 'nav.last'
+  | 'fold.collapse'
+  | 'fold.expand'
+  | 'move.up'
+  | 'move.down'
+  | 'indent'
+  | 'outdent'
+  | 'pane.toggle'
+  | 'edit.start'
+  | 'new.below'
+  | 'schedule.today'
+  | 'schedule.pick'
+  | 'schedule.backlog'
+  | 'mark.doing'
+  | 'mark.worked'
+  | 'status.done'
+  | 'status.cancel'
+  | 'delete'
+  | 'detail.open'
+  | 'link.open'
+  | 'escape'
+  | 'toast.undo'
+  | 'edit.commitNew'
+  | 'edit.prev'
+  | 'edit.next'
+  | 'edit.deleteEmpty'
+  | 'edit.exit'
 
 export interface KeyCtx {
   mode: 'navigate' | 'edit'
@@ -35,13 +61,28 @@ function chordOf(e: KeyLike, isMac: boolean): Chord {
 }
 
 const LETTERS: Record<string, Command> = {
-  m: 'pane.toggle', n: 'new.below', t: 'schedule.today', d: 'schedule.pick', b: 'schedule.backlog',
-  s: 'mark.doing', w: 'mark.worked', x: 'status.cancel', o: 'link.open', z: 'toast.undo',
+  m: 'pane.toggle',
+  n: 'new.below',
+  t: 'schedule.today',
+  d: 'schedule.pick',
+  b: 'schedule.backlog',
+  s: 'mark.doing',
+  w: 'mark.worked',
+  x: 'status.cancel',
+  o: 'link.open',
+  z: 'toast.undo',
 }
 
 const NAVIGATE_PLAIN: Record<string, Command> = {
-  ArrowUp: 'nav.up', ArrowDown: 'nav.down', Home: 'nav.first', End: 'nav.last',
-  ' ': 'status.done', Delete: 'delete', Enter: 'edit.start', F2: 'edit.start', Escape: 'escape',
+  ArrowUp: 'nav.up',
+  ArrowDown: 'nav.down',
+  Home: 'nav.first',
+  End: 'nav.last',
+  ' ': 'status.done',
+  Delete: 'delete',
+  Enter: 'edit.start',
+  F2: 'edit.start',
+  Escape: 'escape',
 }
 
 function navigate(e: KeyLike, chord: Chord, tree: boolean): Command | null {
@@ -53,8 +94,10 @@ function navigate(e: KeyLike, chord: Chord, tree: boolean): Command | null {
     if (tree && k === 'ArrowRight') return 'fold.expand'
   }
   // Ctrl+O is Ctrl on every platform (DESIGN says Ctrl+O, not Mod+O).
-  if ((chord === 'ctrl' || (chord === 'mod' && e.ctrlKey)) && k.toLowerCase() === 'o') return 'detail.open'
-  if (k === 'Tab' && tree && (chord === 'plain' || chord === 'shift')) return chord === 'plain' ? 'indent' : 'outdent'
+  if ((chord === 'ctrl' || (chord === 'mod' && e.ctrlKey)) && k.toLowerCase() === 'o')
+    return 'detail.open'
+  if (k === 'Tab' && tree && (chord === 'plain' || chord === 'shift'))
+    return chord === 'plain' ? 'indent' : 'outdent'
   if (chord === 'plain' || chord === 'shift') {
     // Shift (or Caps Lock) does not change a letter's meaning.
     if (k.length === 1 && LETTERS[k.toLowerCase()]) return LETTERS[k.toLowerCase()]!
@@ -72,7 +115,8 @@ function edit(e: KeyLike, chord: Chord, tree: boolean, titleEmpty: boolean): Com
     if (k === 'ArrowDown') return 'move.down'
     return null
   }
-  if (k === 'Tab' && tree && (chord === 'plain' || chord === 'shift')) return chord === 'plain' ? 'indent' : 'outdent'
+  if (k === 'Tab' && tree && (chord === 'plain' || chord === 'shift'))
+    return chord === 'plain' ? 'indent' : 'outdent'
   if (chord !== 'plain') return null
   if (k === 'Enter') return 'edit.commitNew'
   if (k === 'ArrowUp') return 'edit.prev'

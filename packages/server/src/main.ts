@@ -2,11 +2,11 @@ import { mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createDaybreak, migrate, openDatabase, systemClock } from '@daybreak/core'
 import type { Daybreak, Db } from '@daybreak/core'
+import { createDaybreak, migrate, openDatabase, systemClock } from '@daybreak/core'
 import { createApp } from './app'
-import { assertOutsideRepo, loadConfig, loadOrCreateToken, resolveDataDir } from './paths'
 import type { ServerConfig } from './paths'
+import { assertOutsideRepo, loadConfig, loadOrCreateToken, resolveDataDir } from './paths'
 import { startRollover } from './rollover'
 import { ChangeBroker } from './sse'
 
@@ -38,7 +38,12 @@ try {
   mkdirSync(logsDir, { recursive: true })
   db = await openDatabase(join(dataDir, 'daybreak.db'))
   migrate(db)
-  daybreak = createDaybreak({ db, clock: systemClock, config: { dayStartsAt: config.dayStartsAt }, logsDir })
+  daybreak = createDaybreak({
+    db,
+    clock: systemClock,
+    config: { dayStartsAt: config.dayStartsAt },
+    logsDir,
+  })
   daybreak.autoFinishEmptyReview()
 } catch (e) {
   db?.close()

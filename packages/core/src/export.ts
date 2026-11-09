@@ -31,5 +31,5 @@ export function exportProject(ctx: Ctx, id: string): string {
     }
   }
   walk(root.id, 0)
-  return lines.join('\n') + '\n'
+  return `${lines.join('\n')}\n`
 }

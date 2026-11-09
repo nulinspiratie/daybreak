@@ -35,7 +35,8 @@ async function check(): Promise<void> {
   }
   const page = await fetch(base)
   const html = await page.text()
-  if (page.status !== 200 || !html.includes('<div id="root">')) throw new Error(`GET / returned ${page.status}`)
+  if (page.status !== 200 || !html.includes('<div id="root">'))
+    throw new Error(`GET / returned ${page.status}`)
 
   const token = readFileSync(join(dataDir, 'token'), 'utf8').trim()
   const auth = { Authorization: `Bearer ${token}` }

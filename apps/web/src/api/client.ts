@@ -42,7 +42,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   if (!res.ok) {
     const e = (data ?? {}) as { error?: string; message?: string; details?: unknown }
-    throw new ApiError(res.status, e.error ?? 'http_error', e.message ?? `HTTP ${res.status}`, e.details)
+    throw new ApiError(
+      res.status,
+      e.error ?? 'http_error',
+      e.message ?? `HTTP ${res.status}`,
+      e.details,
+    )
   }
   return data as T
 }
@@ -57,4 +62,5 @@ export const api = {
  * No answer from Daybreak itself: the fetch failed, or something else answered without the
  * server's error body (the dev proxy, when the server is not running).
  */
-export const isUnreachable = (e: unknown): boolean => e instanceof Unreachable || (e instanceof ApiError && e.code === 'http_error')
+export const isUnreachable = (e: unknown): boolean =>
+  e instanceof Unreachable || (e instanceof ApiError && e.code === 'http_error')

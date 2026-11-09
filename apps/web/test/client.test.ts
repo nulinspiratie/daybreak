@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, ApiError, Unreachable } from '../src/api/client'
+import { ApiError, api, Unreachable } from '../src/api/client'
 
 const sent: RequestInit[] = []
 function answer(res: () => Promise<Response>) {
   sent.length = 0
-  vi.stubGlobal('fetch', vi.fn(async (_path: string, init: RequestInit) => {
-    sent.push(init)
-    return res()
-  }))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (_path: string, init: RequestInit) => {
+      sent.push(init)
+      return res()
+    }),
+  )
 }
 const contentType = (init: RequestInit) => new Headers(init.headers).get('content-type')
 
@@ -22,7 +25,12 @@ describe('api client', () => {
     await api.send('POST', '/api/tasks/abc/open-link')
     await api.send('DELETE', '/api/tasks/abc')
     await api.send('PATCH', '/api/tasks/abc', { title: 'x' })
-    expect(sent.map(contentType)).toEqual(['application/json', 'application/json', 'application/json', 'application/json'])
+    expect(sent.map(contentType)).toEqual([
+      'application/json',
+      'application/json',
+      'application/json',
+      'application/json',
+    ])
     expect(sent[3]!.body).toBe('{"title":"x"}')
     expect(sent[0]!.body).toBeUndefined()
   })
@@ -34,7 +42,9 @@ describe('api client', () => {
   })
 
   it('an error answer is an ApiError with the server message', async () => {
-    answer(async () => Response.json({ error: 'invalid', message: 'This task has no link' }, { status: 400 }))
+    answer(async () =>
+      Response.json({ error: 'invalid', message: 'This task has no link' }, { status: 400 }),
+    )
     const e = await api.send('POST', '/api/tasks/abc/open-link').catch((x: unknown) => x)
     expect(e).toBeInstanceOf(ApiError)
     expect(e).toMatchObject({ status: 400, code: 'invalid', message: 'This task has no link' })
@@ -44,6 +54,8 @@ describe('api client', () => {
     answer(async () => {
       throw new TypeError('Failed to fetch')
     })
-    await expect(api.send('PATCH', '/api/tasks/abc', { title: 'x' })).rejects.toBeInstanceOf(Unreachable)
+    await expect(api.send('PATCH', '/api/tasks/abc', { title: 'x' })).rejects.toBeInstanceOf(
+      Unreachable,
+    )
   })
 })

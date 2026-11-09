@@ -38,7 +38,8 @@ export async function readBody(c: Context): Promise<Body> {
   } catch {
     throw invalid('Request body must be valid JSON')
   }
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw invalid('Request body must be a JSON object')
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw))
+    throw invalid('Request body must be a JSON object')
   return raw as Body
 }
 
@@ -50,12 +51,18 @@ export function need<T>(body: Body, key: string, guard: (v: unknown) => v is T, 
 }
 
 /** Optional field: undefined when absent, else it must pass `guard`. */
-export function maybe<T>(body: Body, key: string, guard: (v: unknown) => v is T, what: string): T | undefined {
+export function maybe<T>(
+  body: Body,
+  key: string,
+  guard: (v: unknown) => v is T,
+  what: string,
+): T | undefined {
   if (body[key] === undefined) return undefined
   return need(body, key, guard, what)
 }
 
-export const isStringOrNull = (v: unknown): v is string | null => v === null || typeof v === 'string'
+export const isStringOrNull = (v: unknown): v is string | null =>
+  v === null || typeof v === 'string'
 export const isDateOrNull = (v: unknown): v is string | null => v === null || isDate(v)
 export const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean'
 export const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every(isString)

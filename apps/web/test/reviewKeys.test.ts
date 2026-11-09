@@ -5,19 +5,41 @@ import { applyDecision, currentItem, resolveReviewKey, undoLast } from '../src/r
 import { node } from './helpers'
 
 const key = (k: string, m: Partial<Omit<KeyLike, 'key'>> = {}): KeyLike => ({
-  key: k, ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...m,
+  key: k,
+  ctrlKey: false,
+  altKey: false,
+  shiftKey: false,
+  metaKey: false,
+  ...m,
 })
 const open = { pickerOpen: false, allSorted: false }
 
-function item(id: string, group: ReviewItem['group'], decision: ReviewItem['decision'] = null): ReviewItem {
-  return { task: node(id), path: [], group, decision, workedOn: null, scheduledOn: '2026-11-06',
-    leftoverFrom: group === 'leftover' ? '2026-11-06' : null }
+function item(
+  id: string,
+  group: ReviewItem['group'],
+  decision: ReviewItem['decision'] = null,
+): ReviewItem {
+  return {
+    task: node(id),
+    path: [],
+    group,
+    decision,
+    workedOn: null,
+    scheduledOn: '2026-11-06',
+    leftoverFrom: group === 'leftover' ? '2026-11-06' : null,
+  }
 }
 function view(leftovers: ReviewItem[], suggestions: ReviewItem[]): ReviewView {
   const all = [...leftovers, ...suggestions]
   return {
-    date: '2026-11-09', leftovers, suggestions, totalCount: all.length,
-    sortedCount: all.filter((i) => i.decision).length, todayCount: 0, finished: false, skipped: false,
+    date: '2026-11-09',
+    leftovers,
+    suggestions,
+    totalCount: all.length,
+    sortedCount: all.filter((i) => i.decision).length,
+    todayCount: 0,
+    finished: false,
+    skipped: false,
   }
 }
 
@@ -47,7 +69,8 @@ describe('resolveReviewKey', () => {
 
   it('gives null for everything while the picker is open', () => {
     const ctx = { pickerOpen: true, allSorted: true }
-    for (const k of ['t', 'd', 'b', 'x', 'z', ' ', 'Escape']) expect(resolveReviewKey(key(k), ctx)).toBeNull()
+    for (const k of ['t', 'd', 'b', 'x', 'z', ' ', 'Escape'])
+      expect(resolveReviewKey(key(k), ctx)).toBeNull()
   })
 
   it('gives null for Esc (the review does not close)', () => {
@@ -57,12 +80,18 @@ describe('resolveReviewKey', () => {
 
 describe('currentItem', () => {
   it('is the first undecided leftover', () => {
-    const v = view([item('a', 'leftover', { choice: 'today' }), item('b', 'leftover'), item('c', 'leftover')], [item('s', 'suggestion')])
+    const v = view(
+      [item('a', 'leftover', { choice: 'today' }), item('b', 'leftover'), item('c', 'leftover')],
+      [item('s', 'suggestion')],
+    )
     expect(currentItem(v)?.task.id).toBe('b')
   })
 
   it('goes to the suggestions after the leftovers, skipping decided ones', () => {
-    const v = view([item('a', 'leftover', { choice: 'backlog' })], [item('s', 'suggestion', { choice: 'backlog' }), item('t', 'suggestion')])
+    const v = view(
+      [item('a', 'leftover', { choice: 'backlog' })],
+      [item('s', 'suggestion', { choice: 'backlog' }), item('t', 'suggestion')],
+    )
     expect(currentItem(v)?.task.id).toBe('t')
   })
 
@@ -73,7 +102,10 @@ describe('currentItem', () => {
 
 describe('optimistic decisions', () => {
   it('applyDecision marks the item and counts it', () => {
-    const v = applyDecision(view([item('a', 'leftover'), item('b', 'leftover')], []), 'a', { choice: 'today', date: '2026-11-09' })
+    const v = applyDecision(view([item('a', 'leftover'), item('b', 'leftover')], []), 'a', {
+      choice: 'today',
+      date: '2026-11-09',
+    })
     expect(v.leftovers[0]!.decision).toEqual({ choice: 'today', date: '2026-11-09' })
     expect(v.sortedCount).toBe(1)
     expect(v.todayCount).toBe(1)
@@ -82,7 +114,10 @@ describe('optimistic decisions', () => {
 
   it('undoLast reverts the last decided suggestion, else the last decided leftover', () => {
     const v = view(
-      [item('a', 'leftover', { choice: 'today', date: '2026-11-09' }), item('b', 'leftover', { choice: 'backlog' })],
+      [
+        item('a', 'leftover', { choice: 'today', date: '2026-11-09' }),
+        item('b', 'leftover', { choice: 'backlog' }),
+      ],
       [item('s', 'suggestion', { choice: 'day', date: '2026-11-11' }), item('t', 'suggestion')],
     )
     const once = undoLast(v)

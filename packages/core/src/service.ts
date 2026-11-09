@@ -1,15 +1,21 @@
 import type { Clock } from './clock'
 import type { Ctx } from './ctx'
 import { today } from './ctx'
-import { transaction, type Db } from './db/adapter'
 import type { ISODate } from './dates'
+import { type Db, transaction } from './db/adapter'
 import { exportProject } from './export'
 import { writeMissingLogs } from './log'
 import {
-  decide, finishReview, lastReviewDate, needsReview, reviewView, skipReview, undoDecision,
+  decide,
+  finishReview,
+  lastReviewDate,
+  needsReview,
+  reviewView,
+  skipReview,
+  undoDecision,
 } from './review'
-import { createTask, updateTask, type CreateInput, type TaskPatch } from './tasks/create'
-import { softDelete, restore } from './tasks/delete'
+import { type CreateInput, createTask, type TaskPatch, updateTask } from './tasks/create'
+import { restore, softDelete } from './tasks/delete'
 import { setMark } from './tasks/marks'
 import { indent, moveDown, moveTask, moveUp, outdent } from './tasks/move'
 import { getTask } from './tasks/rows'
@@ -17,7 +23,15 @@ import { dayCounts, dayView, schedule } from './tasks/schedule'
 import { setStatus } from './tasks/status'
 import { treeView } from './tasks/tree'
 import type {
-  Config, DayView, Mark, MoveTarget, ReviewChoice, ReviewView, Status, Task, TreeView,
+  Config,
+  DayView,
+  Mark,
+  MoveTarget,
+  ReviewChoice,
+  ReviewView,
+  Status,
+  Task,
+  TreeView,
 } from './types'
 
 export interface DaybreakDeps {
@@ -112,7 +126,8 @@ export function createDaybreak(deps: DaybreakDeps): Daybreak {
     delete: (id) => mutate(() => softDelete(ctx, id)),
     restore: (id) => mutate(() => restore(ctx, id)),
     review: (date) => reviewView(ctx, date),
-    decide: (date, taskId, choice, targetDate) => mutate(() => decide(ctx, date, taskId, choice, targetDate)),
+    decide: (date, taskId, choice, targetDate) =>
+      mutate(() => decide(ctx, date, taskId, choice, targetDate)),
     undoDecision: (date) => mutate(() => undoDecision(ctx, date)),
     skipReview: (date) => endReview(skipReview, date),
     finishReview: (date) => endReview(finishReview, date),

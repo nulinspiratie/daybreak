@@ -13,7 +13,8 @@ export interface DropProjection {
 }
 
 const TITLE_MAX = 16
-const short = (title: string) => (title.length > TITLE_MAX ? `${title.slice(0, TITLE_MAX)}…` : title)
+const short = (title: string) =>
+  title.length > TITLE_MAX ? `${title.slice(0, TITLE_MAX)}…` : title
 const SECTION_NAME: Record<Section, string> = { inbox: 'Inbox', projects: 'Projects' }
 
 /**
@@ -56,8 +57,17 @@ function placeAbove(rows: FlatRow[], i: number, depth: number, section: Section)
  * a sortable list does); every `indent` px of offset is one level, clamped to what the rows
  * around the slot allow. Null when nothing can be dropped there.
  */
-export function projectDrop(rows: FlatRow[], activeId: string, overId: string, offsetX: number, indent = 22): DropProjection | null {
-  const kept = withoutDescendants(rows.filter((r) => !r.isDraft), activeId)
+export function projectDrop(
+  rows: FlatRow[],
+  activeId: string,
+  overId: string,
+  offsetX: number,
+  indent = 22,
+): DropProjection | null {
+  const kept = withoutDescendants(
+    rows.filter((r) => !r.isDraft),
+    activeId,
+  )
   const from = kept.findIndex((r) => r.id === activeId)
   if (from < 0) return null
   const active = kept[from]!
@@ -89,7 +99,9 @@ export function projectDrop(rows: FlatRow[], activeId: string, overId: string, o
     relation = `becomes a sibling of '${short(sibling.node.title)}'`
   } else if (parent) {
     // A collapsed parent hides its children, so the task goes after the last of them.
-    const last = parent.node.collapsed ? parent.node.children.filter((c) => c.id !== activeId).at(-1) : undefined
+    const last = parent.node.collapsed
+      ? parent.node.children.filter((c) => c.id !== activeId).at(-1)
+      : undefined
     if (last) p.afterId = last.id
     else if (next && next.depth === depth) p.beforeId = next.id
     relation = `becomes a child of '${short(parent.node.title)}'`
@@ -106,12 +118,22 @@ function acrossHeading(rows: FlatRow[], active: FlatRow): DropProjection | null 
   const base = { parentId: null, depth: 0 }
   if (active.section === 'inbox') {
     const first = rows.find((r) => r.section === 'projects')
-    return { ...base, section: 'projects', ...(first && { beforeId: first.id }), label: 'Level 1 · goes to the top of Projects' }
+    return {
+      ...base,
+      section: 'projects',
+      ...(first && { beforeId: first.id }),
+      label: 'Level 1 · goes to the top of Projects',
+    }
   }
   if (hasSubtasks(active)) return null
   const last = rows.filter((r) => r.section === 'inbox').at(-1)
   return last
-    ? { ...base, section: 'inbox', afterId: last.id, label: `Level 1 · becomes a sibling of '${short(last.node.title)}'` }
+    ? {
+        ...base,
+        section: 'inbox',
+        afterId: last.id,
+        label: `Level 1 · becomes a sibling of '${short(last.node.title)}'`,
+      }
     : { ...base, section: 'inbox', label: 'Level 1 · goes to the top of Inbox' }
 }
 

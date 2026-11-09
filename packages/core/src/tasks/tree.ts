@@ -26,7 +26,9 @@ export interface SubtreeStat {
 /** Every live task grouped by parent id (null = top level), ordered by position, id. */
 export function liveKids(ctx: Ctx): Map<string | null, Task[]> {
   const tasks = ctx.db
-    .all<TaskRow>(`SELECT ${TASK_COLUMNS} FROM tasks WHERE deleted_at IS NULL ORDER BY position, id`)
+    .all<TaskRow>(
+      `SELECT ${TASK_COLUMNS} FROM tasks WHERE deleted_at IS NULL ORDER BY position, id`,
+    )
     .map(rowToTask)
   const kids = new Map<string | null, Task[]>()
   for (const t of tasks) {

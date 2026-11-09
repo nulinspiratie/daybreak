@@ -9,7 +9,7 @@ import { CONFIRM_NOTE_ID, ConfirmNote } from '../shell/ConfirmNote'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
 import { DragRow, DropHeading, DropLabel, dndId, STAY_PUT, useDrag, usePaneDrop } from './Dnd'
-import { flatten, type FlatRow } from './flatten'
+import { type FlatRow, flatten } from './flatten'
 import { rowKey } from './optimistic'
 import { PROJECTS_HEAD, withoutDescendants } from './projectDrop'
 import { TreeRow } from './TreeRow'
@@ -53,7 +53,10 @@ export function TreePane() {
   const allRows = useMemo(() => (tree ? flatten(tree, draft) : []), [tree, draft])
   // A dragged parent's children travel in the card under the pointer.
   const dragged = drag.active?.pane === 'tree' ? drag.active.id : null
-  const rows = useMemo(() => (dragged ? withoutDescendants(allRows, dragged) : allRows), [allRows, dragged])
+  const rows = useMemo(
+    () => (dragged ? withoutDescendants(allRows, dragged) : allRows),
+    [allRows, dragged],
+  )
   const firstProject = rows.findIndex((r) => r.section === 'projects')
   const projectsAt = firstProject < 0 ? rows.length : firstProject
   // The Projects heading is in the list too: rows sort around it, and dropping on it crosses sections.
@@ -76,7 +79,8 @@ export function TreePane() {
   // and memoised rows are not re-rendered by selection changes.
   const latest = useRef({ rows: allRows })
   latest.current = { rows: allRows }
-  const find = (id: string): TreeNode | undefined => latest.current.rows.find((r) => r.id === id)?.node
+  const find = (id: string): TreeNode | undefined =>
+    latest.current.rows.find((r) => r.id === id)?.node
 
   const onSelect = useCallback((id: string) => setUi({ treeSel: id, pane: 'tree' }), [setUi])
   // Clicks on a row's checkbox and quick actions select the row and run the same command as
@@ -89,6 +93,7 @@ export function TreePane() {
     [setUi, runCommand],
   )
   const onToggleDone = useCallback((id: string) => onRowCommand(id, 'status.done'), [onRowCommand])
+  // biome-ignore lint/correctness/useExhaustiveDependencies: find reads a ref, so it never goes stale.
   const onToggleCollapse = useCallback(
     (id: string) => {
       const collapsed = find(id)?.collapsed === true
@@ -96,7 +101,10 @@ export function TreePane() {
     },
     [run],
   )
-  const onScheduleToday = useCallback((id: string) => onRowCommand(id, 'schedule.today'), [onRowCommand])
+  const onScheduleToday = useCallback(
+    (id: string) => onRowCommand(id, 'schedule.today'),
+    [onRowCommand],
+  )
   const onDoing = useCallback((id: string) => onRowCommand(id, 'mark.doing'), [onRowCommand])
   const onPickDay = useCallback((id: string) => onRowCommand(id, 'schedule.pick'), [onRowCommand])
   // Same as N: a draft after the selected task's subtree, or at the end of Inbox.
@@ -129,7 +137,9 @@ export function TreePane() {
           pane="tree"
           id={r.id}
           disabled={dragOff || r.isDraft === true}
-          indicator={isDragged && drag.over === 'tree' && drag.tree ? { depth: drag.tree.depth } : undefined}
+          indicator={
+            isDragged && drag.over === 'tree' && drag.tree ? { depth: drag.tree.depth } : undefined
+          }
           activeClass={drag.over === 'day' ? 'dragrow--origin' : 'dragrow--source'}
         >
           <TreeRow
@@ -165,23 +175,52 @@ export function TreePane() {
           onClick={() => setUi({ showCompleted: !showCompleted })}
         >
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
-            <rect x="2.5" y="2.5" width="11" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.3" />
-            <path d="M5.2 8.2 7.2 10.2 10.8 6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            <rect
+              x="2.5"
+              y="2.5"
+              width="11"
+              height="11"
+              rx="3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+            <path
+              d="M5.2 8.2 7.2 10.2 10.8 6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
           Show completed{!showCompleted && tree ? ` (${tree.hiddenCompletedCount})` : ''}
         </button>
-        <button type="button" className="btn btn--icon" aria-label="Collapse all" onClick={collapseAll}>
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
-            <path d="M4.5 6 8 2.5 11.5 6M4.5 10 8 13.5 11.5 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
         <button
           type="button"
-          className="btn btn--primary"
-          onClick={onNewTask}
+          className="btn btn--icon"
+          aria-label="Collapse all"
+          onClick={collapseAll}
         >
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
+            <path
+              d="M4.5 6 8 2.5 11.5 6M4.5 10 8 13.5 11.5 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <button type="button" className="btn btn--primary" onClick={onNewTask}>
           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
-            <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path
+              d="M8 2.5v11M2.5 8h11"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
           </svg>
           New task
           <span className="btn__key">N</span>
@@ -192,7 +231,10 @@ export function TreePane() {
         {isError && <p className="tree__msg">Could not load tasks.</p>}
         {!tree && !isError && <p className="tree__msg">Loading…</p>}
         {tree && (
-          <SortableContext items={dndIds} strategy={stayPut ? STAY_PUT : verticalListSortingStrategy}>
+          <SortableContext
+            items={dndIds}
+            strategy={stayPut ? STAY_PUT : verticalListSortingStrategy}
+          >
             <SectionHead title="Inbox" count={inboxOpen} />
             {rows.slice(0, projectsAt).map(renderRow)}
             <DropHeading id={PROJECTS_HEAD}>

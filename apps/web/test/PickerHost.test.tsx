@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/api/client'
 import { queue, useDrainInvalidation } from '../src/api/hooks'
 import { useKeyboard } from '../src/keyboard/useKeyboard'
-import { PickerHost } from '../src/picker/PickerHost'
 import { QUICK_PICK_MS } from '../src/picker/DayPicker'
+import { PickerHost } from '../src/picker/PickerHost'
 import { toast } from '../src/shell/toastStore'
 import { TreePane } from '../src/tree/TreePane'
 import { useUi } from '../src/ui/store'
@@ -26,7 +26,15 @@ let dayFails = false
 let qc: QueryClient
 const dayItems = () =>
   hasTask
-    ? [{ task: node('a', [], { title: 'Task a', scheduledOn: TODAY }), path: ['Inbox'], mark: null, doneCount: 0, totalCount: 0 }]
+    ? [
+        {
+          task: node('a', [], { title: 'Task a', scheduledOn: TODAY }),
+          path: ['Inbox'],
+          mark: null,
+          doneCount: 0,
+          totalCount: 0,
+        },
+      ]
     : []
 
 function Harness() {
@@ -78,14 +86,23 @@ beforeEach(async () => {
     if (path.startsWith('/api/tree')) {
       return {
         today: TODAY,
-        inbox: !hasTask ? [] : [node('a', [], { section: 'inbox', title: 'Task a', scheduledOn: '2026-11-12' })],
+        inbox: !hasTask
+          ? []
+          : [node('a', [], { section: 'inbox', title: 'Task a', scheduledOn: '2026-11-12' })],
         projects: [],
         hiddenCompletedCount: 0,
       }
     }
     return method === 'POST' ? {} : undefined
   }
-  useUi.getState().set({ pane: 'tree', treeSel: null, daySel: null, editing: null, picker: null, pickerShown: false })
+  useUi.getState().set({
+    pane: 'tree',
+    treeSel: null,
+    daySel: null,
+    editing: null,
+    picker: null,
+    pickerShown: false,
+  })
   mount()
   await screen.findByText('Task a')
   act(() => ui().set({ treeSel: 'a' }))
@@ -137,7 +154,7 @@ describe('PickerHost', () => {
     expect(writes()).toEqual([])
   })
 
-  it('starts the highlight on the task\'s own day and picking it again writes nothing', async () => {
+  it("starts the highlight on the task's own day and picking it again writes nothing", async () => {
     await press('d')
     await press('Enter')
     await flush()

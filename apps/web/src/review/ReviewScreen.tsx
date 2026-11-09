@@ -9,7 +9,13 @@ import { longDate, TitleBar } from '../shell/TitleBar'
 import { toast } from '../shell/toastStore'
 import { useUi } from '../ui/store'
 import { ReviewCard } from './ReviewCard'
-import { applyDecision, currentItem, type ReviewCommand, resolveReviewKey, undoLast } from './reviewKeys'
+import {
+  applyDecision,
+  currentItem,
+  type ReviewCommand,
+  resolveReviewKey,
+  undoLast,
+} from './reviewKeys'
 
 type Outcome = 'today' | 'day' | 'backlog' | 'not-today' | 'cancelled'
 
@@ -63,6 +69,7 @@ export function useOpenReviewWhenDue(): void {
   const status = useStatus().data
   const setUi = useUi((s) => s.set)
   const seenDay = useRef<string | undefined>(undefined)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run only when the day or needsReview changes, not on every status refetch.
   useEffect(() => {
     if (!status) return
     const dayTurned = seenDay.current !== undefined && seenDay.current !== status.today
@@ -94,7 +101,12 @@ export function ReviewScreen() {
   const latest = () => qc.getQueryData<ReviewView>(key())
 
   /** Shows `optimistic` now, posts, and takes the server's view once no other review post is waiting. */
-  const post = (action: string, body: unknown, optimistic: (v: ReviewView) => ReviewView, failure: string) => {
+  const post = (
+    action: string,
+    body: unknown,
+    optimistic: (v: ReviewView) => ReviewView,
+    failure: string,
+  ) => {
     const shown = latest()
     if (shown) qc.setQueryData(key(), optimistic(shown))
     pending.current++
@@ -168,7 +180,10 @@ export function ReviewScreen() {
       if (el && (e.key === ' ' || e.key === 'Enter') && el.closest('button, a')) return
       const v = qc.getQueryData<ReviewView>(key())
       if (!v) return
-      const cmd = resolveReviewKey(e, { pickerOpen: pickingRef.current !== null, allSorted: v.sortedCount === v.totalCount })
+      const cmd = resolveReviewKey(e, {
+        pickerOpen: pickingRef.current !== null,
+        allSorted: v.sortedCount === v.totalCount,
+      })
       if (cmd === null) return
       e.preventDefault()
       if (e.repeat) return // a held key decides once
@@ -218,7 +233,9 @@ export function ReviewScreen() {
             key={item.task.id}
             item={item}
             today={today}
-            tag={item.group === 'leftover' ? `${at + 1} of ${view!.leftovers.length}` : 'Suggestion'}
+            tag={
+              item.group === 'leftover' ? `${at + 1} of ${view!.leftovers.length}` : 'Suggestion'
+            }
             picking={pickerOpen}
             onChoose={choose}
             onPick={(d) => {
@@ -234,8 +251,15 @@ export function ReviewScreen() {
         return (
           <li key={item.task.id} className={`rv-row rv-row--${o}`}>
             <span className="rv-row__mark" aria-hidden="true">
-              <svg width="11" height="11" viewBox="0 0 16 16">
-                <path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg aria-hidden="true" width="11" height="11" viewBox="0 0 16 16">
+                <path
+                  d="M3.5 8.2 6.6 11.2 12.5 4.8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </span>
             <span className="rv-row__title">{item.task.title}</span>
@@ -260,13 +284,19 @@ export function ReviewScreen() {
         <main className="review__col">
           <div className="review__head">
             <div className="review__heading">
-              <span className="review__greeting">{today && `Good morning — ${longDate(today)}`}</span>
+              <span className="review__greeting">
+                {today && `Good morning — ${longDate(today)}`}
+              </span>
               <h1 className="review__title">Plan today, top to bottom</h1>
             </div>
             <span className="review__grow" />
-            {view && <span className="review__progress">{`${view.sortedCount} of ${view.totalCount} done`}</span>}
+            {view && (
+              <span className="review__progress">{`${view.sortedCount} of ${view.totalCount} done`}</span>
+            )}
           </div>
-          {review.isError && <p className="review__error">Couldn't load the review. Is the server running?</p>}
+          {review.isError && (
+            <p className="review__error">Couldn't load the review. Is the server running?</p>
+          )}
           {view && (
             <ol className="review__list">
               {view.leftovers.length > 0 && (
@@ -312,7 +342,8 @@ export function ReviewScreen() {
             ))}
           </div>
           <p className="review__hint">
-            After D: 1–9 pick today up to 8 days out, or move with the arrows and press Enter. Z undoes the last choice.
+            After D: 1–9 pick today up to 8 days out, or move with the arrows and press Enter. Z
+            undoes the last choice.
           </p>
         </aside>
       </div>

@@ -27,7 +27,8 @@ export interface AppDeps {
   webDist?: string
 }
 
-const PLACEHOLDER = '<!doctype html><meta charset="utf-8"><title>Daybreak</title><p>Daybreak server is running.</p>'
+const PLACEHOLDER =
+  '<!doctype html><meta charset="utf-8"><title>Daybreak</title><p>Daybreak server is running.</p>'
 
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono()
@@ -45,14 +46,19 @@ export function createApp(deps: AppDeps): Hono {
   app.post('/api/open-link', async (c) => {
     const target = need(await readBody(c), 'target', isString, 'a string')
     // Whitespace, control characters and quotes would reach explorer.exe's own command-line parsing.
-    if (/[\u0000-\u0020\u007f"]/.test(target)) throw invalid('Link contains a space, control character or quote')
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
+    if (/[\u0000-\u0020\u007f"]/.test(target))
+      throw invalid('Link contains a space, control character or quote')
     let url: URL
     try {
       url = new URL(target)
     } catch {
       throw invalid('Not a valid link')
     }
-    if (!['http:', 'https:', 'mailto:'].includes(url.protocol) || (url.protocol !== 'mailto:' && url.hostname === '')) {
+    if (
+      !['http:', 'https:', 'mailto:'].includes(url.protocol) ||
+      (url.protocol !== 'mailto:' && url.hostname === '')
+    ) {
       throw invalid('Only http, https and mailto links can be opened')
     }
     ;(deps.openLink ?? openLink)(url.href)

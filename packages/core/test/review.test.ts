@@ -110,7 +110,10 @@ describe('decide', () => {
     const view = decide(ctx, D, ids.a!, 'today')
     expect(dayView(ctx, D).items.map((i) => i.task.title)).toEqual(['x', 'a'])
     expect(titles(view.leftovers)).toEqual(['a', 'b', 'c'])
-    expect(view.leftovers[0]).toMatchObject({ decision: { choice: 'today', date: D }, scheduledOn: D })
+    expect(view.leftovers[0]).toMatchObject({
+      decision: { choice: 'today', date: D },
+      scheduledOn: D,
+    })
     expect(view.leftovers[1]!.decision).toBeNull()
     const ev = reviewEvents(ctx)
     expect(ev).toHaveLength(1)
@@ -119,7 +122,12 @@ describe('decide', () => {
     expect(ev[0]!.data).toEqual({
       reviewDate: D,
       group: 'leftover',
-      previous: { scheduledOn: YESTERDAY, dayPosition: before.dayPosition, status: 'open', closedAt: null },
+      previous: {
+        scheduledOn: YESTERDAY,
+        dayPosition: before.dayPosition,
+        status: 'open',
+        closedAt: null,
+      },
       to: D,
     })
   })
@@ -159,7 +167,10 @@ describe('decide', () => {
     const view = decide(ctx, D, ids.s!, 'backlog')
     expect(getTask(ctx, ids.s!)).toEqual(before)
     expect(view.suggestions).toHaveLength(1)
-    expect(view.suggestions[0]).toMatchObject({ group: 'suggestion', decision: { choice: 'backlog' } })
+    expect(view.suggestions[0]).toMatchObject({
+      group: 'suggestion',
+      decision: { choice: 'backlog' },
+    })
     expect(reviewEvents(ctx)[0]!.data.group).toBe('suggestion')
   })
 
@@ -198,22 +209,34 @@ describe('undoDecision', () => {
     expect(getTask(ctx, ids.c!)).toMatchObject({ status: 'open', closedAt: null })
     expect(getTask(ctx, ids.c1!)).toMatchObject({ status: 'open', closedAt: null })
     expect(getTask(ctx, ids.b!).scheduledOn).toBeNull()
-    expect(view.leftovers.map((i) => i.decision?.choice ?? null)).toEqual(['today', 'backlog', null])
+    expect(view.leftovers.map((i) => i.decision?.choice ?? null)).toEqual([
+      'today',
+      'backlog',
+      null,
+    ])
 
     view = undoDecision(ctx, D)
-    expect(getTask(ctx, ids.b!)).toMatchObject({ scheduledOn: YESTERDAY, dayPosition: before.b.dayPosition })
+    expect(getTask(ctx, ids.b!)).toMatchObject({
+      scheduledOn: YESTERDAY,
+      dayPosition: before.b.dayPosition,
+    })
     expect(getTask(ctx, ids.a!).scheduledOn).toBe(D)
     expect(view.leftovers.map((i) => i.decision?.choice ?? null)).toEqual(['today', null, null])
 
     view = undoDecision(ctx, D)
-    expect(getTask(ctx, ids.a!)).toMatchObject({ scheduledOn: YESTERDAY, dayPosition: before.a.dayPosition })
+    expect(getTask(ctx, ids.a!)).toMatchObject({
+      scheduledOn: YESTERDAY,
+      dayPosition: before.a.dayPosition,
+    })
     expect(dayView(ctx, D).items).toHaveLength(0)
     expect(titles(view.leftovers)).toEqual(['a', 'b', 'c'])
     expect(view.sortedCount).toBe(0)
 
     const undos = () => reviewEvents(ctx).filter((e) => e.kind === 'review_undo')
     expect(undos()).toHaveLength(3)
-    const decisionIds = reviewEvents(ctx).filter((e) => e.kind !== 'review_undo').map((e) => e.id)
+    const decisionIds = reviewEvents(ctx)
+      .filter((e) => e.kind !== 'review_undo')
+      .map((e) => e.id)
     expect(undos().map((e) => e.data.undoneEventId)).toEqual(decisionIds.reverse())
 
     // Nothing left to undo: no-op.
@@ -247,7 +270,10 @@ describe('undoDecision', () => {
     const { ctx, ids, before } = await decided()
     softDelete(ctx, ids.c!)
     const view = undoDecision(ctx, D)
-    expect(getTask(ctx, ids.b!)).toMatchObject({ scheduledOn: YESTERDAY, dayPosition: before.b.dayPosition })
+    expect(getTask(ctx, ids.b!)).toMatchObject({
+      scheduledOn: YESTERDAY,
+      dayPosition: before.b.dayPosition,
+    })
     expect(view.leftovers.map((i) => i.decision?.choice ?? null)).toEqual(['today', null])
     const undos = reviewEvents(ctx).filter((e) => e.kind === 'review_undo')
     expect(undos.map((e) => e.taskId)).toEqual([ids.b])
@@ -303,11 +329,17 @@ describe('reviewView counts', () => {
 describe('suggestions', () => {
   it('a project with an event 3 days ago yields its first open unscheduled leaf', async () => {
     const ctx = await makeCtx(NOW)
-    const ids = at(ctx, LONG_AGO, () => build(ctx, 'projects:\n  P\n    A\n      A1\n      A2\n    B\n  Q\n    q1'))
+    const ids = at(ctx, LONG_AGO, () =>
+      build(ctx, 'projects:\n  P\n    A\n      A1\n      A2\n    B\n  Q\n    q1'),
+    )
     at(ctx, '2026-11-07T08:00:00Z', () => schedule(ctx, ids.A1!, '2026-11-20'))
     const view = reviewView(ctx, D)
     expect(titles(view.suggestions)).toEqual(['A2'])
-    expect(view.suggestions[0]).toMatchObject({ group: 'suggestion', path: ['P', 'A'], decision: null })
+    expect(view.suggestions[0]).toMatchObject({
+      group: 'suggestion',
+      path: ['P', 'A'],
+      decision: null,
+    })
   })
 
   it('a leaf is a task with no open live children; a childless project is its own leaf', async () => {
@@ -337,7 +369,9 @@ describe('suggestions', () => {
   it('the cap is 5, projects first, then Inbox oldest first', async () => {
     const ctx = await makeCtx(NOW)
     for (let n = 1; n <= 7; n++) {
-      at(ctx, `2026-10-2${n}T08:00:00Z`, () => createTask(ctx, { title: `i${n}`, section: 'inbox' }))
+      at(ctx, `2026-10-2${n}T08:00:00Z`, () =>
+        createTask(ctx, { title: `i${n}`, section: 'inbox' }),
+      )
     }
     build(ctx, 'projects:\n  P\n    p1')
     expect(titles(reviewView(ctx, D).suggestions)).toEqual(['p1', 'i1', 'i2', 'i3', 'i4'])
@@ -388,7 +422,13 @@ describe('suggestions', () => {
     // Decided ones come first, in decision order; fresh candidates fill the rest.
     view = decide(ctx, D, inbox.i3!, 'cancel')
     expect(titles(view.suggestions)).toEqual(['p1', 'q1', 'i3', 'i1', 'i2'])
-    expect(view.suggestions.map((i) => i.decision?.choice ?? null)).toEqual(['day', 'today', 'cancel', null, null])
+    expect(view.suggestions.map((i) => i.decision?.choice ?? null)).toEqual([
+      'day',
+      'today',
+      'cancel',
+      null,
+      null,
+    ])
     expect(view.sortedCount).toBe(3)
     expect(view.totalCount).toBe(5)
 
@@ -458,7 +498,8 @@ describe('leftoverFrom', () => {
     const q = build(ctx, 'projects:\n  Q\n    s')
     return { ctx, ids: { ...ids, ...q } }
   }
-  const from = (view: ReviewView, id: string) => view.leftovers.find((i) => i.task.id === id)!.leftoverFrom
+  const from = (view: ReviewView, id: string) =>
+    view.leftovers.find((i) => i.task.id === id)!.leftoverFrom
 
   it('is the scheduled day of an undecided leftover and null for a suggestion', async () => {
     const { ctx, ids } = await setup()

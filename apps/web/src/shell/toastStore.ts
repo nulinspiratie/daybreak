@@ -21,7 +21,8 @@ export const TOAST_MS = 8000
 export const useToastStore = create<{ toast: Toast | null }>(() => ({ toast: null }))
 
 /** The full line as shown, e.g. "Deleted 'Port fit routines' and 6 subtasks · Undo (Z)". */
-export const toastText = (t: ToastInput): string => (t.restoreId ? `${t.message} · Undo (Z)` : t.message)
+export const toastText = (t: ToastInput): string =>
+  t.restoreId ? `${t.message} · Undo (Z)` : t.message
 
 let seq = 0
 let timer: ReturnType<typeof setTimeout> | undefined

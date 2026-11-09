@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLiveUpdates, useStatus } from '../src/api/hooks'
 import { TitleBar } from '../src/shell/TitleBar'
 import { useUi } from '../src/ui/store'
-import { type FakeApi } from './helpers'
+import type { FakeApi } from './helpers'
 
 const sse = vi.hoisted(() => ({
   dayChanged: (_today: string) => {},
@@ -36,7 +36,8 @@ let today = '2026-11-09'
 beforeEach(() => {
   today = '2026-11-09'
   fake().calls.length = 0
-  fake().reply = (_method, path) => (path === '/api/status' ? { today, needsReview: false, dayStartsAt: '04:00' } : undefined)
+  fake().reply = (_method, path) =>
+    path === '/api/status' ? { today, needsReview: false, dayStartsAt: '04:00' } : undefined
   useUi.getState().set({ reconnecting: false })
 })
 
@@ -46,6 +47,10 @@ function Harness() {
 }
 
 afterEach(cleanup)
+
+function Today() {
+  return <span data-testid="today">{useStatus().data?.today}</span>
+}
 
 describe('useLiveUpdates on day_changed', () => {
   it('refetches nothing at once, then the status on the next window focus or keydown', async () => {
@@ -122,9 +127,6 @@ describe('useLiveUpdates when the stream drops and comes back', () => {
 
   it('a reopen after the day boundary brings the new today', async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    function Today() {
-      return <span data-testid="today">{useStatus().data?.today}</span>
-    }
     render(
       <QueryClientProvider client={qc}>
         <Harness />
@@ -142,10 +144,9 @@ describe('useLiveUpdates when the stream drops and comes back', () => {
 
 describe('useStatus', () => {
   it('refetches on window focus, even with focus refetching off for everything else', async () => {
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } })
-    function Today() {
-      return <span data-testid="today">{useStatus().data?.today}</span>
-    }
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+    })
     render(
       <QueryClientProvider client={qc}>
         <Today />

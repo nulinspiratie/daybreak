@@ -3,14 +3,23 @@ import type { KeyLike } from '../keyboard/keymap'
 
 export type ReviewCommand = 'today' | 'day' | 'backlog' | 'cancel' | 'undo' | 'start'
 
-const LETTERS: Record<string, ReviewCommand> = { t: 'today', d: 'day', b: 'backlog', x: 'cancel', z: 'undo' }
+const LETTERS: Record<string, ReviewCommand> = {
+  t: 'today',
+  d: 'day',
+  b: 'backlog',
+  x: 'cancel',
+  z: 'undo',
+}
 
 /**
  * The review's keys: T today, D another day, B backlog (not today), X cancel, Z undo, and Space
  * to start the day once everything is sorted. While the day picker is open it owns every key.
  * Esc means nothing here: the review does not close.
  */
-export function resolveReviewKey(e: KeyLike, ctx: { pickerOpen: boolean; allSorted: boolean }): ReviewCommand | null {
+export function resolveReviewKey(
+  e: KeyLike,
+  ctx: { pickerOpen: boolean; allSorted: boolean },
+): ReviewCommand | null {
   if (ctx.pickerOpen || e.ctrlKey || e.altKey || e.metaKey) return null
   if (e.key === ' ') return ctx.allSorted ? 'start' : null
   return (e.key.length === 1 && LETTERS[e.key.toLowerCase()]) || null
@@ -25,7 +34,8 @@ export function currentItem(view: ReviewView): ReviewItem | null {
 type Decision = NonNullable<ReviewItem['decision']>
 
 function withItem(view: ReviewView, taskId: string, decision: Decision | null): ReviewView {
-  const set = (list: ReviewItem[]) => list.map((i) => (i.task.id === taskId ? { ...i, decision } : i))
+  const set = (list: ReviewItem[]) =>
+    list.map((i) => (i.task.id === taskId ? { ...i, decision } : i))
   return { ...view, leftovers: set(view.leftovers), suggestions: set(view.suggestions) }
 }
 

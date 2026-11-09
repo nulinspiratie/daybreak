@@ -5,7 +5,13 @@ import { mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createDaybreak, migrate, openDatabase, seed, systemClock } from '../packages/core/src/index'
+import {
+  createDaybreak,
+  migrate,
+  openDatabase,
+  seed,
+  systemClock,
+} from '../packages/core/src/index'
 import { assertOutsideRepo, resolveDataDir } from '../packages/server/src/paths'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -16,7 +22,9 @@ function fail(message: string): never {
 }
 
 if (!process.env.DAYBREAK_DATA_DIR) {
-  fail('Refusing to seed: set DAYBREAK_DATA_DIR to a scratch folder (outside this repo) first, e.g. DAYBREAK_DATA_DIR=$(mktemp -d) bun run seed')
+  fail(
+    'Refusing to seed: set DAYBREAK_DATA_DIR to a scratch folder (outside this repo) first, e.g. DAYBREAK_DATA_DIR=$(mktemp -d) bun run seed',
+  )
 }
 const dataDir = resolveDataDir(process.env, process.platform, homedir())
 try {

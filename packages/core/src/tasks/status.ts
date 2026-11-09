@@ -11,7 +11,13 @@ function closeIds(ctx: Ctx, ids: string[], status: Status): void {
   const now = nowIso(ctx)
   const date = today(ctx)
   for (const id of ids) {
-    ctx.db.run('UPDATE tasks SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?', status, now, now, id)
+    ctx.db.run(
+      'UPDATE tasks SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?',
+      status,
+      now,
+      now,
+      id,
+    )
     ctx.db.run('DELETE FROM day_marks WHERE date = ? AND task_id = ?', date, id)
   }
 }
@@ -64,9 +70,13 @@ export function setStatus(
       const open = liveDescendants(ctx, id).filter((d) => d.status === 'open')
       if (open.length > 0) {
         if (!opts.withOpenDescendants) {
-          throw new DaybreakError('needs_confirmation', `Task #${id} has ${open.length} open subtasks`, {
-            openCount: open.length,
-          })
+          throw new DaybreakError(
+            'needs_confirmation',
+            `Task #${id} has ${open.length} open subtasks`,
+            {
+              openCount: open.length,
+            },
+          )
         }
         closedIds = [id, ...open.map((d) => d.id)]
       }

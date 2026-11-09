@@ -78,7 +78,15 @@ beforeEach(async () => {
     if (path.startsWith('/api/day/')) return { date: TODAY, items: [], doneCount: 0, totalCount: 0 }
     return undefined
   }
-  useUi.getState().set({ pane: 'tree', treeSel: null, daySel: null, editing: null, draft: null, picker: null, pickerShown: false })
+  useUi.getState().set({
+    pane: 'tree',
+    treeSel: null,
+    daySel: null,
+    editing: null,
+    draft: null,
+    picker: null,
+    pickerShown: false,
+  })
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={qc}>

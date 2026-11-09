@@ -9,6 +9,7 @@ export interface EventRow {
   date: ISODate
   taskId: string | null
   kind: EventKind
+  // biome-ignore lint/suspicious/noExplicitAny: the payload's shape depends on `kind`; readers narrow it by kind.
   data: any
 }
 
@@ -34,7 +35,12 @@ function toRow(r: RawEvent): EventRow {
 
 const COLUMNS = 'id, at, date, task_id, kind, data'
 
-export function recordEvent(ctx: Ctx, kind: EventKind, taskId: string | null, data: object = {}): EventRow {
+export function recordEvent(
+  ctx: Ctx,
+  kind: EventKind,
+  taskId: string | null,
+  data: object = {},
+): EventRow {
   ctx.db.run(
     'INSERT INTO events (at, date, task_id, kind, data) VALUES (?, ?, ?, ?, ?)',
     nowIso(ctx),
@@ -51,9 +57,13 @@ export function recordEvent(ctx: Ctx, kind: EventKind, taskId: string | null, da
 }
 
 export function eventsOn(ctx: Ctx, date: ISODate): EventRow[] {
-  return ctx.db.all<RawEvent>(`SELECT ${COLUMNS} FROM events WHERE date = ? ORDER BY id`, date).map(toRow)
+  return ctx.db
+    .all<RawEvent>(`SELECT ${COLUMNS} FROM events WHERE date = ? ORDER BY id`, date)
+    .map(toRow)
 }
 
 export function eventsSince(ctx: Ctx, date: ISODate): EventRow[] {
-  return ctx.db.all<RawEvent>(`SELECT ${COLUMNS} FROM events WHERE date >= ? ORDER BY id`, date).map(toRow)
+  return ctx.db
+    .all<RawEvent>(`SELECT ${COLUMNS} FROM events WHERE date >= ? ORDER BY id`, date)
+    .map(toRow)
 }

@@ -16,7 +16,9 @@ describe('rollover', () => {
     clock.set('2026-11-10T03:10:00Z')
     tick()
     tick()
-    expect(seen.filter(([e]) => e === 'day_changed')).toEqual([['day_changed', { today: '2026-11-10' }]])
+    expect(seen.filter(([e]) => e === 'day_changed')).toEqual([
+      ['day_changed', { today: '2026-11-10' }],
+    ])
   })
 
   it('publishes each change once when two day starts were crossed', async () => {

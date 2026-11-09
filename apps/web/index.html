@@ -10,7 +10,7 @@
       try {
         t = localStorage.getItem('daybreak.theme')
         if (t !== 'light' && t !== 'dark') t = null
-      } catch (e) {}
+      } catch {}
       if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
       document.documentElement.dataset.theme = t
     </script>

@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { createDaybreak, fixedClock, migrate, openDatabase } from '@daybreak/core'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app'
-import { readStatic } from '../src/static'
 import { ChangeBroker } from '../src/sse'
+import { readStatic } from '../src/static'
 import { TEST_PORT, TEST_TOKEN } from './helpers'
 
 let dist: string
@@ -14,17 +14,31 @@ let request: (path: string, host?: string) => Promise<Response>
 beforeAll(async () => {
   dist = mkdtempSync(join(tmpdir(), 'daybreak-dist-'))
   mkdirSync(join(dist, 'assets'))
-  writeFileSync(join(dist, 'index.html'), '<!doctype html><title>Built</title><div id="root"></div>')
+  writeFileSync(
+    join(dist, 'index.html'),
+    '<!doctype html><title>Built</title><div id="root"></div>',
+  )
   writeFileSync(join(dist, 'assets', 'app.js'), 'console.log(1)')
   writeFileSync(join(dist, '..', 'daybreak-secret.txt'), 'secret')
   const db = await openDatabase(':memory:')
   migrate(db)
-  const daybreak = createDaybreak({ db, clock: fixedClock('2026-11-10T09:00:00Z'), config: { dayStartsAt: '04:00' } })
+  const daybreak = createDaybreak({
+    db,
+    clock: fixedClock('2026-11-10T09:00:00Z'),
+    config: { dayStartsAt: '04:00' },
+  })
   const app = createApp({
-    daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00', broker: new ChangeBroker(), webDist: dist,
+    daybreak,
+    token: TEST_TOKEN,
+    port: TEST_PORT,
+    dayStartsAt: '04:00',
+    broker: new ChangeBroker(),
+    webDist: dist,
   })
   request = (path, host = `127.0.0.1:${TEST_PORT}`) =>
-    Promise.resolve(app.request(`http://127.0.0.1:${TEST_PORT}${path}`, { headers: { Host: host } }))
+    Promise.resolve(
+      app.request(`http://127.0.0.1:${TEST_PORT}${path}`, { headers: { Host: host } }),
+    )
 })
 
 afterAll(() => {
@@ -71,11 +85,22 @@ describe('placeholder', () => {
   async function rootBody(webDist?: string): Promise<string> {
     const db = await openDatabase(':memory:')
     migrate(db)
-    const daybreak = createDaybreak({ db, clock: fixedClock('2026-11-10T09:00:00Z'), config: { dayStartsAt: '04:00' } })
-    const app = createApp({
-      daybreak, token: TEST_TOKEN, port: TEST_PORT, dayStartsAt: '04:00', broker: new ChangeBroker(), webDist,
+    const daybreak = createDaybreak({
+      db,
+      clock: fixedClock('2026-11-10T09:00:00Z'),
+      config: { dayStartsAt: '04:00' },
     })
-    const res = await app.request(`http://127.0.0.1:${TEST_PORT}/`, { headers: { Host: `127.0.0.1:${TEST_PORT}` } })
+    const app = createApp({
+      daybreak,
+      token: TEST_TOKEN,
+      port: TEST_PORT,
+      dayStartsAt: '04:00',
+      broker: new ChangeBroker(),
+      webDist,
+    })
+    const res = await app.request(`http://127.0.0.1:${TEST_PORT}/`, {
+      headers: { Host: `127.0.0.1:${TEST_PORT}` },
+    })
     expect(res.status).toBe(200)
     expect(res.headers.get('set-cookie')).toContain('daybreak_token=')
     return res.text()
@@ -86,7 +111,9 @@ describe('placeholder', () => {
   })
 
   it('is served when webDist does not exist', async () => {
-    expect(await rootBody(join(tmpdir(), 'daybreak-no-such-dist'))).toContain('Daybreak server is running')
+    expect(await rootBody(join(tmpdir(), 'daybreak-no-such-dist'))).toContain(
+      'Daybreak server is running',
+    )
   })
 
   it('is served when index.html is missing from webDist', async () => {

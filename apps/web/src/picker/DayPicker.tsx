@@ -1,4 +1,10 @@
-import { addDays, daysBetween, type ISODate, parseDayInput, weekdayName } from '@daybreak/core/dates'
+import {
+  addDays,
+  daysBetween,
+  type ISODate,
+  parseDayInput,
+  weekdayName,
+} from '@daybreak/core/dates'
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useDayCounts } from '../api/hooks'
 import { dayGrid, MONTH_NAMES, monthShort, WEEKDAYS } from './dayGrid'
@@ -44,7 +50,14 @@ export interface DayPickerProps {
  * `quickPickMs`, at once on Enter, and is cancelled by Backspace or by any further character
  * (which makes it ordinary text, so "20 nov" works).
  */
-export function DayPicker({ today, initial, allowNoDay, onPick, onClose, quickPickMs = QUICK_PICK_MS }: DayPickerProps) {
+export function DayPicker({
+  today,
+  initial,
+  allowNoDay,
+  onPick,
+  onClose,
+  quickPickMs = QUICK_PICK_MS,
+}: DayPickerProps) {
   const grid = useMemo(() => dayGrid(today, GRID_WEEKS), [today])
   const last = grid[grid.length - 1]![6]!.date
   const inGrid = (d: ISODate) => d >= today && d <= last
@@ -61,6 +74,7 @@ export function DayPicker({ today, initial, allowNoDay, onPick, onClose, quickPi
     timer.current = null
     pending.current = null
   }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on mount only; cancelQuick reads refs.
   useEffect(() => {
     inputRef.current?.focus()
     return cancelQuick
@@ -132,6 +146,7 @@ export function DayPicker({ today, initial, allowNoDay, onPick, onClose, quickPi
     if (text !== '') setText('')
     cancelQuick()
     const next = addDays(from, step)
+    // biome-ignore lint/complexity/useMathMinMax: these are ISO date strings; Math.min would give NaN.
     setHighlight(next < today ? today : next > last ? last : next)
   }
 
@@ -156,7 +171,7 @@ export function DayPicker({ today, initial, allowNoDay, onPick, onClose, quickPi
           >
             <span className="picker__qkey">{i + 1}</span>
             <span className="picker__qlabel">{longLabel(d, today)}</span>
-            <span className="picker__load" aria-label={tasks(byDay[d] ?? 0)}>
+            <span className="picker__load" role="img" aria-label={tasks(byDay[d] ?? 0)}>
               {load(byDay[d] ?? 0)}
             </span>
           </button>
@@ -176,7 +191,12 @@ export function DayPicker({ today, initial, allowNoDay, onPick, onClose, quickPi
             onChange={(e) => onText(e.target.value)}
           />
           {allowNoDay && (
-            <button type="button" className="picker__none" onClick={() => onPick(null)} tabIndex={-1}>
+            <button
+              type="button"
+              className="picker__none"
+              onClick={() => onPick(null)}
+              tabIndex={-1}
+            >
               No day
             </button>
           )}
@@ -225,7 +245,9 @@ export function DayPicker({ today, initial, allowNoDay, onPick, onClose, quickPi
                 onClick={() => onPick(date)}
               >
                 {off >= 0 && off <= 8 && <span className="picker__dkey">{off + 1}</span>}
-                <span className="picker__num">{dayNum(date) === 1 ? `1 ${inMonthLabel}` : dayNum(date)}</span>
+                <span className="picker__num">
+                  {dayNum(date) === 1 ? `1 ${inMonthLabel}` : dayNum(date)}
+                </span>
                 <span className="picker__dots" aria-hidden="true">
                   {load(n)}
                 </span>
@@ -235,7 +257,12 @@ export function DayPicker({ today, initial, allowNoDay, onPick, onClose, quickPi
         </div>
         <span className="picker__foot">
           1–9 = today … 8 days out. Dots = tasks already on that day. Esc closes.
-          {status && <span className="picker__status" role="status"> {status}</span>}
+          {status && (
+            <span className="picker__status" role="status">
+              {' '}
+              {status}
+            </span>
+          )}
         </span>
       </div>
     </div>

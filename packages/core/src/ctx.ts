@@ -1,6 +1,6 @@
-import type { Db } from './db/adapter'
 import type { Clock } from './clock'
-import { localDate, type ISODate } from './dates'
+import { type ISODate, localDate } from './dates'
+import type { Db } from './db/adapter'
 import type { Config } from './types'
 
 export interface Ctx {

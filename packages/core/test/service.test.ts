@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createDaybreak, eventsOn, seed, today } from '../src/index'
 import type { ChangeEvent } from '../src/index'
+import { createDaybreak, eventsOn, seed, today } from '../src/index'
 import { makeCtx } from './helpers'
 
 async function make() {
@@ -92,7 +92,8 @@ describe('Daybreak facade', () => {
     const { ctx, d, events } = await make()
     expect(d.needsReview()).toBe(false)
     d.autoFinishEmptyReview()
-    const last = () => ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_review_date'")?.value
+    const last = () =>
+      ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_review_date'")?.value
     expect(last()).toBe(d.today())
     expect(events).toHaveLength(1)
     d.autoFinishEmptyReview()
@@ -167,7 +168,9 @@ describe('seed', () => {
     const today = d.day(day)
     expect(today.items).toHaveLength(4)
     expect(today.items.filter((i) => i.mark === 'doing')).toHaveLength(1)
-    const weekAhead = scheduled.filter((n) => n.scheduledOn! > day && n.scheduledOn! <= '2026-11-16')
+    const weekAhead = scheduled.filter(
+      (n) => n.scheduledOn! > day && n.scheduledOn! <= '2026-11-16',
+    )
     expect(weekAhead.length).toBeGreaterThanOrEqual(3)
   })
 
@@ -178,7 +181,9 @@ describe('seed', () => {
       const rows: string[] = []
       const walk = (nodes: ReturnType<typeof d.tree>['projects'], depth: number) =>
         nodes.forEach((n) => {
-          rows.push(`${'  '.repeat(depth)}${n.title}|${n.status}|${n.collapsed}|${n.notes}|${n.link}|${n.scheduledOn}|${n.mark}`)
+          rows.push(
+            `${'  '.repeat(depth)}${n.title}|${n.status}|${n.collapsed}|${n.notes}|${n.link}|${n.scheduledOn}|${n.mark}`,
+          )
           walk(n.children, depth + 1)
         })
       const t = d.tree('all')

@@ -18,11 +18,14 @@ export function moveTask(ctx: Ctx, id: string, to: MoveTarget): Task {
     const descendants = liveDescendants(ctx, id)
 
     if (to.section === 'inbox') {
-      if (to.parentId !== null) throw new DaybreakError('invalid', 'Inbox tasks cannot have a parent')
-      if (descendants.length > 0) throw new DaybreakError('invalid', 'A task with subtasks cannot go into Inbox')
+      if (to.parentId !== null)
+        throw new DaybreakError('invalid', 'Inbox tasks cannot have a parent')
+      if (descendants.length > 0)
+        throw new DaybreakError('invalid', 'A task with subtasks cannot go into Inbox')
     } else if (to.parentId !== null) {
       const parent = getTask(ctx, to.parentId)
-      if (parent.section !== 'projects') throw new DaybreakError('invalid', `#${parent.id} is not a project task`)
+      if (parent.section !== 'projects')
+        throw new DaybreakError('invalid', `#${parent.id} is not a project task`)
       if (parent.id === id || descendants.some((d) => d.id === parent.id)) {
         throw new DaybreakError('invalid', 'A task cannot move under itself or its own descendant')
       }
@@ -58,7 +61,12 @@ export function moveTask(ctx: Ctx, id: string, to: MoveTarget): Task {
     )
     if (task.section !== to.section) {
       for (const d of descendants) {
-        ctx.db.run('UPDATE tasks SET section = ?, updated_at = ? WHERE id = ?', to.section, now, d.id)
+        ctx.db.run(
+          'UPDATE tasks SET section = ?, updated_at = ? WHERE id = ?',
+          to.section,
+          now,
+          d.id,
+        )
       }
     }
     recordEvent(ctx, 'moved', id, {
@@ -70,7 +78,12 @@ export function moveTask(ctx: Ctx, id: string, to: MoveTarget): Task {
 }
 
 /** Siblings as the tree shows them under the 'recent' rule; `keepId` is always kept. */
-function visibleSiblings(ctx: Ctx, parentId: string | null, section: Task['section'], keepId?: string): Task[] {
+function visibleSiblings(
+  ctx: Ctx,
+  parentId: string | null,
+  section: Task['section'],
+  keepId?: string,
+): Task[] {
   const nowMs = new Date(nowIso(ctx)).getTime()
   return liveChildren(ctx, parentId, section).filter((s) => {
     if (s.id === keepId || s.status === 'open') return true
@@ -80,7 +93,11 @@ function visibleSiblings(ctx: Ctx, parentId: string | null, section: Task['secti
 }
 
 function expand(ctx: Ctx, id: string): void {
-  ctx.db.run('UPDATE tasks SET collapsed = 0, updated_at = ? WHERE id = ? AND collapsed <> 0', nowIso(ctx), id)
+  ctx.db.run(
+    'UPDATE tasks SET collapsed = 0, updated_at = ? WHERE id = ? AND collapsed <> 0',
+    nowIso(ctx),
+    id,
+  )
 }
 
 /** Move into `parent` (last child, or first when `first`) and expand it. */
@@ -111,7 +128,11 @@ export function outdent(ctx: Ctx, id: string): Task {
     const task = getTask(ctx, id)
     if (task.parentId === null) return task
     const parent = getTask(ctx, task.parentId)
-    return moveTask(ctx, id, { parentId: parent.parentId, section: parent.section, afterId: parent.id })
+    return moveTask(ctx, id, {
+      parentId: parent.parentId,
+      section: parent.section,
+      afterId: parent.id,
+    })
   })
 }
 
@@ -121,7 +142,11 @@ export function moveUp(ctx: Ctx, id: string): Task {
     const sibs = visibleSiblings(ctx, task.parentId, task.section, id)
     const i = sibs.findIndex((s) => s.id === id)
     if (i > 0) {
-      return moveTask(ctx, id, { parentId: task.parentId, section: task.section, beforeId: sibs[i - 1]!.id })
+      return moveTask(ctx, id, {
+        parentId: task.parentId,
+        section: task.section,
+        beforeId: sibs[i - 1]!.id,
+      })
     }
     if (task.parentId !== null) {
       const parent = getTask(ctx, task.parentId)
@@ -142,7 +167,11 @@ export function moveDown(ctx: Ctx, id: string): Task {
     const sibs = visibleSiblings(ctx, task.parentId, task.section, id)
     const i = sibs.findIndex((s) => s.id === id)
     if (i < sibs.length - 1) {
-      return moveTask(ctx, id, { parentId: task.parentId, section: task.section, afterId: sibs[i + 1]!.id })
+      return moveTask(ctx, id, {
+        parentId: task.parentId,
+        section: task.section,
+        afterId: sibs[i + 1]!.id,
+      })
     }
     if (task.parentId !== null) {
       const parent = getTask(ctx, task.parentId)

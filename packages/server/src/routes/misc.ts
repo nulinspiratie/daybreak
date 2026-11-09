@@ -18,7 +18,9 @@ export function miscRoutes(d: Daybreak, dayStartsAt: string): Hono {
   })
 
   app.get('/projects/:id/export.md', (c) =>
-    c.body(d.exportProject(c.req.param('id')), 200, { 'Content-Type': 'text/markdown; charset=utf-8' }),
+    c.body(d.exportProject(c.req.param('id')), 200, {
+      'Content-Type': 'text/markdown; charset=utf-8',
+    }),
   )
 
   return app

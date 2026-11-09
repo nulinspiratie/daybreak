@@ -13,7 +13,13 @@ export interface FlatRow {
 
 export const DRAFT_ID = 'draft'
 
-function walk(nodes: TreeNode[], depth: number, section: Section, parentId: string | null, out: FlatRow[]): void {
+function walk(
+  nodes: TreeNode[],
+  depth: number,
+  section: Section,
+  parentId: string | null,
+  out: FlatRow[],
+): void {
   for (const n of nodes) {
     out.push({ id: n.id, node: n, depth, section, parentId, hasChildren: n.children.length > 0 })
     if (!n.collapsed) walk(n.children, depth + 1, section, n.id, out)
@@ -31,15 +37,40 @@ function afterSubtree(rows: FlatRow[], i: number): number {
 /** A task with no title, children or schedule: the draft row, or a new task the server has not answered for yet. */
 export function blankNode(id: string, section: Section, parentId: string | null): TreeNode {
   return {
-    id, parentId, section, position: '', title: '', notes: '', link: null, scheduledOn: null, dayPosition: null,
-    status: 'open', closedAt: null, deletedAt: null, collapsed: false, tags: [], createdAt: '', updatedAt: '',
-    children: [], mark: null, doneCount: 0, totalCount: 0,
+    id,
+    parentId,
+    section,
+    position: '',
+    title: '',
+    notes: '',
+    link: null,
+    scheduledOn: null,
+    dayPosition: null,
+    status: 'open',
+    closedAt: null,
+    deletedAt: null,
+    collapsed: false,
+    tags: [],
+    createdAt: '',
+    updatedAt: '',
+    children: [],
+    mark: null,
+    doneCount: 0,
+    totalCount: 0,
   }
 }
 
 function draftRow(draft: Draft, depth: number): FlatRow {
   const node = blankNode(DRAFT_ID, draft.section, draft.parentId)
-  return { id: DRAFT_ID, node, depth, section: draft.section, parentId: draft.parentId, hasChildren: false, isDraft: true }
+  return {
+    id: DRAFT_ID,
+    node,
+    depth,
+    section: draft.section,
+    parentId: draft.parentId,
+    hasChildren: false,
+    isDraft: true,
+  }
 }
 
 /** Visible rows in display order (Inbox, then Projects), with the draft row spliced in. */

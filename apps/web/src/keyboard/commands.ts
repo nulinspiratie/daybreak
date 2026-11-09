@@ -3,7 +3,15 @@ import { ApiError, type api } from '../api/client'
 import type { useMutate } from '../api/hooks'
 import type { ToastApi } from '../shell/toastStore'
 import { blankNode, DRAFT_ID, type FlatRow } from '../tree/flatten'
-import { failPendingId, liveId, pendingId, placementFor, resolveId, settlePendingId, type TreeCache } from '../tree/optimistic'
+import {
+  failPendingId,
+  liveId,
+  pendingId,
+  placementFor,
+  resolveId,
+  settlePendingId,
+  type TreeCache,
+} from '../tree/optimistic'
 import type { Draft, UiActions, UiState } from '../ui/store'
 import type { Command } from './keymap'
 
@@ -78,12 +86,21 @@ function target(env: CommandEnv): Target | null {
 
 /** Commands on the shown task rather than the tree selection while the detail panel is open (R35). */
 const ON_DETAIL: ReadonlySet<Command> = new Set<Command>([
-  'status.done', 'status.cancel', 'mark.doing', 'mark.worked', 'schedule.today', 'schedule.pick', 'schedule.backlog', 'delete', 'link.open',
+  'status.done',
+  'status.cancel',
+  'mark.doing',
+  'mark.worked',
+  'schedule.today',
+  'schedule.pick',
+  'schedule.backlog',
+  'delete',
+  'link.open',
 ])
 
 function detailTarget(env: CommandEnv): Target | null {
   const { detailId, pane } = env.ui
-  if (detailId === null || pane !== 'tree' || !env.detailTask || env.detailTask.id !== detailId) return null
+  if (detailId === null || pane !== 'tree' || !env.detailTask || env.detailTask.id !== detailId)
+    return null
   const row = treeRows(env).find((r) => r.id === detailId)
   return { id: detailId, task: row ? row.node : env.detailTask, ...(row && { row }) }
 }
@@ -110,26 +127,42 @@ function navigate(env: CommandEnv, cmd: 'nav.up' | 'nav.down' | 'nav.first' | 'n
   const ids = paneIds(env)
   if (ids.length === 0) return
   const i = ids.indexOf(selectedId(env) ?? '')
-  if (cmd === 'nav.first' || i < 0) return select(env, ids[0]!)
-  if (cmd === 'nav.last') return select(env, ids[ids.length - 1]!)
-  const j = cmd === 'nav.up' ? Math.max(0, i - 1) : Math.min(ids.length - 1, i + 1)
+  let j: number
+  if (cmd === 'nav.first' || i < 0) j = 0
+  else if (cmd === 'nav.last') j = ids.length - 1
+  else j = cmd === 'nav.up' ? Math.max(0, i - 1) : Math.min(ids.length - 1, i + 1)
   select(env, ids[j]!)
 }
 
 /** The day picker's choice: schedule at the end of that day, or take the task off its day (null). Picking the current day does nothing, like T. */
-export function pickDay(env: Pick<CommandEnv, 'api' | 'mutate'>, t: Task, date: ISODate | null): Promise<unknown> {
+export function pickDay(
+  env: Pick<CommandEnv, 'api' | 'mutate'>,
+  t: Task,
+  date: ISODate | null,
+): Promise<unknown> {
   if (t.scheduledOn === date) return Promise.resolve()
   return env.mutate(() => env.api.send('POST', taskPath(t.id, '/schedule'), { date }))
 }
 
 /** Drag and drop in the tree: the task and its subtree go to `to` (POST /move), then `expand` opens the new parent. */
-export function moveTo(env: Pick<CommandEnv, 'api' | 'mutate'>, id: string, to: MoveTarget, expand = false): Promise<unknown> {
+export function moveTo(
+  env: Pick<CommandEnv, 'api' | 'mutate'>,
+  id: string,
+  to: MoveTarget,
+  expand = false,
+): Promise<unknown> {
   return env.mutate(async () => {
     // Resolved now, inside the queue: an anchor may be a task whose create was only just answered.
     const { section, parentId, afterId, beforeId } = placementFor(to)
-    const body: MoveTarget = { parentId, section, ...(afterId !== undefined && { afterId }), ...(beforeId !== undefined && { beforeId }) }
+    const body: MoveTarget = {
+      parentId,
+      section,
+      ...(afterId !== undefined && { afterId }),
+      ...(beforeId !== undefined && { beforeId }),
+    }
     await env.api.send('POST', taskPath(id, '/move'), body)
-    if (expand && parentId !== null) await env.api.send('PATCH', taskPath(parentId), { collapsed: false })
+    if (expand && parentId !== null)
+      await env.api.send('PATCH', taskPath(parentId), { collapsed: false })
   })
 }
 
@@ -141,7 +174,12 @@ export function scheduleAt(
   at: { afterId?: string; beforeId?: string },
 ): Promise<unknown> {
   return env.mutate(() => {
-    const anchor = at.afterId !== undefined ? { afterId: resolveId(at.afterId) } : at.beforeId !== undefined ? { beforeId: resolveId(at.beforeId) } : {}
+    const anchor =
+      at.afterId !== undefined
+        ? { afterId: resolveId(at.afterId) }
+        : at.beforeId !== undefined
+          ? { beforeId: resolveId(at.beforeId) }
+          : {}
     return env.api.send('POST', taskPath(id, '/schedule'), { date, ...anchor })
   })
 }
@@ -174,11 +212,14 @@ async function toggleClosed(env: CommandEnv, t: Target, want: Closed): Promise<v
   const confirmed = c !== null && c.id === t.id && c.status === want && env.now() < c.until
   const body = confirmed ? { status: want, withOpenDescendants: true } : { status: want }
   try {
-    const res = await mutate(() => api.send<{ changedIds: string[] }>('PATCH', taskPath(t.id), body))
+    const res = await mutate(() =>
+      api.send<{ changedIds: string[] }>('PATCH', taskPath(t.id), body),
+    )
     ui.set({ confirm: null })
     // DESIGN has one close toast: Done after closing a subtree (R27). No leaf or Cancel toasts.
     const subtasks = res.changedIds.length - 1
-    if (want === 'done' && subtasks > 0) env.toast.show({ message: `Done '${t.task.title}'${andSubtasks(subtasks)}` })
+    if (want === 'done' && subtasks > 0)
+      env.toast.show({ message: `Done '${t.task.title}'${andSubtasks(subtasks)}` })
   } catch (e) {
     if (e instanceof ApiError && e.status === 409 && e.code === 'needs_confirmation') {
       const openCount = Number(e.details?.openCount ?? 0)
@@ -197,7 +238,12 @@ export type DetailStatus = 'open' | 'doing' | 'worked' | 'done' | 'cancelled'
  * and X (with the second press on a parent), Doing and Worked on are S and W, and Open reopens a
  * closed task or clears the mark of an open one.
  */
-export async function setDetailStatus(env: CommandEnv, task: Task, want: DetailStatus, mark: Mark | null): Promise<void> {
+export async function setDetailStatus(
+  env: CommandEnv,
+  task: Task,
+  want: DetailStatus,
+  mark: Mark | null,
+): Promise<void> {
   const t: Target = { id: task.id, task }
   if (want === 'done' || want === 'cancelled') return toggleClosed(env, t, want)
   if (env.ui.confirm) env.ui.set({ confirm: null })
@@ -223,7 +269,9 @@ async function deleteWithToast(env: CommandEnv, t: Target): Promise<void> {
   if (treeRows(env).some((r) => r.id === t.id)) restoreIn.push('tree')
   if (env.dayItems.some((i) => i.task.id === t.id)) restoreIn.push('day')
   if (env.ui.detailId === t.id) env.ui.set({ detailId: null })
-  const res = await env.mutate(() => env.api.send<{ deletedIds: string[] }>('DELETE', taskPath(t.id)))
+  const res = await env.mutate(() =>
+    env.api.send<{ deletedIds: string[] }>('DELETE', taskPath(t.id)),
+  )
   env.toast.show({
     message: `Deleted '${t.task.title}'${andSubtasks(Math.max(0, res.deletedIds.length - 1))}`,
     restoreId: t.id,
@@ -242,7 +290,11 @@ function openDraft(env: CommandEnv, draft: Draft, text = ''): void {
 }
 
 function editRow(env: CommandEnv, row: FlatRow): void {
-  env.ui.set({ draft: null, editing: { id: row.id, initial: row.node.title, text: row.node.title }, treeSel: row.id })
+  env.ui.set({
+    draft: null,
+    editing: { id: row.id, initial: row.node.title, text: row.node.title },
+    treeSel: row.id,
+  })
 }
 
 function leaveEdit(env: CommandEnv, selected: string | null): void {
@@ -268,7 +320,11 @@ function saveTitle(env: CommandEnv, ed: Editing): Promise<unknown> | null {
  * refuses, a toast says so, and writes queued after it that place a task after or under it use
  * the place it would have taken instead (R29).
  */
-function createDraft(env: CommandEnv, d: Draft, title: string): { id: string; done: Promise<void> } {
+function createDraft(
+  env: CommandEnv,
+  d: Draft,
+  title: string,
+): { id: string; done: Promise<void> } {
   const id = pendingId()
   env.cache.insert({ ...blankNode(id, d.section, d.parentId), title }, d)
   const done = env.mutate(async () => {
@@ -449,13 +505,18 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       // A pane whose selection is empty or no longer listed starts on its first row (none if it is empty).
       const sel = pane === 'tree' ? ui.treeSel : ui.daySel
       const ids = paneIdsFor(env, pane)
-      if ((sel === null || !ids.includes(sel)) && ids[0] !== undefined) patch[pane === 'tree' ? 'treeSel' : 'daySel'] = ids[0]
+      if ((sel === null || !ids.includes(sel)) && ids[0] !== undefined)
+        patch[pane === 'tree' ? 'treeSel' : 'daySel'] = ids[0]
       return ui.set(patch)
     }
     case 'detail.open':
       // The panel is already open on a task: a second Ctrl+O edits its notes. The panel can show a task the
       // tree selection is not on (opened from My Day, hidden under a collapsed parent), so that case counts too.
-      if (ui.detailId !== null && ui.pane === 'tree' && (ui.treeSel === ui.detailId || !treeRows(env).some((r) => r.id === ui.detailId))) {
+      if (
+        ui.detailId !== null &&
+        ui.pane === 'tree' &&
+        (ui.treeSel === ui.detailId || !treeRows(env).some((r) => r.id === ui.detailId))
+      ) {
         return ui.set({ notesNonce: ui.notesNonce + 1 })
       }
       break
@@ -477,7 +538,12 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       if (ui.pane === 'day') return ui.focusDayAdd()
       // After the selected task's subtree at its level; with no selection, at the end of Inbox.
       const row = target(env)?.row
-      return openDraft(env, row ? { section: row.section, parentId: row.parentId, afterId: row.id } : { section: 'inbox', parentId: null })
+      return openDraft(
+        env,
+        row
+          ? { section: row.section, parentId: row.parentId, afterId: row.id }
+          : { section: 'inbox', parentId: null },
+      )
     }
     case 'edit.commitNew':
     case 'edit.prev':
@@ -494,15 +560,19 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
   switch (cmd) {
     case 'edit.start':
       if (row) return editRow(env, row)
-      if (ui.pane === 'day') ui.set({ editing: { id: t.id, initial: t.task.title, text: t.task.title } })
+      if (ui.pane === 'day')
+        ui.set({ editing: { id: t.id, initial: t.task.title, text: t.task.title } })
       return
     case 'nav.parent':
-      if (row?.parentId && treeRows(env).some((r) => r.id === row.parentId)) select(env, row.parentId)
+      if (row?.parentId && treeRows(env).some((r) => r.id === row.parentId))
+        select(env, row.parentId)
       return
     case 'nav.child': {
       const first = row?.hasChildren ? row.node.children[0] : undefined
       if (!row || !first) return
-      const expanding = row.node.collapsed ? mutate(() => api.send('PATCH', taskPath(t.id), { collapsed: false })) : null
+      const expanding = row.node.collapsed
+        ? mutate(() => api.send('PATCH', taskPath(t.id), { collapsed: false }))
+        : null
       select(env, first.id)
       await expanding
       return
@@ -552,7 +622,12 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
     case 'detail.open':
       // The detail replaces My Day, so from there the task is selected in the tree. Hidden under a
       // collapsed parent, the detail still shows it and the tree selection stays where it is.
-      if (ui.pane === 'day') return ui.set({ detailId: t.id, pane: 'tree', ...(treeRows(env).some((r) => r.id === t.id) && { treeSel: t.id }) })
+      if (ui.pane === 'day')
+        return ui.set({
+          detailId: t.id,
+          pane: 'tree',
+          ...(treeRows(env).some((r) => r.id === t.id) && { treeSel: t.id }),
+        })
       return ui.set({ detailId: t.id })
     case 'link.open':
       if (!t.task.link?.trim()) return

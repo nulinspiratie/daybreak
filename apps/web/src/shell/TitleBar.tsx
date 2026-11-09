@@ -1,11 +1,21 @@
 import { weekdayName } from '@daybreak/core/dates'
 import { useStatus } from '../api/hooks'
-import { useUi } from '../ui/store'
 import { useTheme } from '../theme/useTheme'
+import { useUi } from '../ui/store'
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]
 
 export function longDate(iso: string): string {
@@ -30,8 +40,15 @@ export function TitleBar({ review }: TitleBarProps = {}) {
   return (
     <header className="titlebar">
       <span className="titlebar__icon" aria-hidden="true">
-        <svg width="12" height="12" viewBox="0 0 16 16">
-          <path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
+          <path
+            d="M3.5 8.2 6.6 11.2 12.5 4.8"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </span>
       <span className="titlebar__name">Daybreak</span>
@@ -46,12 +63,19 @@ export function TitleBar({ review }: TitleBarProps = {}) {
         </>
       ) : (
         <>
-          <span className="titlebar__date" data-testid="today">{status ? longDate(status.today) : ''}</span>
+          <span className="titlebar__date" data-testid="today">
+            {status ? longDate(status.today) : ''}
+          </span>
           {feedNote}
           <span className="titlebar__spacer" />
           <button type="button" className="tb-btn" onClick={focusDayAdd}>
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
-              <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path
+                d="M8 2.5v11M2.5 8h11"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
             </svg>
             Add to My Day
             <span className="kbd">Ctrl+Alt+Space</span>
@@ -59,7 +83,13 @@ export function TitleBar({ review }: TitleBarProps = {}) {
           <button type="button" className="tb-btn" onClick={() => setUi({ reviewOpen: true })}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
               <circle cx="8" cy="9" r="3" fill="none" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M8 2.5v1.5M3 9H1.5M14.5 9H13M4.2 5.2l-1-1M11.8 5.2l1-1M1.5 13h13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <path
+                d="M8 2.5v1.5M3 9H1.5M14.5 9H13M4.2 5.2l-1-1M11.8 5.2l1-1M1.5 13h13"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+              />
             </svg>
             Morning review
           </button>
@@ -72,7 +102,13 @@ export function TitleBar({ review }: TitleBarProps = {}) {
         onClick={toggle}
       >
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16">
-          <path d="M13 9.5A5.5 5.5 0 0 1 6.5 3 5.5 5.5 0 1 0 13 9.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+          <path
+            d="M13 9.5A5.5 5.5 0 0 1 6.5 3 5.5 5.5 0 1 0 13 9.5Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+          />
         </svg>
       </button>
     </header>

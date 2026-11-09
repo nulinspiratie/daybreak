@@ -1,35 +1,47 @@
-export { transaction } from './db/adapter'
-export type { Db, RunResult, SqlValue } from './db/adapter'
-export { openDatabase } from './db/open'
-export { migrate } from './db/migrations'
-export { systemClock, fixedClock } from './clock'
 export type { Clock } from './clock'
-export { localDate, addDays, daysBetween, weekdayName, dayLabel, parseDayInput } from './dates'
-export type { ISODate } from './dates'
-export type {
-  Task, Section, Status, Mark, EventKind, Config, TreeNode, TreeView, MoveTarget, DayItem, DayView,
-  ReviewChoice, ReviewItem, ReviewView,
-} from './types'
+export { fixedClock, systemClock } from './clock'
 export type { Ctx } from './ctx'
-export { today, nowIso } from './ctx'
-export { DaybreakError } from './errors'
+export { nowIso, today } from './ctx'
+export type { ISODate } from './dates'
+export { addDays, dayLabel, daysBetween, localDate, parseDayInput, weekdayName } from './dates'
+export type { Db, RunResult, SqlValue } from './db/adapter'
+export { transaction } from './db/adapter'
+export { migrate } from './db/migrations'
+export { openDatabase } from './db/open'
 export type { ErrorCode } from './errors'
-export { newId } from './ids'
-export { recordEvent, eventsOn, eventsSince } from './events'
+export { DaybreakError } from './errors'
 export type { EventRow } from './events'
-export { getTask, liveChildren, liveDescendants, pathOf } from './tasks/rows'
-export { positionFor } from './tasks/positions'
-export { normalizeTitle, createTask, updateTask } from './tasks/create'
-export type { CreateInput, TaskPatch } from './tasks/create'
-export { treeView, isRecentlyHidden } from './tasks/tree'
-export { moveTask, indent, outdent, moveUp, moveDown } from './tasks/move'
-export { marksOn, setMark, lastWorkedBefore } from './tasks/marks'
-export { setStatus } from './tasks/status'
-export { schedule, scheduleToday, dayView, dayCounts } from './tasks/schedule'
-export { softDelete, restore } from './tasks/delete'
-export { reviewView, decide, undoDecision, skipReview, finishReview, needsReview } from './review'
-export { createDaybreak } from './service'
-export type { Daybreak, DaybreakDeps, ChangeEvent } from './service'
+export { eventsOn, eventsSince, recordEvent } from './events'
 export { exportProject } from './export'
+export { newId } from './ids'
 export { buildDayLog, writeMissingLogs } from './log'
+export { decide, finishReview, needsReview, reviewView, skipReview, undoDecision } from './review'
 export { seed } from './seed'
+export type { ChangeEvent, Daybreak, DaybreakDeps } from './service'
+export { createDaybreak } from './service'
+export type { CreateInput, TaskPatch } from './tasks/create'
+export { createTask, normalizeTitle, updateTask } from './tasks/create'
+export { restore, softDelete } from './tasks/delete'
+export { lastWorkedBefore, marksOn, setMark } from './tasks/marks'
+export { indent, moveDown, moveTask, moveUp, outdent } from './tasks/move'
+export { positionFor } from './tasks/positions'
+export { getTask, liveChildren, liveDescendants, pathOf } from './tasks/rows'
+export { dayCounts, dayView, schedule, scheduleToday } from './tasks/schedule'
+export { setStatus } from './tasks/status'
+export { isRecentlyHidden, treeView } from './tasks/tree'
+export type {
+  Config,
+  DayItem,
+  DayView,
+  EventKind,
+  Mark,
+  MoveTarget,
+  ReviewChoice,
+  ReviewItem,
+  ReviewView,
+  Section,
+  Status,
+  Task,
+  TreeNode,
+  TreeView,
+} from './types'

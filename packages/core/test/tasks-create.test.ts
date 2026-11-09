@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { createTask, DaybreakError, eventsOn, getTask, liveChildren, pathOf, updateTask } from '../src/index'
+import {
+  createTask,
+  DaybreakError,
+  eventsOn,
+  getTask,
+  liveChildren,
+  pathOf,
+  updateTask,
+} from '../src/index'
 import { makeCtx } from './helpers'
 
 function codeOf(fn: () => unknown): string | undefined {
@@ -52,15 +60,21 @@ describe('createTask', () => {
   it('inbox is flat', async () => {
     const ctx = await makeCtx()
     const p = createTask(ctx, { title: 'p', section: 'projects' })
-    expect(codeOf(() => createTask(ctx, { title: 'x', section: 'inbox', parentId: p.id }))).toBe('invalid')
+    expect(codeOf(() => createTask(ctx, { title: 'x', section: 'inbox', parentId: p.id }))).toBe(
+      'invalid',
+    )
   })
 
   it('parentId must be a live task in projects', async () => {
     const ctx = await makeCtx()
     const p = createTask(ctx, { title: 'p', section: 'projects' })
-    expect(codeOf(() => createTask(ctx, { title: 'x', section: 'projects', parentId: 'nope' }))).toBe('not_found')
+    expect(
+      codeOf(() => createTask(ctx, { title: 'x', section: 'projects', parentId: 'nope' })),
+    ).toBe('not_found')
     ctx.db.run("UPDATE tasks SET deleted_at = '2026-11-10T00:00:00Z' WHERE id = ?", p.id)
-    expect(codeOf(() => createTask(ctx, { title: 'x', section: 'projects', parentId: p.id }))).toBe('not_found')
+    expect(codeOf(() => createTask(ctx, { title: 'x', section: 'projects', parentId: p.id }))).toBe(
+      'not_found',
+    )
     expect(codeOf(() => getTask(ctx, p.id))).toBe('not_found')
   })
 
@@ -85,7 +99,10 @@ describe('createTask', () => {
     expect(c.createdAt).toBe('2026-11-10T08:00:00.000Z')
     const ev = eventsOn(ctx, '2026-11-10').filter((e) => e.taskId === c.id)
     expect(ev).toHaveLength(1)
-    expect(ev[0]).toMatchObject({ kind: 'created', data: { title: 'c', section: 'projects', parentId: p.id } })
+    expect(ev[0]).toMatchObject({
+      kind: 'created',
+      data: { title: 'c', section: 'projects', parentId: p.id },
+    })
   })
 })
 
@@ -106,7 +123,12 @@ describe('updateTask', () => {
     const ctx = await makeCtx()
     const t = createTask(ctx, { title: 't', section: 'inbox' })
     const notes = '<img src=x onerror=alert(1)>'
-    const u = updateTask(ctx, t.id, { notes, link: 'C:\\Docs\\a b.txt', collapsed: true, tags: ['x', 'y'] })
+    const u = updateTask(ctx, t.id, {
+      notes,
+      link: 'C:\\Docs\\a b.txt',
+      collapsed: true,
+      tags: ['x', 'y'],
+    })
     expect(u).toMatchObject({ notes, link: 'C:\\Docs\\a b.txt', collapsed: true, tags: ['x', 'y'] })
     expect(updateTask(ctx, t.id, { link: null, collapsed: false }).link).toBeNull()
     expect(getTask(ctx, t.id).notes).toBe(notes)
@@ -123,9 +145,20 @@ describe('pathOf', () => {
   it('projects task gives ancestor titles, root first', async () => {
     const ctx = await makeCtx()
     const p = createTask(ctx, { title: 'Fridge 3 readout upgrade', section: 'projects' })
-    const m = createTask(ctx, { title: 'Milestone 2 — Install and cooldown', section: 'projects', parentId: p.id })
-    const t = createTask(ctx, { title: 'Install TWPA on the mixing chamber plate', section: 'projects', parentId: m.id })
-    expect(pathOf(ctx, t.id)).toEqual(['Fridge 3 readout upgrade', 'Milestone 2 — Install and cooldown'])
+    const m = createTask(ctx, {
+      title: 'Milestone 2 — Install and cooldown',
+      section: 'projects',
+      parentId: p.id,
+    })
+    const t = createTask(ctx, {
+      title: 'Install TWPA on the mixing chamber plate',
+      section: 'projects',
+      parentId: m.id,
+    })
+    expect(pathOf(ctx, t.id)).toEqual([
+      'Fridge 3 readout upgrade',
+      'Milestone 2 — Install and cooldown',
+    ])
     expect(pathOf(ctx, p.id)).toEqual([])
   })
 })

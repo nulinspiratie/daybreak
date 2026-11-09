@@ -4,12 +4,21 @@ import { flatten, rowIndex } from '../src/tree/flatten'
 import { node } from './helpers'
 
 const view = (inbox: TreeNode[], projects: TreeNode[]): TreeView => ({
-  today: '2026-11-09', inbox, projects, hiddenCompletedCount: 0,
+  today: '2026-11-09',
+  inbox,
+  projects,
+  hiddenCompletedCount: 0,
 })
 
 describe('flatten', () => {
   it('skips children of collapsed nodes', () => {
-    const v = view([], [node('p', [node('a', [node('a1')]), node('b')], { collapsed: false }), node('q', [node('q1')], { collapsed: true })])
+    const v = view(
+      [],
+      [
+        node('p', [node('a', [node('a1')]), node('b')], { collapsed: false }),
+        node('q', [node('q1')], { collapsed: true }),
+      ],
+    )
     expect(flatten(v).map((r) => r.id)).toEqual(['p', 'a', 'a1', 'b', 'q'])
     expect(flatten(v).find((r) => r.id === 'q')?.hasChildren).toBe(true)
   })
@@ -42,13 +51,27 @@ describe('flatten', () => {
 
   it('draft after a collapsed node goes right after that one row', () => {
     const v = view([], [node('a', [node('a1')], { collapsed: true }), node('b')])
-    expect(flatten(v, { section: 'projects', parentId: null, afterId: 'a' }).map((r) => r.id)).toEqual(['a', 'draft', 'b'])
+    expect(
+      flatten(v, { section: 'projects', parentId: null, afterId: 'a' }).map((r) => r.id),
+    ).toEqual(['a', 'draft', 'b'])
   })
 
   it('draft with beforeId goes just above it; with only a parent goes to the end of its subtree', () => {
-    const v = view([node('i', [], { section: 'inbox' })], [node('p', [node('a'), node('b')]), node('q')])
-    expect(flatten(v, { section: 'projects', parentId: 'p', beforeId: 'b' }).map((r) => r.id)).toEqual(['i', 'p', 'a', 'draft', 'b', 'q'])
-    expect(flatten(v, { section: 'projects', parentId: 'p' }).map((r) => r.id)).toEqual(['i', 'p', 'a', 'b', 'draft', 'q'])
+    const v = view(
+      [node('i', [], { section: 'inbox' })],
+      [node('p', [node('a'), node('b')]), node('q')],
+    )
+    expect(
+      flatten(v, { section: 'projects', parentId: 'p', beforeId: 'b' }).map((r) => r.id),
+    ).toEqual(['i', 'p', 'a', 'draft', 'b', 'q'])
+    expect(flatten(v, { section: 'projects', parentId: 'p' }).map((r) => r.id)).toEqual([
+      'i',
+      'p',
+      'a',
+      'b',
+      'draft',
+      'q',
+    ])
   })
 
   it('draft in an empty section top level lands in that section', () => {

@@ -1,8 +1,14 @@
 import type { DayView, ReviewView, TreeView } from '@daybreak/core'
-import { hashKey, type QueryClient, type QueryKey, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  hashKey,
+  type QueryClient,
+  type QueryKey,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
-import { api, isUnreachable } from './client'
 import { useUi } from '../ui/store'
+import { api, isUnreachable } from './client'
 import { createMutationQueue } from './queue'
 import { connectEvents } from './sse'
 
@@ -15,7 +21,11 @@ export interface Status {
 
 // Refetched on focus, unlike the rest: a tab left open overnight must learn the new today (and so show the review).
 export const useStatus = () =>
-  useQuery({ queryKey: ['status'], queryFn: () => api.get<Status>('/api/status'), refetchOnWindowFocus: true })
+  useQuery({
+    queryKey: ['status'],
+    queryFn: () => api.get<Status>('/api/status'),
+    refetchOnWindowFocus: true,
+  })
 
 // What the server last answered for each query that is patched optimistically (tree, day, review),
 // by query hash. A write that never reached the server is undone by putting these back.
@@ -42,7 +52,10 @@ export function useTree(completed: CompletedMode) {
   return useQuery({
     queryKey: ['tree', completed],
     queryFn: async () => {
-      const fetched = confirm(['tree', completed], await api.get<TreeView>(`/api/tree?completed=${completed}`))
+      const fetched = confirm(
+        ['tree', completed],
+        await api.get<TreeView>(`/api/tree?completed=${completed}`),
+      )
       const shown = qc.getQueryData<TreeView>(['tree', completed])
       return queue.busy() && shown ? shown : fetched
     },

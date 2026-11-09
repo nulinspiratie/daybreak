@@ -42,8 +42,14 @@ describe('mutation queue', () => {
     const q = createMutationQueue()
     await q.idle()
     let done = 0
-    void q.enqueue(async () => { await sleep(10); done++ })
-    void q.enqueue(async () => { await sleep(10); done++ })
+    void q.enqueue(async () => {
+      await sleep(10)
+      done++
+    })
+    void q.enqueue(async () => {
+      await sleep(10)
+      done++
+    })
     await q.idle()
     expect(done).toBe(2)
   })
@@ -63,8 +69,13 @@ describe('mutation queue', () => {
     const q = createMutationQueue()
     const log: string[] = []
     q.onDrain(() => log.push('drain'))
-    await q.enqueue(async () => { log.push('a') })
-    const b = q.enqueue(async () => { await sleep(10); log.push('b') })
+    await q.enqueue(async () => {
+      log.push('a')
+    })
+    const b = q.enqueue(async () => {
+      await sleep(10)
+      log.push('b')
+    })
     await b
     await q.idle()
     expect(log).toEqual(['a', 'drain', 'b', 'drain'])
@@ -112,9 +123,11 @@ describe('mutation queue', () => {
     await q.idle()
     expect(log).toEqual(['fail boom', 'drain', 'caller'])
     off()
-    await q.enqueue(async () => {
-      throw new Error('again')
-    }).catch(() => {})
+    await q
+      .enqueue(async () => {
+        throw new Error('again')
+      })
+      .catch(() => {})
     expect(log).not.toContain('fail again')
   })
 })

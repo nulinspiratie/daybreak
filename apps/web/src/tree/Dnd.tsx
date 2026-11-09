@@ -1,7 +1,7 @@
 import type { TreeNode } from '@daybreak/core'
 import {
-  closestCenter,
   type CollisionDetection,
+  closestCenter,
   DndContext,
   type DragEndEvent,
   type DragMoveEvent,
@@ -15,7 +15,16 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { type SortingStrategy, useSortable } from '@dnd-kit/sortable'
-import { createContext, type CSSProperties, type PointerEvent, type ReactNode, useContext, useEffect, useRef, useState } from 'react'
+import {
+  type CSSProperties,
+  createContext,
+  type PointerEvent,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { type CommandEnv, moveTo, scheduleAt } from '../keyboard/commands'
 import { reportWriteError, useCommandEnv } from '../keyboard/useKeyboard'
 import { PATH_SEPARATOR } from '../myday/DayRow'
@@ -71,7 +80,10 @@ function project(env: CommandEnv, e: DragMoveEvent): DragState {
   const overPane: Pane = over.pane === 'pane' ? (over.id as Pane) : over.pane
   if (overPane === 'tree') {
     // A My Day item dropped on the tree does nothing.
-    const tree = active.pane === 'tree' && over.pane === 'tree' ? projectDrop(env.rows, active.id, over.id, e.delta.x) : null
+    const tree =
+      active.pane === 'tree' && over.pane === 'tree'
+        ? projectDrop(env.rows, active.id, over.id, e.delta.x)
+        : null
     return { active, over: 'tree', tree, day: null }
   }
   const ids = env.dayItems.map((i) => i.task.id)
@@ -149,11 +161,20 @@ function DragCard({ env, s, grabX }: { env: CommandEnv; s: DragState; grabX: num
   // its x follows the projected depth, not the pointer.
   return (
     <div className="dragcard" style={{ '--depth': s.tree?.depth ?? row.depth } as CSSProperties}>
-      <span className="row__handle" aria-hidden="true">{GUIDE_DOTS}</span>
+      <span className="row__handle" aria-hidden="true">
+        {GUIDE_DOTS}
+      </span>
       <span className="row__chev" aria-hidden="true">
         {row.hasChildren && (
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12">
+            <path
+              d="M4.5 3 7.5 6 4.5 9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         )}
       </span>
@@ -166,7 +187,8 @@ function DragCard({ env, s, grabX }: { env: CommandEnv; s: DragState; grabX: num
   )
 }
 
-const countDescendants = (n: TreeNode): number => n.children.reduce((sum, c) => sum + 1 + countDescendants(c), 0)
+const countDescendants = (n: TreeNode): number =>
+  n.children.reduce((sum, c) => sum + 1 + countDescendants(c), 0)
 
 /** My Day's path for a tree task: its ancestors' titles, or "Inbox". */
 function treePath(env: CommandEnv, id: string): string[] {
@@ -182,11 +204,15 @@ function treePath(env: CommandEnv, id: string): string[] {
 }
 
 const titleOf = (env: CommandEnv | null, id: string) =>
-  env?.rows.find((r) => r.id === id)?.node.title ?? env?.dayItems.find((i) => i.task.id === id)?.task.title ?? 'task'
+  env?.rows.find((r) => r.id === id)?.node.title ??
+  env?.dayItems.find((i) => i.task.id === id)?.task.title ??
+  'task'
 
 /** In the tree the card's x is set by the projected depth (see DragCard and .dragcard), not the pointer. */
-const treeCard = (s: DragState): Modifier => ({ transform }) =>
-  s.active?.pane === 'tree' && s.over !== 'day' ? { ...transform, x: 0 } : transform
+const treeCard =
+  (s: DragState): Modifier =>
+  ({ transform }) =>
+    s.active?.pane === 'tree' && s.over !== 'day' ? { ...transform, x: 0 } : transform
 
 /** While a drop would be refused (a parent over Inbox), the rows stay put instead of opening a slot. */
 export const STAY_PUT: SortingStrategy = () => null
@@ -264,12 +290,22 @@ export function DragAndDrop({ children }: { children: ReactNode }) {
       }}
     >
       <DragContext.Provider value={state}>{children}</DragContext.Provider>
-      <DragOverlay dropAnimation={null} modifiers={[treeCard(state)]}>{state.active && <DragCardHost getEnv={getEnv} s={state} grabX={grabX} />}</DragOverlay>
+      <DragOverlay dropAnimation={null} modifiers={[treeCard(state)]}>
+        {state.active && <DragCardHost getEnv={getEnv} s={state} grabX={grabX} />}
+      </DragOverlay>
     </DndContext>
   )
 }
 
-function DragCardHost({ getEnv, s, grabX }: { getEnv: () => CommandEnv | null; s: DragState; grabX: number }) {
+function DragCardHost({
+  getEnv,
+  s,
+  grabX,
+}: {
+  getEnv: () => CommandEnv | null
+  s: DragState
+  grabX: number
+}) {
   const env = getEnv()
   // dnd-kit measures the overlay's only child to pick the drop target. This anchor keeps that box
   // the size of the grabbed row, on the pointer, while the card inside sits offset from it.
@@ -306,7 +342,10 @@ export interface DragRowProps {
 
 /** A row that can be dragged and dropped onto: it moves aside as the list sorts itself. */
 export function DragRow({ pane, id, disabled, indicator, activeClass, children }: DragRowProps) {
-  const { setNodeRef, listeners, transform, transition, isDragging } = useSortable({ id: dndId(pane, id), disabled })
+  const { setNodeRef, listeners, transform, transition, isDragging } = useSortable({
+    id: dndId(pane, id),
+    disabled,
+  })
   const style: CSSProperties = { transition }
   if (transform) style.transform = `translate3d(0, ${Math.round(transform.y)}px, 0)`
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -324,7 +363,10 @@ export function DragRow({ pane, id, disabled, indicator, activeClass, children }
 
 /** A heading rows sort around and can be dropped onto; it never moves itself. */
 export function DropHeading({ id, children }: { id: string; children: ReactNode }) {
-  const { setNodeRef, transform, transition } = useSortable({ id: dndId('tree', id), disabled: { draggable: true } })
+  const { setNodeRef, transform, transition } = useSortable({
+    id: dndId('tree', id),
+    disabled: { draggable: true },
+  })
   const style: CSSProperties = { transition }
   if (transform) style.transform = `translate3d(0, ${Math.round(transform.y)}px, 0)`
   return (
@@ -336,7 +378,11 @@ export function DropHeading({ id, children }: { id: string; children: ReactNode 
 
 /** The insertion line: a 2 px accent line, in the tree with a ring where the task will land. */
 function DropLine({ depth, at = 'top' }: Indicator) {
-  const cls = ['dropline', depth === 'full' && 'dropline--full', at === 'bottom' && 'dropline--bottom']
+  const cls = [
+    'dropline',
+    depth === 'full' && 'dropline--full',
+    at === 'bottom' && 'dropline--bottom',
+  ]
   const style = depth === 'full' ? undefined : ({ '--depth': depth } as CSSProperties)
   return <span className={cls.filter(Boolean).join(' ')} style={style} aria-hidden="true" />
 }

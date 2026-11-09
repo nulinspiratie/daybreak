@@ -91,7 +91,9 @@ export function placementFor(d: Draft): Draft {
 }
 
 function mapNodes(nodes: TreeNode[], fn: (n: TreeNode) => TreeNode): TreeNode[] {
-  return nodes.map((n) => fn(n.children.length > 0 ? { ...n, children: mapNodes(n.children, fn) } : n))
+  return nodes.map((n) =>
+    fn(n.children.length > 0 ? { ...n, children: mapNodes(n.children, fn) } : n),
+  )
 }
 
 function mapView(view: TreeView, fn: (n: TreeNode) => TreeNode): TreeView {
@@ -113,7 +115,11 @@ export function insertNode(view: TreeView, node: TreeNode, at: Draft): TreeView 
 }
 
 /** `view` with the fields in `patch` (a title, or a placeholder's real id) applied to task `id`. */
-export function updateNode(view: TreeView, id: string, patch: Partial<TreeNode> | ((n: TreeNode) => TreeNode)): TreeView {
+export function updateNode(
+  view: TreeView,
+  id: string,
+  patch: Partial<TreeNode> | ((n: TreeNode) => TreeNode),
+): TreeView {
   const apply = typeof patch === 'function' ? patch : (n: TreeNode) => ({ ...n, ...patch })
   return mapView(view, (n) => (n.id === id ? apply(n) : n))
 }
@@ -164,7 +170,11 @@ export function moveNode(view: TreeView, id: string, at: Draft): TreeView {
 }
 
 /** `day` with task `id` moved next to `at.afterId` or `at.beforeId`. */
-export function moveDayItem(day: DayView, id: string, at: { afterId?: string; beforeId?: string }): DayView {
+export function moveDayItem(
+  day: DayView,
+  id: string,
+  at: { afterId?: string; beforeId?: string },
+): DayView {
   const item = day.items.find((i) => i.task.id === id)
   if (!item) return day
   const rest = day.items.filter((i) => i !== item)
@@ -203,19 +213,33 @@ export function treeCache(qc: QueryClient): TreeCache {
       // My Day lists the same tasks; show the change there too.
       const real = resolveId(id)
       void qc.cancelQueries({ queryKey: ['day'] })
-      qc.setQueriesData<DayView>({ queryKey: ['day'] }, (d) =>
-        d && { ...d, items: d.items.map((i) => (i.task.id === real ? { ...i, task: { ...i.task, ...patch } } : i)) },
+      qc.setQueriesData<DayView>(
+        { queryKey: ['day'] },
+        (d) =>
+          d && {
+            ...d,
+            items: d.items.map((i) =>
+              i.task.id === real ? { ...i, task: { ...i.task, ...patch } } : i,
+            ),
+          },
       )
     },
     created: (placeholder, task, sentTitle) =>
       edit((v) =>
-        updateNode(v, placeholder, (n) => ({ ...n, ...task, title: n.title === sentTitle ? (task.title ?? n.title) : n.title })),
+        updateNode(v, placeholder, (n) => ({
+          ...n,
+          ...task,
+          title: n.title === sentTitle ? (task.title ?? n.title) : n.title,
+        })),
       ),
     remove: (id) => edit((v) => removeNode(v, id)),
     move: (id, at) => edit((v) => moveNode(v, resolveId(id), placementFor(at))),
     moveInDay: (id, at) => {
       void qc.cancelQueries({ queryKey: ['day'] })
-      qc.setQueriesData<DayView>({ queryKey: ['day'] }, (d) => d && moveDayItem(d, resolveId(id), at))
+      qc.setQueriesData<DayView>(
+        { queryKey: ['day'] },
+        (d) => d && moveDayItem(d, resolveId(id), at),
+      )
     },
   }
 }

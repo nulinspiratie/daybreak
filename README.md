@@ -44,8 +44,8 @@ bun run --cwd apps/web dev     # second terminal, same DAYBREAK_DATA_DIR: Vite o
 
 Vite proxies `/api` and `/events` to the server, adding the token from the data folder, so start the server first. `bun run start` instead builds the web app and serves everything from the server, as `start.cmd` does.
 
-Before you commit, `bun run check` runs the typecheck, the Vitest suite (on Node 22.13+) and the `bun:sqlite` smoke test. `bun run smoke` builds the web app, starts the real server on a scratch folder and checks that it answers.
+Code is formatted and linted with [Biome](https://biomejs.dev) (`biome.json`; `bun run format` fixes everything it can). Before you commit, `bun run check` runs the lint, the typecheck, the Vitest suite (on Node 22.13+) and the `bun:sqlite` smoke test. `bun run smoke` builds the web app, starts the real server on a scratch folder and checks that it answers.
 
-`bun install` also turns on a pre-commit hook (`.githooks/pre-commit`). It refuses anything that looks like task data (database files, a `token`, daily logs) and runs the typecheck and tests when code changed. CI runs the same checks, plus the smoke test, on Windows and Linux for every push and pull request.
+`bun install` also turns on a pre-commit hook (`.githooks/pre-commit`). It refuses anything that looks like task data (database files, a `token`, daily logs), formats the staged code with Biome, and runs the typecheck and tests when code changed. CI runs the same checks, plus the smoke test, on Windows and Linux for every push and pull request.
 
 [CLAUDE.md](CLAUDE.md) has the code layout and conventions.

@@ -12,7 +12,10 @@ export function Toast() {
           <span className="toast__msg">{t.message}</span>
           {t.restoreId && (
             <>
-              <span className="toast__sep" aria-hidden="true"> · </span>
+              <span className="toast__sep" aria-hidden="true">
+                {' '}
+                ·{' '}
+              </span>
               <button type="button" className="toast__undo" onClick={() => run('toast.undo')}>
                 Undo (Z)
               </button>

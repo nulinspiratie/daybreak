@@ -25,8 +25,19 @@ const fake = () => shared.fake!
 
 const TODAY = '2026-11-09'
 
-function item(id: string, over: Partial<Task> = {}, path: string[] = ['Inbox'], mark: Mark | null = null): DayItem {
-  const { children: _c, mark: _m, doneCount: _d, totalCount: _t, ...task } = node(id, [], { scheduledOn: TODAY, title: `Title ${id}`, ...over })
+function item(
+  id: string,
+  over: Partial<Task> = {},
+  path: string[] = ['Inbox'],
+  mark: Mark | null = null,
+): DayItem {
+  const {
+    children: _c,
+    mark: _m,
+    doneCount: _d,
+    totalCount: _t,
+    ...task
+  } = node(id, [], { scheduledOn: TODAY, title: `Title ${id}`, ...over })
   return { task: task as Task, path, mark, doneCount: 0, totalCount: 0 }
 }
 
@@ -91,17 +102,29 @@ beforeEach(() => {
   resetPendingIds()
   fake().calls.length = 0
   fake().reply = async (method, path) => {
-    if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+    if (method === 'GET' && path === '/api/status')
+      return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
     if (method === 'GET' && path.startsWith('/api/day/')) return day()
     if (method === 'GET' && path.startsWith('/api/tree')) {
-      const inbox = withTree ? items.map((i) => node(i.task.id, [], { section: 'inbox', title: i.task.title })) : []
+      const inbox = withTree
+        ? items.map((i) => node(i.task.id, [], { section: 'inbox', title: i.task.title }))
+        : []
       return { today: TODAY, inbox, projects: [], hiddenCompletedCount: 0 }
     }
     if (method === 'POST' && path === '/api/tasks') return { id: 'new1' }
     if (method === 'PATCH' && gate) await gate
     return {}
   }
-  useUi.getState().set({ pane: 'tree', treeSel: null, daySel: null, editing: null, draft: null, confirm: null, detailId: null, dayAddNonce: 0 })
+  useUi.getState().set({
+    pane: 'tree',
+    treeSel: null,
+    daySel: null,
+    editing: null,
+    draft: null,
+    confirm: null,
+    detailId: null,
+    dayAddNonce: 0,
+  })
   toast.dismiss()
 })
 afterEach(async () => {
@@ -132,7 +155,9 @@ describe('header', () => {
 describe('rows', () => {
   it('shows the empty state copy', async () => {
     await start([])
-    expect(screen.getByText('Drag tasks in from the tree, or press T on a selected task')).toBeTruthy()
+    expect(
+      screen.getByText('Drag tasks in from the tree, or press T on a selected task'),
+    ).toBeTruthy()
   })
 
   it('hides the empty state when there are items', async () => {
@@ -174,7 +199,11 @@ describe('keys in the day pane', () => {
     await start([item('a'), item('b')], 'b')
     await press('ArrowUp', MOD)
     await flush()
-    expect(writes()).toContainEqual(['POST', '/api/tasks/b/schedule', { date: TODAY, beforeId: 'a' }])
+    expect(writes()).toContainEqual([
+      'POST',
+      '/api/tasks/b/schedule',
+      { date: TODAY, beforeId: 'a' },
+    ])
   })
 
   it('ArrowDown moves the selection', async () => {
@@ -192,11 +221,14 @@ describe('keys in the day pane', () => {
 
   it('clicking the checkbox runs the same command, so a parent asks for a second press', async () => {
     fake().reply = async (method, path, body) => {
-      if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+      if (method === 'GET' && path === '/api/status')
+        return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
       if (method === 'GET' && path.startsWith('/api/day/')) return day()
-      if (method === 'GET') return { today: TODAY, inbox: [], projects: [], hiddenCompletedCount: 0 }
+      if (method === 'GET')
+        return { today: TODAY, inbox: [], projects: [], hiddenCompletedCount: 0 }
       const b = body as { withOpenDescendants?: boolean } | undefined
-      if (method === 'PATCH' && !b?.withOpenDescendants) throw new ApiError(409, 'needs_confirmation', 'x', { openCount: 2 })
+      if (method === 'PATCH' && !b?.withOpenDescendants)
+        throw new ApiError(409, 'needs_confirmation', 'x', { openCount: 2 })
       return { changedIds: ['a'] }
     }
     await start([item('a')])
@@ -204,10 +236,16 @@ describe('keys in the day pane', () => {
     fireEvent.click(box)
     await flush()
     expect(ui().confirm).toMatchObject({ id: 'a', openCount: 2 })
-    expect(document.querySelector('#confirm-note')?.textContent).toBe('2 open subtasks. Press Space again to close them all.')
+    expect(document.querySelector('#confirm-note')?.textContent).toBe(
+      '2 open subtasks. Press Space again to close them all.',
+    )
     fireEvent.click(box)
     await flush()
-    expect(writes().at(-1)).toEqual(['PATCH', '/api/tasks/a', { status: 'done', withOpenDescendants: true }])
+    expect(writes().at(-1)).toEqual([
+      'PATCH',
+      '/api/tasks/a',
+      { status: 'done', withOpenDescendants: true },
+    ])
   })
 
   it('clicking Start marks the row Doing', async () => {
@@ -236,7 +274,13 @@ describe('add field', () => {
       fireEvent.keyDown(input, { key: 'Enter' })
     })
     await flush()
-    expect(writes()).toEqual([['POST', '/api/tasks', { title: 'Order a spare SMA torque wrench', section: 'inbox', scheduledOn: TODAY }]])
+    expect(writes()).toEqual([
+      [
+        'POST',
+        '/api/tasks',
+        { title: 'Order a spare SMA torque wrench', section: 'inbox', scheduledOn: TODAY },
+      ],
+    ])
     expect(addField().value).toBe('')
     expect(document.activeElement).toBe(addField())
   })
@@ -268,9 +312,11 @@ describe('add field', () => {
   it('a refused add shows the toast and puts the title back for a retry', async () => {
     fake().reply = async (method, path) => {
       if (method === 'POST' && path === '/api/tasks') throw new ApiError(400, 'invalid', 'nope')
-      if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+      if (method === 'GET' && path === '/api/status')
+        return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
       if (method === 'GET' && path.startsWith('/api/day/')) return day()
-      if (method === 'GET') return { today: TODAY, inbox: [], projects: [], hiddenCompletedCount: 0 }
+      if (method === 'GET')
+        return { today: TODAY, inbox: [], projects: [], hiddenCompletedCount: 0 }
       return {}
     }
     const err = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -290,9 +336,11 @@ describe('add field', () => {
   it('a refused add does not overwrite what was typed since', async () => {
     fake().reply = async (method, path) => {
       if (method === 'POST' && path === '/api/tasks') throw new ApiError(400, 'invalid', 'nope')
-      if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+      if (method === 'GET' && path === '/api/status')
+        return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
       if (method === 'GET' && path.startsWith('/api/day/')) return day()
-      if (method === 'GET') return { today: TODAY, inbox: [], projects: [], hiddenCompletedCount: 0 }
+      if (method === 'GET')
+        return { today: TODAY, inbox: [], projects: [], hiddenCompletedCount: 0 }
       return {}
     }
     const err = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -408,7 +456,13 @@ describe('inline title edit', () => {
     await start([item('a'), item('b')], 'a')
     await press('Enter')
     await type('')
-    for (const [key, init] of [['ArrowDown', {}], ['ArrowUp', {}], ['ArrowUp', MOD], ['ArrowDown', MOD], ['Backspace', {}]] as const) {
+    for (const [key, init] of [
+      ['ArrowDown', {}],
+      ['ArrowUp', {}],
+      ['ArrowUp', MOD],
+      ['ArrowDown', MOD],
+      ['Backspace', {}],
+    ] as const) {
       await press(key, init)
     }
     await flush()

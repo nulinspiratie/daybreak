@@ -60,12 +60,29 @@ const get = (id: string) => {
   return r
 }
 const toNode = (r: Row): TreeNode =>
-  node(r.id, kids(r.id, r.section), { parentId: r.parentId, section: r.section, title: r.title, collapsed: r.collapsed })
-const kids = (parentId: string | null, section: Section): TreeNode[] => siblings(parentId, section).map(toNode)
-const view = (): TreeView => ({ today: TODAY, inbox: kids(null, 'inbox'), projects: kids(null, 'projects'), hiddenCompletedCount: 0 })
-const titlesUnder = (parentId: string | null, section: Section = 'projects') => siblings(parentId, section).map((r) => r.title)
+  node(r.id, kids(r.id, r.section), {
+    parentId: r.parentId,
+    section: r.section,
+    title: r.title,
+    collapsed: r.collapsed,
+  })
+const kids = (parentId: string | null, section: Section): TreeNode[] =>
+  siblings(parentId, section).map(toNode)
+const view = (): TreeView => ({
+  today: TODAY,
+  inbox: kids(null, 'inbox'),
+  projects: kids(null, 'projects'),
+  hiddenCompletedCount: 0,
+})
+const titlesUnder = (parentId: string | null, section: Section = 'projects') =>
+  siblings(parentId, section).map((r) => r.title)
 const idOf = (title: string) => live().find((r) => r.title === title)!.id
-const subtree = (id: string): Row[] => [get(id), ...live().filter((r) => r.parentId === id).flatMap((r) => subtree(r.id))]
+const subtree = (id: string): Row[] => [
+  get(id),
+  ...live()
+    .filter((r) => r.parentId === id)
+    .flatMap((r) => subtree(r.id)),
+]
 
 function place(row: Row, at: { afterId?: string; beforeId?: string }): void {
   const sibs = siblings(row.parentId, row.section)
@@ -86,8 +103,12 @@ function serve(method: string, path: string, body: Record<string, unknown> = {})
     const title = normalizeTitle(body.title as string)
     if (title === '') throw new ApiError(400, 'invalid', 'Title cannot be empty')
     const row: Row = {
-      id: `n${++seq}`, parentId: (body.parentId as string | undefined) ?? null, section: body.section as Section,
-      title, collapsed: false, deleted: false,
+      id: `n${++seq}`,
+      parentId: (body.parentId as string | undefined) ?? null,
+      section: body.section as Section,
+      title,
+      collapsed: false,
+      deleted: false,
     }
     if (row.parentId !== null) get(row.parentId)
     place(row, body as { afterId?: string; beforeId?: string })
@@ -218,11 +239,46 @@ async function start(selected: string | null) {
 beforeEach(() => {
   // Inbox: i1. Projects: p1 [c1, c2], p2.
   db = [
-    { id: 'i1', parentId: null, section: 'inbox', title: 'Inbox one', collapsed: false, deleted: false },
-    { id: 'p1', parentId: null, section: 'projects', title: 'Project one', collapsed: false, deleted: false },
-    { id: 'c1', parentId: 'p1', section: 'projects', title: 'Child one', collapsed: false, deleted: false },
-    { id: 'c2', parentId: 'p1', section: 'projects', title: 'Child two', collapsed: false, deleted: false },
-    { id: 'p2', parentId: null, section: 'projects', title: 'Project two', collapsed: false, deleted: false },
+    {
+      id: 'i1',
+      parentId: null,
+      section: 'inbox',
+      title: 'Inbox one',
+      collapsed: false,
+      deleted: false,
+    },
+    {
+      id: 'p1',
+      parentId: null,
+      section: 'projects',
+      title: 'Project one',
+      collapsed: false,
+      deleted: false,
+    },
+    {
+      id: 'c1',
+      parentId: 'p1',
+      section: 'projects',
+      title: 'Child one',
+      collapsed: false,
+      deleted: false,
+    },
+    {
+      id: 'c2',
+      parentId: 'p1',
+      section: 'projects',
+      title: 'Child two',
+      collapsed: false,
+      deleted: false,
+    },
+    {
+      id: 'p2',
+      parentId: null,
+      section: 'projects',
+      title: 'Project two',
+      collapsed: false,
+      deleted: false,
+    },
   ]
   seq = 0
   gate = null
@@ -232,7 +288,15 @@ beforeEach(() => {
     if (method !== 'GET' && gate) await gate
     return serve(method, path, body as Record<string, unknown>)
   }
-  useUi.getState().set({ pane: 'tree', treeSel: null, daySel: null, editing: null, draft: null, confirm: null, detailId: null })
+  useUi.getState().set({
+    pane: 'tree',
+    treeSel: null,
+    daySel: null,
+    editing: null,
+    draft: null,
+    confirm: null,
+    detailId: null,
+  })
   toast.dismiss()
 })
 afterEach(async () => {
@@ -260,13 +324,19 @@ describe('drafts', () => {
 
     expect(writes()).toEqual([
       ['POST', '/api/tasks', { title: 'a', section: 'projects', parentId: 'p1', afterId: 'c1' }],
-      ['POST', '/api/tasks', { title: 'b', section: 'projects', parentId: 'p1', afterId: idOf('a') }],
+      [
+        'POST',
+        '/api/tasks',
+        { title: 'b', section: 'projects', parentId: 'p1', afterId: idOf('a') },
+      ],
     ])
     expect(titlesUnder('p1')).toEqual(['Child one', 'a', 'b', 'Child two'])
     noEditor()
     expect(ui()).toMatchObject({ editing: null, draft: null, treeSel: idOf('b') })
     expect(screen.getAllByRole('treeitem').map((r) => r.textContent)).toEqual(
-      expect.arrayContaining(['Child one', 'a', 'b', 'Child two'].map((t) => expect.stringContaining(t))),
+      expect.arrayContaining(
+        ['Child one', 'a', 'b', 'Child two'].map((t) => expect.stringContaining(t)),
+      ),
     )
   })
 
@@ -306,7 +376,9 @@ describe('drafts', () => {
     await press('Escape')
     await settle()
 
-    expect(writes()).toEqual([['POST', '/api/tasks', { title: 'nested', section: 'projects', parentId: 'c1' }]])
+    expect(writes()).toEqual([
+      ['POST', '/api/tasks', { title: 'nested', section: 'projects', parentId: 'c1' }],
+    ])
     expect(titlesUnder('c1')).toEqual(['nested'])
   })
 
@@ -322,7 +394,13 @@ describe('drafts', () => {
     expect((editor() as HTMLInputElement).value).toBe('Design')
     await press('Escape')
     await settle()
-    expect(writes()).toEqual([['POST', '/api/tasks', { title: 'Design', section: 'projects', parentId: 'p1', afterId: 'c1' }]])
+    expect(writes()).toEqual([
+      [
+        'POST',
+        '/api/tasks',
+        { title: 'Design', section: 'projects', parentId: 'p1', afterId: 'c1' },
+      ],
+    ])
   })
 
   it('Shift+Tab on a draft moves it to the grandparent, after the old parent', async () => {
@@ -333,7 +411,9 @@ describe('drafts', () => {
     await type('sibling')
     await press('Escape')
     await settle()
-    expect(writes()).toEqual([['POST', '/api/tasks', { title: 'sibling', section: 'projects', afterId: 'p1' }]])
+    expect(writes()).toEqual([
+      ['POST', '/api/tasks', { title: 'sibling', section: 'projects', afterId: 'p1' }],
+    ])
     expect(titlesUnder(null)).toEqual(['Project one', 'sibling', 'Project two'])
     expect(ui().treeSel).toBe(idOf('sibling'))
   })
@@ -376,7 +456,9 @@ describe('drafts', () => {
     expect(ui()).toMatchObject({ draft: null, editing: { id: 'c1' }, treeSel: 'c1' })
     await press('Escape')
     await settle()
-    expect(writes()).toEqual([['POST', '/api/tasks', { title: 'kept', section: 'projects', parentId: 'p1', afterId: 'c1' }]])
+    expect(writes()).toEqual([
+      ['POST', '/api/tasks', { title: 'kept', section: 'projects', parentId: 'p1', afterId: 'c1' }],
+    ])
     expect(titlesUnder('p1')).toEqual(['Child one', 'kept', 'Child two'])
   })
 
@@ -390,7 +472,9 @@ describe('drafts', () => {
     await press('Enter')
     await press('Escape')
     await settle()
-    expect(writes()).toEqual([['POST', '/api/tasks', { title: pasted, section: 'inbox', afterId: 'i1' }]])
+    expect(writes()).toEqual([
+      ['POST', '/api/tasks', { title: pasted, section: 'inbox', afterId: 'i1' }],
+    ])
     expect(screen.getByText('line one line two three')).toBeTruthy()
   })
 
@@ -454,13 +538,20 @@ describe('editing a saved title', () => {
     await press('Enter')
     await type('Child one!')
     await press('Enter')
-    expect(ui()).toMatchObject({ editing: { id: 'draft' }, draft: { section: 'projects', parentId: 'p1', afterId: 'c1' } })
+    expect(ui()).toMatchObject({
+      editing: { id: 'draft' },
+      draft: { section: 'projects', parentId: 'p1', afterId: 'c1' },
+    })
     await type('after')
     await press('Escape')
     await settle()
     expect(writes()).toEqual([
       ['PATCH', '/api/tasks/c1', { title: 'Child one!' }],
-      ['POST', '/api/tasks', { title: 'after', section: 'projects', parentId: 'p1', afterId: 'c1' }],
+      [
+        'POST',
+        '/api/tasks',
+        { title: 'after', section: 'projects', parentId: 'p1', afterId: 'c1' },
+      ],
     ])
     expect(titlesUnder('p1')).toEqual(['Child one!', 'after', 'Child two'])
   })
@@ -592,7 +683,10 @@ describe('while writes are still queued', () => {
     let answerPatch = () => {}
     const posted = new Promise<void>((r) => (answerPost = r))
     const patched = new Promise<void>((r) => (answerPatch = r))
-    releasers.push(() => answerPost(), () => answerPatch())
+    releasers.push(
+      () => answerPost(),
+      () => answerPatch(),
+    )
     fake().reply = async (method, path, body) => {
       if (method === 'POST' && path === '/api/tasks') await posted
       if (method === 'PATCH') await patched
@@ -668,7 +762,11 @@ describe('a create the server refuses', () => {
     expect(writes()).toEqual([
       ['POST', '/api/tasks', { title: 'a', section: 'projects', parentId: 'p1', afterId: 'c1' }],
       ['POST', '/api/tasks', { title: 'b', section: 'projects', parentId: 'p1', afterId: 'c1' }],
-      ['POST', '/api/tasks', { title: 'c', section: 'projects', parentId: 'p1', afterId: idOf('b') }],
+      [
+        'POST',
+        '/api/tasks',
+        { title: 'c', section: 'projects', parentId: 'p1', afterId: idOf('b') },
+      ],
     ])
     expect(titlesUnder('p1')).toEqual(['Child one', 'b', 'c', 'Child two'])
     expect(ui().treeSel).toBe(idOf('c'))
@@ -719,7 +817,9 @@ describe('leaving the editor', () => {
     await start('c1')
     await press('Enter')
     await type('clicked away')
-    const box = within(screen.getByRole('treeitem', { name: 'Child two' })).getByRole('button', { name: 'Tick off' })
+    const box = within(screen.getByRole('treeitem', { name: 'Child two' })).getByRole('button', {
+      name: 'Tick off',
+    })
     await act(async () => {
       fireEvent.pointerDown(box)
       fireEvent.blur(editor(), { relatedTarget: box })
@@ -745,7 +845,13 @@ describe('leaving the editor', () => {
     })
     hasFocus.mockRestore()
     await settle()
-    expect(writes()).toEqual([['POST', '/api/tasks', { title: 'quick', section: 'projects', parentId: 'p1', afterId: 'c1' }]])
+    expect(writes()).toEqual([
+      [
+        'POST',
+        '/api/tasks',
+        { title: 'quick', section: 'projects', parentId: 'p1', afterId: 'c1' },
+      ],
+    ])
     noEditor()
     expect(ui()).toMatchObject({ editing: null, treeSel: idOf('quick') })
   })

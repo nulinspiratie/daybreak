@@ -28,5 +28,8 @@ export function readStatic(root: string, urlPath: string): { body: Buffer; type:
   const file = resolve(join(base, rel))
   if (file !== base && !file.startsWith(base + sep)) return null
   if (!existsSync(file) || !statSync(file).isFile()) return null
-  return { body: readFileSync(file), type: TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream' }
+  return {
+    body: readFileSync(file),
+    type: TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream',
+  }
 }

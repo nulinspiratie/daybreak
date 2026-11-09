@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { migrate, openDatabase, transaction, type Db } from '../src/index'
+import { type Db, migrate, openDatabase, transaction } from '../src/index'
 
 const dirs: string[] = []
 const dbs: Db[] = []
@@ -34,7 +34,9 @@ describe('schema', () => {
     const db = await open()
     migrate(db)
     migrate(db)
-    expect(db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'schema_version'")?.value).toBe('1')
+    expect(
+      db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'schema_version'")?.value,
+    ).toBe('1')
   })
 
   it('tasks has deleted_at', async () => {
@@ -46,7 +48,8 @@ describe('schema', () => {
 })
 
 describe('transaction', () => {
-  const count = (db: Db) => db.get<{ n: number }>('SELECT count(*) AS n FROM meta WHERE key = ?', 'x')!.n
+  const count = (db: Db) =>
+    db.get<{ n: number }>('SELECT count(*) AS n FROM meta WHERE key = ?', 'x')!.n
 
   it('commits on success and returns the value', async () => {
     const db = await open()
@@ -88,7 +91,11 @@ describe('transaction', () => {
   it('can start a new transaction after a rollback', async () => {
     const db = await open()
     migrate(db)
-    expect(() => transaction(db, () => { throw new Error('a') })).toThrow('a')
+    expect(() =>
+      transaction(db, () => {
+        throw new Error('a')
+      }),
+    ).toThrow('a')
     transaction(db, () => db.run("INSERT INTO meta (key, value) VALUES ('x', '1')"))
     expect(count(db)).toBe(1)
   })

@@ -11,7 +11,8 @@ export function dayRoutes(d: Daybreak): Hono {
   app.get('/days', (c) => {
     const from = dateParam(c.req.query('from'), 'from')
     const to = dateParam(c.req.query('to'), 'to')
-    if (daysBetween(from, to) > MAX_DAYS) throw invalid(`The range can span at most ${MAX_DAYS} days`)
+    if (daysBetween(from, to) > MAX_DAYS)
+      throw invalid(`The range can span at most ${MAX_DAYS} days`)
     return c.json(d.dayCounts(from, to))
   })
   return app

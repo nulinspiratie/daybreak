@@ -59,7 +59,11 @@ const PROJECTS: Seed[] = [
               { title: 'Thermal anchoring check before closing the can' },
             ],
           },
-          { title: 'Update wiring diagram in the lab wiki', link: 'https://wiki.lab/fridge3/wiring', due: 0 },
+          {
+            title: 'Update wiring diagram in the lab wiki',
+            link: 'https://wiki.lab/fridge3/wiring',
+            due: 0,
+          },
           { title: 'Plan cooldown window with Anja', due: 1 },
         ],
       },

@@ -16,7 +16,9 @@ export function ConfirmNote({ depth }: { depth?: number }) {
   if (depth === undefined) {
     return (
       <div className="row-note row-note--day" aria-hidden="true">
-        <span className="row-note__text" id={CONFIRM_NOTE_ID}>{confirmNoteText(confirm)}</span>
+        <span className="row-note__text" id={CONFIRM_NOTE_ID}>
+          {confirmNoteText(confirm)}
+        </span>
       </div>
     )
   }
@@ -26,7 +28,9 @@ export function ConfirmNote({ depth }: { depth?: number }) {
       <span className="row__handle" />
       <span className="row__indent" style={{ width: depth * 22 }} />
       <span className="row__chev-gap" />
-      <span className="row-note__text" id={CONFIRM_NOTE_ID}>{confirmNoteText(confirm)}</span>
+      <span className="row-note__text" id={CONFIRM_NOTE_ID}>
+        {confirmNoteText(confirm)}
+      </span>
     </div>
   )
 }
@@ -36,10 +40,13 @@ export function ConfirmLive() {
   const confirm = useUi((s) => s.confirm)
   useEffect(() => {
     if (!confirm) return
-    const timer = setTimeout(() => {
-      const ui = useUi.getState()
-      if (ui.confirm === confirm) ui.set({ confirm: null })
-    }, Math.max(0, confirm.until - Date.now()))
+    const timer = setTimeout(
+      () => {
+        const ui = useUi.getState()
+        if (ui.confirm === confirm) ui.set({ confirm: null })
+      },
+      Math.max(0, confirm.until - Date.now()),
+    )
     return () => clearTimeout(timer)
   }, [confirm])
   return (

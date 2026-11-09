@@ -2,12 +2,22 @@ import type { Daybreak, Section, Status, TaskPatch } from '@daybreak/core'
 import { Hono } from 'hono'
 import { openLink as realOpenLink } from '../openLink'
 import {
-  invalid, isBoolean, isDateOrNull, isString, isStringArray, isStringOrNull, maybe, need, oneOf, readBody,
+  invalid,
+  isBoolean,
+  isDateOrNull,
+  isString,
+  isStringArray,
+  isStringOrNull,
+  maybe,
+  need,
+  oneOf,
+  readBody,
 } from '../validate'
 
 const isSection = oneOf<Section>('inbox', 'projects')
 const isStatus = oneOf<Status>('open', 'done', 'cancelled')
-const isMark = (v: unknown): v is 'doing' | 'worked' | null => v === null || v === 'doing' || v === 'worked'
+const isMark = (v: unknown): v is 'doing' | 'worked' | null =>
+  v === null || v === 'doing' || v === 'worked'
 const isDirection = oneOf<'up' | 'down' | 'indent' | 'outdent'>('up', 'down', 'indent', 'outdent')
 
 export function taskRoutes(d: Daybreak, openLink: (link: string) => void = realOpenLink): Hono {
@@ -65,7 +75,9 @@ export function taskRoutes(d: Daybreak, openLink: (link: string) => void = realO
 
   app.post('/:id/nudge', async (c) => {
     const b = await readBody(c)
-    return c.json(d.nudge(c.req.param('id'), need(b, 'direction', isDirection, 'up, down, indent or outdent')))
+    return c.json(
+      d.nudge(c.req.param('id'), need(b, 'direction', isDirection, 'up, down, indent or outdent')),
+    )
   })
 
   app.post('/:id/schedule', async (c) => {
@@ -94,4 +106,3 @@ export function taskRoutes(d: Daybreak, openLink: (link: string) => void = realO
 
   return app
 }
-

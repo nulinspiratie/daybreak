@@ -2,7 +2,17 @@ import { dayLabel } from '@daybreak/core/dates'
 import type { CSSProperties } from 'react'
 
 /** The fixed day column. Empty for closed or unscheduled tasks; a dashed "Today" while `preview` (a drag over My Day). */
-export function DayCell({ date, today, closed, preview }: { date: string | null; today: string; closed: boolean; preview?: boolean }) {
+export function DayCell({
+  date,
+  today,
+  closed,
+  preview,
+}: {
+  date: string | null
+  today: string
+  closed: boolean
+  preview?: boolean
+}) {
   if (preview) {
     return (
       <span className="day" data-testid="day-cell">

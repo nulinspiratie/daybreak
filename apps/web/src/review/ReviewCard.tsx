@@ -11,7 +11,9 @@ type Choice = Exclude<ReviewCommand, 'undo' | 'start'>
 /** "Monday" within the last week, else "2 Nov". */
 function workedDay(date: ISODate, today: ISODate): string {
   const ago = daysBetween(date, today)
-  return ago >= 1 && ago <= 6 ? weekdayName(date, 'long') : `${Number(date.slice(8, 10))} ${monthShort(date)}`
+  return ago >= 1 && ago <= 6
+    ? weekdayName(date, 'long')
+    : `${Number(date.slice(8, 10))} ${monthShort(date)}`
 }
 
 export interface ReviewCardProps {
@@ -30,9 +32,18 @@ export interface ReviewCardProps {
  * choices with their key caps, and the day picker inline after D. It keeps itself in view as the
  * list runs on.
  */
-export function ReviewCard({ item, today, tag, picking, onChoose, onPick, onClosePicker }: ReviewCardProps) {
+export function ReviewCard({
+  item,
+  today,
+  tag,
+  picking,
+  onChoose,
+  onPick,
+  onClosePicker,
+}: ReviewCardProps) {
   const { task } = item
   const ref = useRef<HTMLLIElement>(null)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll again whenever the card changes task or opens the picker.
   useEffect(() => {
     ref.current?.scrollIntoView?.({ block: 'nearest' })
   }, [task.id, picking])
@@ -80,7 +91,13 @@ export function ReviewCard({ item, today, tag, picking, onChoose, onPick, onClos
         ))}
       </div>
       {picking && (
-        <DayPicker today={today} initial={null} allowNoDay={false} onPick={(d) => d && onPick(d)} onClose={onClosePicker} />
+        <DayPicker
+          today={today}
+          initial={null}
+          allowNoDay={false}
+          onPick={(d) => d && onPick(d)}
+          onClose={onClosePicker}
+        />
       )}
     </li>
   )

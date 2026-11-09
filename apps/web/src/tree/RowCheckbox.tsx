@@ -11,7 +11,15 @@ const LABEL: Record<RowState, string> = {
 }
 
 /** `round` is My Day's 18 px circle; the tree's is a 16 px square. */
-export function RowCheckbox({ state, onToggle, round }: { state: RowState; onToggle: () => void; round?: boolean }) {
+export function RowCheckbox({
+  state,
+  onToggle,
+  round,
+}: {
+  state: RowState
+  onToggle: () => void
+  round?: boolean
+}) {
   const cls = state === 'worked' ? 'open' : state
   return (
     <button
@@ -31,12 +39,24 @@ export function CheckMark({ state }: { state: RowState }) {
     <>
       {state === 'done' && (
         <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
-          <path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M3.5 8.2 6.6 11.2 12.5 4.8"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       )}
       {state === 'cancelled' && (
         <svg aria-hidden="true" data-icon="cross" width="10" height="10" viewBox="0 0 10 10">
-          <path d="M2 2l6 6M8 2 2 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path
+            d="M2 2l6 6M8 2 2 8"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
         </svg>
       )}
       {state === 'doing' && <span aria-hidden="true" className="cb__dot" />}

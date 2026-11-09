@@ -2,15 +2,19 @@
 import type { TreeNode } from '@daybreak/core'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { TreeRow } from '../src/tree/TreeRow'
 import type { FlatRow } from '../src/tree/flatten'
+import { TreeRow } from '../src/tree/TreeRow'
 import { node } from './helpers'
 
 afterEach(cleanup)
 
 const TODAY = '2026-11-09'
 
-function row(over: Partial<TreeNode> = {}, depth = 0, section: FlatRow['section'] = 'inbox'): FlatRow {
+function row(
+  over: Partial<TreeNode> = {},
+  depth = 0,
+  section: FlatRow['section'] = 'inbox',
+): FlatRow {
   const n = node('t1', [], { section, ...over })
   return { id: n.id, node: n, depth, section, parentId: null, hasChildren: n.children.length > 0 }
 }
@@ -18,8 +22,18 @@ function row(over: Partial<TreeNode> = {}, depth = 0, section: FlatRow['section'
 const noop = () => {}
 function show(r: FlatRow, selected = false, handlers: Partial<Parameters<typeof TreeRow>[0]> = {}) {
   return render(
-    <TreeRow row={r} today={TODAY} selected={selected} onSelect={noop} onToggleCollapse={noop}
-      onToggleDone={noop} onScheduleToday={noop} onDoing={noop} onPickDay={noop} {...handlers} />,
+    <TreeRow
+      row={r}
+      today={TODAY}
+      selected={selected}
+      onSelect={noop}
+      onToggleCollapse={noop}
+      onToggleDone={noop}
+      onScheduleToday={noop}
+      onDoing={noop}
+      onPickDay={noop}
+      {...handlers}
+    />,
   )
 }
 const item = () => screen.getByRole('treeitem')
@@ -56,7 +70,9 @@ describe('TreeRow', () => {
     show(row({ mark: 'doing' }))
     expect(item().className).toContain('row--doing')
     expect(title().className).toContain('row__title--strong')
-    expect(screen.getByRole('button', { name: 'Doing now, tick off' }).className).toContain('cb--doing')
+    expect(screen.getByRole('button', { name: 'Doing now, tick off' }).className).toContain(
+      'cb--doing',
+    )
   })
 
   it('Done: struck through, filled checkbox', () => {

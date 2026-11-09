@@ -10,7 +10,11 @@ export interface ServerConfig {
 
 export const DEFAULT_CONFIG: ServerConfig = { port: 47815, dayStartsAt: '04:00' }
 
-export function resolveDataDir(env: NodeJS.ProcessEnv, platform: NodeJS.Platform, home: string): string {
+export function resolveDataDir(
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+  home: string,
+): string {
   if (env.DAYBREAK_DATA_DIR) return resolve(env.DAYBREAK_DATA_DIR)
   if (platform === 'win32' && env.LOCALAPPDATA) return win32.join(env.LOCALAPPDATA, 'Daybreak')
   if (env.XDG_DATA_HOME) return posix.join(env.XDG_DATA_HOME, 'daybreak')
@@ -36,7 +40,7 @@ export function assertOutsideRepo(dataDir: string, repoRoot: string): void {
   const repo = realpathLoose(repoRoot)
   const rel = relative(repo, dir)
   // An absolute `rel` means a different drive on Windows: outside the repo.
-  const escapes = rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)
+  const escapes = rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)
   if (!escapes) {
     throw new Error(
       `Refusing to use ${dir}: it is inside the repository (${repo}). Work data never goes in the repo.`,
@@ -50,7 +54,7 @@ export function loadConfig(dataDir: string): ServerConfig {
   const file = join(dataDir, 'config.json')
   if (!existsSync(file)) {
     mkdirSync(dataDir, { recursive: true })
-    writeFileSync(file, JSON.stringify(DEFAULT_CONFIG, null, 2) + '\n')
+    writeFileSync(file, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`)
     return { ...DEFAULT_CONFIG }
   }
   let raw: unknown
@@ -65,7 +69,9 @@ export function loadConfig(dataDir: string): ServerConfig {
   const obj = raw as Record<string, unknown>
   const port = obj.port === undefined ? DEFAULT_CONFIG.port : obj.port
   if (typeof port !== 'number' || !Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`config.json (${file}): "port" must be an integer from 1 to 65535, got ${JSON.stringify(port)}`)
+    throw new Error(
+      `config.json (${file}): "port" must be an integer from 1 to 65535, got ${JSON.stringify(port)}`,
+    )
   }
   const dayStartsAt = obj.dayStartsAt === undefined ? DEFAULT_CONFIG.dayStartsAt : obj.dayStartsAt
   if (typeof dayStartsAt !== 'string' || !HHMM.test(dayStartsAt)) {
@@ -84,6 +90,6 @@ export function loadOrCreateToken(dataDir: string): string {
   }
   mkdirSync(dataDir, { recursive: true })
   const token = randomBytes(32).toString('hex')
-  writeFileSync(file, token + '\n', { mode: 0o600 })
+  writeFileSync(file, `${token}\n`, { mode: 0o600 })
   return token
 }

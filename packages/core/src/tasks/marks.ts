@@ -1,7 +1,7 @@
 import type { Ctx } from '../ctx'
 import { today } from '../ctx'
-import { transaction } from '../db/adapter'
 import type { ISODate } from '../dates'
+import { transaction } from '../db/adapter'
 import { DaybreakError } from '../errors'
 import { recordEvent } from '../events'
 import type { Mark } from '../types'
@@ -42,7 +42,11 @@ export function setMark(ctx: Ctx, id: string, mark: Mark | null): void {
     if (SINGLE_DOING && mark === 'doing') {
       for (const [otherId, m] of marksOn(ctx, date)) {
         if (otherId === id || m !== 'doing') continue
-        ctx.db.run("UPDATE day_marks SET mark = 'worked' WHERE date = ? AND task_id = ?", date, otherId)
+        ctx.db.run(
+          "UPDATE day_marks SET mark = 'worked' WHERE date = ? AND task_id = ?",
+          date,
+          otherId,
+        )
         recordEvent(ctx, 'worked', otherId, { date })
       }
     }

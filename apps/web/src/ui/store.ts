@@ -38,7 +38,10 @@ export interface UiState {
    * Forgets a task the server refused to create: editing it ends, the selection moves to where it
    * would have gone, and a draft placed after or under it takes that place instead.
    */
-  dropId: (id: string, fallback: { parentId: string | null; afterId?: string; beforeId?: string }) => void
+  dropId: (
+    id: string,
+    fallback: { parentId: string | null; afterId?: string; beforeId?: string },
+  ) => void
   set: (patch: Partial<Omit<UiState, Action>>) => void
 }
 
@@ -71,7 +74,11 @@ function withoutId(s: UiState, id: string, fb: Parameters<UiState['dropId']>[1])
   if (draft?.parentId === id) draft = { ...draft, parentId: fb.parentId }
   if (draft?.afterId === id) {
     const { afterId: _after, beforeId: _before, ...rest } = draft
-    draft = { ...rest, ...(fb.afterId !== undefined && { afterId: fb.afterId }), ...(fb.beforeId !== undefined && { beforeId: fb.beforeId }) }
+    draft = {
+      ...rest,
+      ...(fb.afterId !== undefined && { afterId: fb.afterId }),
+      ...(fb.beforeId !== undefined && { beforeId: fb.beforeId }),
+    }
   }
   if (draft?.beforeId === id) {
     const { beforeId: _before, ...rest } = draft

@@ -7,7 +7,8 @@ export function openLink(
   platform: NodeJS.Platform = process.platform,
   spawnFn: typeof spawn = spawn,
 ): void {
-  if (typeof link !== 'string' || link.trim() === '') throw new DaybreakError('invalid', 'This task has no link')
+  if (typeof link !== 'string' || link.trim() === '')
+    throw new DaybreakError('invalid', 'This task has no link')
   if (link.includes('\0')) throw new DaybreakError('invalid', 'Link contains a NUL byte')
   // xdg-open and open would read a leading dash as an option.
   if (link.startsWith('-')) throw new DaybreakError('invalid', 'Link must not start with "-"')

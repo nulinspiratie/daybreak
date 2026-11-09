@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import {
-  DaybreakError, createTask, dayView, eventsOn, getTask, liveChildren, restore, schedule, setMark,
-  softDelete, today, treeView,
-} from '../src/index'
 import type { Ctx } from '../src/index'
+import {
+  createTask,
+  DaybreakError,
+  dayView,
+  eventsOn,
+  getTask,
+  liveChildren,
+  restore,
+  schedule,
+  setMark,
+  softDelete,
+  today,
+  treeView,
+} from '../src/index'
 import { build, makeCtx, outline } from './helpers'
 
 const TREE = `projects:
@@ -20,7 +30,8 @@ inbox:
 type Ids = Record<'P' | 'A' | 'A1' | 'A2' | 'B' | 'C' | 'X', string>
 const tree = (ctx: Ctx) => build(ctx, TREE) as Ids
 const deletedAt = (ctx: Ctx, id: string) =>
-  ctx.db.get<{ deleted_at: string | null }>('SELECT deleted_at FROM tasks WHERE id = ?', id)!.deleted_at
+  ctx.db.get<{ deleted_at: string | null }>('SELECT deleted_at FROM tasks WHERE id = ?', id)!
+    .deleted_at
 
 function code(fn: () => unknown): string | undefined {
   try {

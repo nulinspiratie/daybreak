@@ -7,9 +7,9 @@ import { ReviewScreen, useOpenReviewWhenDue } from './review/ReviewScreen'
 import { ConfirmLive } from './shell/ConfirmNote'
 import { TitleBar } from './shell/TitleBar'
 import { Toast } from './shell/Toast'
-import { useUi } from './ui/store'
 import { DragAndDrop } from './tree/Dnd'
 import { TreePane } from './tree/TreePane'
+import { useUi } from './ui/store'
 
 export function App() {
   useLiveUpdates()
