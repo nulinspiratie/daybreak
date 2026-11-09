@@ -69,3 +69,9 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   If writing a log fails (disk full, folder locked), finishing the review
   still works. The failed day and any after it are tried again at the next
   review.
+- To edit a task's notes without the mouse, press Ctrl+O a second time while
+  its details are open. Esc saves the notes and takes you back to the tree;
+  a second Esc closes the details. (In the keyboard-only check, notes could
+  only be reached by clicking.)
+- The first time you press M, My Day selects its top row, so the next key
+  acts on something straight away.
