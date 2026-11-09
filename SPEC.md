@@ -243,6 +243,7 @@ Key decisions:
 | POST | /api/tasks/:id/schedule | `{date \| null, beforeId?, afterId?}` (date order) |
 | POST | /api/tasks/:id/mark | `{mark: 'doing' \| 'worked' \| null}` for today |
 | POST | /api/tasks/:id/open-link | Open the task's link or path with the OS; 204 *(new)* |
+| POST | /api/open-link | `{target}`: open a link from rendered notes with the OS; only http, https and mailto, parsed, no spaces, control characters or quotes (else 400); 204 *(new)* |
 | GET | /api/review/:date | Leftovers, suggestions, decisions so far |
 | POST | /api/review/:date/decide | `{taskId, choice: 'today' \| 'day' \| 'backlog' \| 'cancel', targetDate?}` |
 | POST | /api/review/:date/undo | Undo last decision |

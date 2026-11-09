@@ -1,3 +1,4 @@
+import type { Task, TreeNode, TreeView } from '@daybreak/core'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { api } from '../api/client'
@@ -12,6 +13,17 @@ import { IS_MAC } from './platform'
 
 const MODIFIERS = new Set(['Control', 'Alt', 'Shift', 'Meta', 'AltGraph', 'CapsLock'])
 
+function findTask(tree: TreeView | undefined, id: string): Task | undefined {
+  const walk = (nodes: TreeNode[]): TreeNode | undefined => {
+    for (const n of nodes) {
+      const hit = n.id === id ? n : walk(n.children)
+      if (hit) return hit
+    }
+    return undefined
+  }
+  return tree && walk([...tree.inbox, ...tree.projects])
+}
+
 /** Returns a stable getter for the latest rows, day and UI state, with the api, queue and cache; null until status loads. */
 export function useCommandEnv(): () => CommandEnv | null {
   const showCompleted = useUi((s) => s.showCompleted)
@@ -19,13 +31,18 @@ export function useCommandEnv(): () => CommandEnv | null {
   const { data: tree } = useTree(showCompleted ? 'all' : 'recent')
   const today = useStatus().data?.today ?? ''
   const { data: day } = useDay(today)
+  const detailId = useUi((s) => s.detailId)
   const mutate = useMutate()
   const qc = useQueryClient()
   const cache = useMemo(() => treeCache(qc), [qc])
   const rows = useMemo(() => (tree ? flatten(tree, draft) : []), [tree, draft])
 
-  const latest = useRef({ rows, dayItems: day?.items ?? [], today })
-  latest.current = { rows, dayItems: day?.items ?? [], today }
+  const detailTask = useMemo(
+    () => (detailId === null ? undefined : (findTask(tree, detailId) ?? day?.items.find((i) => i.task.id === detailId)?.task)),
+    [tree, day, detailId],
+  )
+  const latest = useRef({ rows, dayItems: day?.items ?? [], today, detailTask })
+  latest.current = { rows, dayItems: day?.items ?? [], today, detailTask }
 
   return useCallback(() => {
     if (latest.current.today === '') return null // status not loaded yet

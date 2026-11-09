@@ -1,6 +1,6 @@
 import type { Task, TreeNode, TreeView } from '@daybreak/core'
 import { describe, expect, it } from 'vitest'
-import { testApp } from './helpers'
+import { TEST_PORT, TEST_TOKEN, testApp } from './helpers'
 
 type Harness = Awaited<ReturnType<typeof testApp>>
 
@@ -284,19 +284,42 @@ describe('POST /api/open-link', () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ target }),
   })
-  it('opens an http(s) or mailto target and returns 204', async () => {
+  it('opens an http(s) or mailto target, as parsed, and returns 204', async () => {
     const opened: string[] = []
     const h = await testApp({ openLink: (l) => opened.push(l) })
     expect((await h.req('/api/open-link', post('https://example.com/a'))).status).toBe(204)
     expect((await h.req('/api/open-link', post('mailto:a@b.c'))).status).toBe(204)
-    expect(opened).toEqual(['https://example.com/a', 'mailto:a@b.c'])
+    expect((await h.req('/api/open-link', post('HTTPS://EXAMPLE.com'))).status).toBe(204)
+    expect(opened).toEqual(['https://example.com/a', 'mailto:a@b.c', 'https://example.com/'])
   })
-  it('refuses other targets and a missing one with 400', async () => {
+  it.each([
+    ['a Windows path', 'C:\\Windows\\notepad.exe'],
+    ['a UNC path', '\\\\srv\\share'],
+    ['a file: url', 'file:///etc/passwd'],
+    ['javascript:', 'javascript:alert(1)'],
+    ['a custom scheme', 'ms-msdt:foo'],
+    ['an empty string', ''],
+    ['a non-string', 5],
+    ['a missing host', 'https://'],
+    ['a line break', 'https://x.example/\r\nfoo'],
+    ['a control character', 'https://x.example/\u0007'],
+    ['a space', 'https://x.example/a b'],
+    ['a leading space', ' https://x.example'],
+    ['a quote', 'mailto:x" /select,"C:\\w'],
+  ])('refuses %s with 400 and opens nothing', async (_name, target) => {
     const opened: string[] = []
     const h = await testApp({ openLink: (l) => opened.push(l) })
-    for (const t of ['C:\\Windows\\notepad.exe', 'file:///etc/passwd', 'javascript:alert(1)', '', 5]) {
-      expect((await h.req('/api/open-link', post(t))).status).toBe(400)
-    }
+    expect((await h.req('/api/open-link', post(target))).status).toBe(400)
+    expect(opened).toEqual([])
+  })
+  it('needs the token (401) and the right Host (403)', async () => {
+    const opened: string[] = []
+    const h = await testApp({ openLink: (l) => opened.push(l) })
+    const body = JSON.stringify({ target: 'https://example.com' })
+    const bare = (headers: Record<string, string>) =>
+      Promise.resolve(h.app.request(`http://127.0.0.1:${TEST_PORT}/api/open-link`, { method: 'POST', body, headers: { 'Content-Type': 'application/json', ...headers } }))
+    expect((await bare({ Host: `127.0.0.1:${TEST_PORT}` })).status).toBe(401)
+    expect((await bare({ Host: 'evil.example', Authorization: `Bearer ${TEST_TOKEN}` })).status).toBe(403)
     expect(opened).toEqual([])
   })
 })

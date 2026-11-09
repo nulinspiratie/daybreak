@@ -1,5 +1,5 @@
 import type { ISODate, Mark, Task, TreeNode } from '@daybreak/core'
-import { addDays, dayLabel } from '@daybreak/core/dates'
+import { addDays, dayLabel, weekdayName } from '@daybreak/core/dates'
 import { type CSSProperties, type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { useDay, useStatus, useTree } from '../api/hooks'
 import { type CommandEnv, type DetailStatus, pickDay, setDetailStatus } from '../keyboard/commands'
@@ -162,6 +162,12 @@ function LinkField({ task }: { task: Task }) {
   )
 }
 
+/** "Tue 10 Nov". */
+function fullDay(date: ISODate): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  return `${weekdayName(date, 'short')} ${d.getUTCDate()} ${d.toLocaleString('en', { month: 'short', timeZone: 'UTC' })}`
+}
+
 const PLACEHOLDER = 'Add notes — **bold**, - lists and `code` work.'
 
 function Notes({ task }: { task: Task }) {
@@ -250,7 +256,13 @@ function Body({ found, today }: { found: Found; today: ISODate }) {
   const closed = task.status !== 'open'
   const tomorrow = addDays(today, 1)
 
-  const setStatus = (t: Task, m: Mark | null, want: DetailStatus) => write((env) => setDetailStatus(env, t, want, m))
+  // The segment that shows the state does nothing: reopening goes through Open.
+  // The checkboxes toggle, like Space.
+  const toggle = (t: Task, m: Mark | null) => write((env) => setDetailStatus(env, t, 'done', m))
+  const setStatus = (t: Task, m: Mark | null, want: DetailStatus) => {
+    if (stateOf(t, m) === want) return
+    write((env) => setDetailStatus(env, t, want, m))
+  }
   const schedule = (date: ISODate | null) => write((env) => pickDay(env, task, date))
   const select = (id: string) => {
     const visible = getEnv()?.rows.some((r) => r.id === id)
@@ -269,7 +281,7 @@ function Body({ found, today }: { found: Found; today: ISODate }) {
           type="button"
           className={`cb cb--${state === 'worked' ? 'open' : state} cb--lg`}
           aria-label={state === 'done' ? 'Done, untick' : state === 'cancelled' ? 'Cancelled, reopen' : 'Tick off'}
-          onClick={() => setStatus(task, mark, 'done')}
+          onClick={() => toggle(task, mark)}
         >
           <CheckMark state={state} />
         </button>
@@ -282,7 +294,7 @@ function Body({ found, today }: { found: Found; today: ISODate }) {
           <button type="button" className="detail__seg" aria-pressed={on.today} onClick={() => schedule(today)}>Today</button>
           <button type="button" className="detail__seg" aria-pressed={on.tomorrow} onClick={() => schedule(tomorrow)}>Tomorrow</button>
           <button type="button" className="detail__seg" aria-pressed={other} onClick={() => setUi({ picker: { taskId: task.id, allowNoDay: true } })}>
-            Pick a day…
+            {other ? fullDay(task.scheduledOn!) : 'Pick a day…'}
           </button>
           <button type="button" className="detail__seg" aria-pressed={on.none} onClick={() => schedule(null)}>No day</button>
           <span className="kbd">D</span>
@@ -295,7 +307,7 @@ function Body({ found, today }: { found: Found; today: ISODate }) {
               type="button"
               key={s.k}
               className={`detail__st detail__st--${s.k}`}
-              aria-pressed={state === (s.k === 'cancelled' ? 'cancelled' : s.k)}
+              aria-pressed={state === s.k}
               disabled={closed && (s.k === 'doing' || s.k === 'worked')}
               onClick={() => setStatus(task, mark, s.k)}
             >
@@ -321,7 +333,7 @@ function Body({ found, today }: { found: Found; today: ISODate }) {
           <span className="detail__label">Subtasks · {done} of {children.length} done</span>
           {children.map((c) => (
             <div className="detail__kid" key={c.id}>
-              <RowCheckbox state={stateOf(c, c.mark)} onToggle={() => setStatus(c, c.mark, 'done')} />
+              <RowCheckbox state={stateOf(c, c.mark)} onToggle={() => toggle(c, c.mark)} />
               <button type="button" className={`detail__kidtitle${c.status !== 'open' ? ' detail__kidtitle--closed' : ''}`} onClick={() => select(c.id)}>
                 {c.title}
               </button>

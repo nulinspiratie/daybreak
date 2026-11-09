@@ -4,6 +4,13 @@ import { useMemo } from 'react'
 // html: false turns raw HTML in notes into text. markdown-it's own link check refuses javascript: and data: urls.
 const md = new MarkdownIt({ html: false, linkify: true })
 
+// No image is fetched from notes (a remote fetch would leak): the syntax stays as text.
+md.disable('image')
+// Only what the server will open becomes an anchor; anything else shows as plain text.
+const openable = /^(https?:\/\/|mailto:)/i
+const baseValidate = md.validateLink.bind(md)
+md.validateLink = (url) => baseValidate(url) && openable.test(url.trim())
+
 const defaultLinkOpen = md.renderer.rules.link_open ?? ((tokens, i, options, _env, self) => self.renderToken(tokens, i, options))
 md.renderer.rules.link_open = (tokens, i, options, env, self) => {
   tokens[i]!.attrSet('target', '_blank')

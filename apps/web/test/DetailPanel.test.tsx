@@ -2,7 +2,7 @@
 import type { Task, TreeNode } from '@daybreak/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/api/client'
 import { queue, useDrainInvalidation } from '../src/api/hooks'
 import { DetailPanel } from '../src/detail/DetailPanel'
@@ -12,7 +12,6 @@ import { resetPendingIds } from '../src/tree/optimistic'
 import { TreePane } from '../src/tree/TreePane'
 import { useUi } from '../src/ui/store'
 import { type FakeApi, node } from './helpers'
-import { vi } from 'vitest'
 
 const shared = vi.hoisted(() => ({ fake: null as FakeApi | null }))
 vi.mock('../src/api/client', async (importOriginal) => {
@@ -112,7 +111,7 @@ describe('status segments', () => {
     expect(ui().confirm).toBeNull()
   })
 
-  it('Doing and Worked on use mark; Open clears a mark; Open reopens a closed task', async () => {
+  it('Doing and Worked on use mark', async () => {
     await start('p', { projects: [parent({ children: [] } as never)] })
     const seg = (name: RegExp) => within(panel()).getByRole('button', { name })
     fireEvent.click(seg(/^Doing/))
@@ -125,7 +124,7 @@ describe('status segments', () => {
     ])
   })
 
-  it('shows the mark and status as the pressed segment, and disables marks on a closed task', async () => {
+  it('shows the mark and status as the pressed segment; Open clears a mark or reopens; marks are disabled on a closed task', async () => {
     await start('p', { projects: [node('p', [], { title: 'Parent', mark: 'doing' })] })
     const pressed = () => within(panel()).getAllByRole('button', { pressed: true }).map((b) => b.textContent)
     expect(pressed().some((t) => t?.startsWith('Doing'))).toBe(true)
@@ -156,8 +155,79 @@ describe('scheduling', () => {
       ['POST', '/api/tasks/p/schedule', { date: '2026-11-10' }],
       ['POST', '/api/tasks/p/schedule', { date: null }],
     ])
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Pick a day…' }))
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Thu 12 Nov' }))
     expect(ui().picker).toEqual({ taskId: 'p', allowNoDay: true })
+  })
+})
+
+describe('segments', () => {
+  it('clicking the segment that shows the state does nothing', async () => {
+    await start('p', { projects: [node('p', [], { title: 'Parent', mark: 'doing' })] })
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Doing S' }))
+    await flush()
+    expect(writes()).toEqual([])
+    cleanup()
+    await start('p', { projects: [node('p', [], { title: 'Parent', status: 'done' })] })
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Done Space' }))
+    await flush()
+    expect(writes()).toEqual([])
+    // the checkbox still toggles
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Done, untick' }))
+    await flush()
+    expect(writes()).toEqual([['PATCH', '/api/tasks/p', { status: 'open' }]])
+  })
+
+  it('Pick a day shows a day other than today and tomorrow', async () => {
+    await start('p', { projects: [node('p', [], { title: 'Parent', scheduledOn: '2026-11-10' })] })
+    expect(within(panel()).getByRole('button', { name: 'Tomorrow' }).getAttribute('aria-pressed')).toBe('true')
+    cleanup()
+    await start('p', { projects: [node('p', [], { title: 'Parent', scheduledOn: '2026-11-17' })] })
+    expect(within(panel()).getByRole('button', { name: 'Tue 17 Nov' }).getAttribute('aria-pressed')).toBe('true')
+  })
+})
+
+describe('keys act on the shown task (R35)', () => {
+  const hiddenTree = () => {
+    const hidden = node('h', [], { title: 'Hidden', parentId: 'c' })
+    return { projects: [node('c', [hidden], { title: 'Collapsed', collapsed: true })] }
+  }
+  async function showHidden() {
+    await start(null, hiddenTree())
+    act(() => ui().set({ treeSel: 'c' }))
+    act(() => ui().set({ detailId: 'h' }))
+    await flush()
+  }
+
+  it('Space, X, S and D act on the hidden task, not the tree selection', async () => {
+    await showHidden()
+    await press(' ')
+    await press('x')
+    await press('s')
+    await press('d')
+    await flush()
+    expect(writes()).toEqual([
+      ['PATCH', '/api/tasks/h', { status: 'done' }],
+      ['PATCH', '/api/tasks/h', { status: 'cancelled' }],
+      ['POST', '/api/tasks/h/mark', { mark: 'doing' }],
+    ])
+    expect(ui().picker).toEqual({ taskId: 'h', allowNoDay: true })
+    expect(ui().treeSel).toBe('c')
+  })
+
+  it('Del deletes the shown task and keeps the tree selection', async () => {
+    fake().reply = async (method, path) => {
+      if (method === 'DELETE') return { deletedIds: ['h'] }
+      if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+      if (method === 'GET' && path.startsWith('/api/day/')) return { date: TODAY, items: [], doneCount: 0, totalCount: 0 }
+      if (method === 'GET') return { today: TODAY, inbox, projects, hiddenCompletedCount: 0 }
+      return {}
+    }
+    await showHidden()
+    await press('Delete')
+    await flush()
+    expect(writes()).toEqual([['DELETE', '/api/tasks/h', undefined]])
+    expect(ui().treeSel).toBe('c')
+    expect(ui().detailId).toBeNull()
   })
 })
 

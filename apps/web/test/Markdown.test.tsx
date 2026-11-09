@@ -41,4 +41,14 @@ describe('Markdown', () => {
     expect(notPrevented).toBe(false)
     expect(open).toHaveBeenCalledWith('https://example.com/a')
   })
+
+  it('does not load images: the syntax stays as text', () => {
+    const { container } = render(<Markdown source="![t](https://evil.example/p.png)" onOpenLink={() => {}} />)
+    expect(container.querySelector('img')).toBeNull()
+  })
+
+  it('links with a scheme the server refuses stay plain text', () => {
+    const { container } = render(<Markdown source={'[a](ms-msdt:foo) [b](file:///C:/x) [c](mailto:a@b.c)'} onOpenLink={() => {}} />)
+    expect([...container.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['mailto:a@b.c'])
+  })
 })

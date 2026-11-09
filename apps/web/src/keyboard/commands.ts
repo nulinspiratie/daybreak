@@ -19,6 +19,8 @@ export interface CommandEnv {
   /** Shows new tasks and titles before the server's answer is refetched. */
   cache: TreeCache
   mutate: ReturnType<typeof useMutate>
+  /** The task the detail panel shows, whether or not the tree lists it (R35). */
+  detailTask?: Task
   today: ISODate
   now: () => number
   toast: ToastApi
@@ -70,6 +72,18 @@ function target(env: CommandEnv): Target | null {
   }
   const item = env.dayItems.find((i) => i.task.id === id)
   return item ? { id, task: item.task } : null
+}
+
+/** Commands on the shown task rather than the tree selection while the detail panel is open (R35). */
+const ON_DETAIL: ReadonlySet<Command> = new Set<Command>([
+  'status.done', 'status.cancel', 'mark.doing', 'mark.worked', 'schedule.today', 'schedule.pick', 'schedule.backlog', 'delete', 'link.open',
+])
+
+function detailTarget(env: CommandEnv): Target | null {
+  const { detailId, pane } = env.ui
+  if (detailId === null || pane !== 'tree' || !env.detailTask || env.detailTask.id !== detailId) return null
+  const row = treeRows(env).find((r) => r.id === detailId)
+  return { id: detailId, task: row ? row.node : env.detailTask, ...(row && { row }) }
 }
 
 /** The row to select once `t` (and, in the tree, its subtree) leaves the list: the next one, else the previous. */
@@ -457,7 +471,7 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       return
   }
 
-  const t = target(env)
+  const t = (ON_DETAIL.has(cmd) && detailTarget(env)) || target(env)
   if (!t) return
   const { row } = t
 
@@ -516,7 +530,8 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
     case 'status.cancel':
       return toggleClosed(env, t, 'cancelled')
     case 'delete':
-      select(env, neighbourAfterRemoval(env, t))
+      // A task the tree does not list (hidden under a collapsed parent) leaves the selection alone.
+      if (env.ui.pane === 'day' || row) select(env, neighbourAfterRemoval(env, t))
       return deleteWithToast(env, t)
     case 'detail.open':
       // The detail replaces My Day, so from there the task is selected in the tree. Hidden under a

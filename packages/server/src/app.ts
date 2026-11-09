@@ -41,11 +41,21 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get('/api/ping', (c) => c.json({ ok: true }))
 
-  // Links in rendered notes. Only web and mail links: a task's own link may be a path, notes text may not.
+  // Links in rendered notes. Only web and mail links, parsed (a task's own link may be a path, notes text may not).
   app.post('/api/open-link', async (c) => {
-    const target = need(await readBody(c), 'target', isString, 'a string').trim()
-    if (!/^(https?:\/\/|mailto:)/i.test(target)) throw invalid('Only http, https and mailto links can be opened')
-    ;(deps.openLink ?? openLink)(target)
+    const target = need(await readBody(c), 'target', isString, 'a string')
+    // Whitespace, control characters and quotes would reach explorer.exe's own command-line parsing.
+    if (/[\u0000-\u0020\u007f"]/.test(target)) throw invalid('Link contains a space, control character or quote')
+    let url: URL
+    try {
+      url = new URL(target)
+    } catch {
+      throw invalid('Not a valid link')
+    }
+    if (!['http:', 'https:', 'mailto:'].includes(url.protocol) || (url.protocol !== 'mailto:' && url.hostname === '')) {
+      throw invalid('Only http, https and mailto links can be opened')
+    }
+    ;(deps.openLink ?? openLink)(url.href)
     return c.body(null, 204)
   })
 
