@@ -14,7 +14,7 @@ function setup() {
   mkdirSync(dataDir)
   const file = join(base, 'home', '.daybreak.toml')
   const load = (env: NodeJS.ProcessEnv = {}) =>
-    loadConfig({ file, dataDir, env, home: join(base, 'home'), platform: 'linux' })
+    loadConfig({ file, dataDir, env, home: join(base, 'home'), platform: process.platform })
   return { base, dataDir, file, load }
 }
 
@@ -170,7 +170,7 @@ describe('loadConfig', () => {
   it('creates the folder for a DAYBREAK_CONFIG path that does not exist yet', () => {
     const { base, dataDir } = setup()
     const file = join(base, 'deep', 'er', 'settings.toml')
-    loadConfig({ file, dataDir, env: {}, home: base, platform: 'linux' })
+    loadConfig({ file, dataDir, env: {}, home: base, platform: process.platform })
     expect(existsSync(file)).toBe(true)
   })
 })
