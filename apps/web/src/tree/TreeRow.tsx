@@ -2,8 +2,8 @@ import { memo, useEffect, useRef } from 'react'
 import { DayCell } from './DayCell'
 import type { FlatRow } from './flatten'
 import { RowCheckbox, type RowState } from './RowCheckbox'
-import { rowControlClick } from './rowControlClick'
-import { TitleEditor } from './TitleEditor'
+import { quickAction, rowControlClick } from './rowControlClick'
+import { EditingTag, TitleEditor } from './TitleEditor'
 
 export interface TreeRowProps {
   row: FlatRow
@@ -25,6 +25,8 @@ export interface TreeRowProps {
   onLeaveEdit?: (id: string) => void
   /** Being dragged over My Day: a dashed "Today" in the day column previews the drop. */
   previewToday?: boolean
+  /** Double-click on the title: edit it. */
+  onEditTitle?: (id: string) => void
 }
 
 /** The look of a row's checkbox and title. */
@@ -86,6 +88,17 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
       data-state={state}
       data-id={row.id}
       onClick={() => p.onSelect(row.id)}
+      onDoubleClick={(e) => {
+        if (editing || draft) return
+        const el = e.target instanceof Element ? e.target : null
+        // The quick actions appear on the first click of a double-click, under the pointer.
+        if (el?.closest('button, a, input') && !el.closest('.row__actions')) return
+        // On the title: edit it. Anywhere else on the row: fold or unfold it.
+        if (el?.closest('.row__title')) {
+          window.getSelection()?.removeAllRanges()
+          p.onEditTitle?.(row.id)
+        } else if (row.hasChildren) p.onToggleCollapse(row.id)
+      }}
     >
       <DayCell date={node.scheduledOn} today={p.today} closed={closed} preview={p.previewToday} />
       <span className="row__handle" aria-hidden="true">
@@ -190,13 +203,14 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
         </span>
       )}
       <span className="row__spacer" />
+      {editing && <EditingTag />}
       {!closed && !editing && (
         <span className="row__actions">
           <button
             type="button"
             className="qa"
             aria-label="Doing now (S)"
-            onClick={(e) => rowControlClick(e, () => p.onDoing(row.id))}
+            onClick={(e) => quickAction(e, () => p.onDoing(row.id))}
           >
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
               <path
@@ -213,7 +227,7 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
             type="button"
             className="qa"
             aria-label="Schedule for today (T)"
-            onClick={(e) => rowControlClick(e, () => p.onScheduleToday(row.id))}
+            onClick={(e) => quickAction(e, () => p.onScheduleToday(row.id))}
           >
             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16">
               <circle cx="8" cy="8" r="2.8" fill="none" stroke="currentColor" strokeWidth="1.3" />
@@ -230,7 +244,7 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
             type="button"
             className="qa"
             aria-label="Pick a day (D)"
-            onClick={(e) => rowControlClick(e, () => p.onPickDay(row.id))}
+            onClick={(e) => quickAction(e, () => p.onPickDay(row.id))}
           >
             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16">
               <rect

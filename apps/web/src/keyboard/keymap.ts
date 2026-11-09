@@ -22,10 +22,12 @@ export type Command =
   | 'status.done'
   | 'status.cancel'
   | 'delete'
+  | 'delete.task'
   | 'detail.open'
   | 'link.open'
   | 'escape'
-  | 'toast.undo'
+  | 'undo'
+  | 'new.inbox'
   | 'edit.commitNew'
   | 'edit.prev'
   | 'edit.next'
@@ -63,6 +65,7 @@ function chordOf(e: KeyLike, isMac: boolean): Chord {
 const LETTERS: Record<string, Command> = {
   m: 'pane.toggle',
   n: 'new.below',
+  i: 'new.inbox',
   t: 'schedule.today',
   d: 'schedule.pick',
   b: 'schedule.backlog',
@@ -70,7 +73,7 @@ const LETTERS: Record<string, Command> = {
   w: 'mark.worked',
   x: 'status.cancel',
   o: 'link.open',
-  z: 'toast.undo',
+  z: 'undo',
 }
 
 const NAVIGATE_PLAIN: Record<string, Command> = {
@@ -96,6 +99,10 @@ function navigate(e: KeyLike, chord: Chord, tree: boolean): Command | null {
   // Ctrl+O is Ctrl on every platform (DESIGN says Ctrl+O, not Mod+O).
   if ((chord === 'ctrl' || (chord === 'mod' && e.ctrlKey)) && k.toLowerCase() === 'o')
     return 'detail.open'
+  // Ctrl+Z is the usual undo; plain Z does the same. In edit mode it stays the text field's.
+  if ((chord === 'ctrl' || (chord === 'mod' && e.ctrlKey)) && k.toLowerCase() === 'z') return 'undo'
+  // Shift+Del deletes the task itself, also from My Day (where Del only takes it off today).
+  if (chord === 'shift' && k === 'Delete') return 'delete.task'
   if (k === 'Tab' && tree && (chord === 'plain' || chord === 'shift'))
     return chord === 'plain' ? 'indent' : 'outdent'
   if (chord === 'plain' || chord === 'shift') {

@@ -201,4 +201,26 @@ describe('TreeRow', () => {
     show(row(), true, { describedBy: 'confirm-note' })
     expect(item().getAttribute('aria-describedby')).toBe('confirm-note')
   })
+
+  it('double-click on the title edits it; elsewhere on a parent row it folds', () => {
+    const onEditTitle = vi.fn()
+    const onToggleCollapse = vi.fn()
+    const parent = row({ children: [node('c1')] }, 0, 'projects')
+    show(parent, false, { onEditTitle, onToggleCollapse })
+    fireEvent.doubleClick(title())
+    expect(onEditTitle).toHaveBeenCalledWith('t1')
+    expect(onToggleCollapse).not.toHaveBeenCalled()
+    fireEvent.doubleClick(item())
+    expect(onToggleCollapse).toHaveBeenCalledWith('t1')
+    expect(onEditTitle).toHaveBeenCalledTimes(1)
+  })
+
+  it('double-click beside the title of a row without children does nothing', () => {
+    const onEditTitle = vi.fn()
+    const onToggleCollapse = vi.fn()
+    show(row(), false, { onEditTitle, onToggleCollapse })
+    fireEvent.doubleClick(item())
+    expect(onEditTitle).not.toHaveBeenCalled()
+    expect(onToggleCollapse).not.toHaveBeenCalled()
+  })
 })

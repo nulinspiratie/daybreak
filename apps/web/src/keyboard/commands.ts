@@ -9,10 +9,12 @@ import {
   pendingId,
   placementFor,
   resolveId,
+  SkippedWrite,
   settlePendingId,
   type TreeCache,
 } from '../tree/optimistic'
 import type { Draft, UiActions, UiState } from '../ui/store'
+import { recorded, undoHistory } from '../undo/history'
 import type { Command } from './keymap'
 
 /** How long the "Press Space again" note waits for the second press. */
@@ -94,6 +96,7 @@ const ON_DETAIL: ReadonlySet<Command> = new Set<Command>([
   'schedule.pick',
   'schedule.backlog',
   'delete',
+  'delete.task',
   'link.open',
 ])
 
@@ -123,6 +126,142 @@ function neighbourAfterRemoval(env: CommandEnv, t: Target): string | null {
 // write is skipped with SkippedWrite, if the server refused to create that task).
 const taskPath = (id: string, action = '') => `/api/tasks/${liveId(id)}${action}`
 
+// ---- Undo: where things were, and how to put them back ----
+
+/** A task's scheduled day, and for today its neighbour in My Day's order. */
+export interface DaySpot {
+  date: ISODate | null
+  afterId?: string
+  beforeId?: string
+}
+
+/** Where `task` sits in the day plan now. Days other than today keep only the date. */
+export function daySpotOf(
+  env: Partial<Pick<CommandEnv, 'dayItems' | 'today'>>,
+  task: Task,
+): DaySpot {
+  const date = task.scheduledOn
+  if (date === null || date !== env.today || !env.dayItems) return { date }
+  const ids = env.dayItems.map((i) => i.task.id)
+  const i = ids.indexOf(task.id)
+  if (i > 0) return { date, afterId: ids[i - 1]! }
+  if (i === 0 && ids[1] !== undefined) return { date, beforeId: ids[1] }
+  return { date }
+}
+
+/** Sends a write with a neighbour; if the neighbour has gone (400), sends it again without one. */
+async function withAnchor(
+  send: (anchor: { afterId?: string; beforeId?: string }) => Promise<unknown>,
+  at: { afterId?: string; beforeId?: string },
+): Promise<void> {
+  const anchor =
+    at.afterId !== undefined
+      ? { afterId: resolveId(at.afterId) }
+      : at.beforeId !== undefined
+        ? { beforeId: resolveId(at.beforeId) }
+        : {}
+  try {
+    await send(anchor)
+  } catch (e) {
+    if (!(e instanceof ApiError && e.status === 400) || Object.keys(anchor).length === 0) throw e
+    await send({})
+  }
+}
+
+/** Puts a task back on the day (and place in My Day) it had. */
+function putBackOnDay(env: Pick<CommandEnv, 'api'>, id: string, spot: DaySpot): Promise<void> {
+  if (spot.date === null)
+    return env.api.send('POST', taskPath(id, '/schedule'), { date: null }).then(() => {})
+  const date = spot.date
+  return withAnchor(
+    (anchor) => env.api.send('POST', taskPath(id, '/schedule'), { date, ...anchor }),
+    spot,
+  )
+}
+
+/** A task's place in the tree, as POST /move takes it. */
+export type TreePlace = MoveTarget
+
+/** Where the visible row `id` sits: its parent and the sibling before it (or after it, if it is first). */
+export function treePlaceOf(env: Pick<CommandEnv, 'rows'>, id: string): TreePlace | null {
+  const rows = env.rows.filter((r) => !r.isDraft)
+  const row = rows.find((r) => r.id === id)
+  if (!row) return null
+  const siblings = rows.filter((r) => r.parentId === row.parentId && r.section === row.section)
+  const k = siblings.indexOf(row)
+  const prev = siblings[k - 1]
+  const next = siblings[k + 1]
+  return {
+    parentId: row.parentId,
+    section: row.section,
+    ...(prev ? { afterId: prev.id } : next ? { beforeId: next.id } : {}),
+  }
+}
+
+function putBackInTree(env: Pick<CommandEnv, 'api'>, id: string, place: TreePlace): Promise<void> {
+  const parentId = place.parentId === null ? null : resolveId(place.parentId)
+  return withAnchor(
+    (anchor) =>
+      env.api.send('POST', taskPath(id, '/move'), { parentId, section: place.section, ...anchor }),
+    place,
+  )
+}
+
+/** Records a move in the tree (keys or drag), if the task's place is known. */
+function recordMove<T>(env: CommandEnv, id: string, title: string, write: Promise<T>): Promise<T> {
+  const place = treePlaceOf(env, id)
+  if (!place) return write
+  return recorded(
+    {
+      label: `Moved '${title}'`,
+      revert: () => putBackInTree(env, id, place),
+      select: { pane: 'tree', id },
+    },
+    write,
+  )
+}
+
+/** Records a change of day (T, D, B, a drop into My Day, a reorder of My Day). */
+function recordSchedule<T>(
+  env: Partial<Pick<CommandEnv, 'dayItems' | 'today'>> & Pick<CommandEnv, 'api'>,
+  task: Task,
+  label: string,
+  write: Promise<T>,
+  select?: { pane: 'tree' | 'day'; id: string },
+): Promise<T> {
+  const spot = daySpotOf(env, task)
+  return recorded(
+    { label, revert: () => putBackOnDay(env, task.id, spot), ...(select && { select }) },
+    write,
+  )
+}
+
+const quoted = (t: Task) => `'${t.title}'`
+
+/** Z (and Ctrl+Z, and the toast's Undo): reverts `id`'s change, or the newest one. */
+export async function undo(env: CommandEnv, id?: number): Promise<void> {
+  const entry = undoHistory.take(id)
+  if (!entry) {
+    env.toast.show({ message: 'Nothing to undo' })
+    return
+  }
+  const shown = env.toast.current()
+  try {
+    await env.mutate(entry.revert)
+  } catch (e) {
+    // A task that was never created has nothing to undo; anything else is kept for another Z.
+    if (!(e instanceof SkippedWrite)) undoHistory.restore(entry)
+    throw e
+  }
+  if (shown?.undoId === entry.id && env.toast.current()?.id === shown.id) env.toast.dismiss()
+  env.toast.show({ message: `Undone: ${entry.label}` })
+  const sel = entry.select
+  if (sel && sel.pane === env.ui.pane) {
+    const resolved = resolveId(sel.id)
+    env.ui.set(sel.pane === 'tree' ? { treeSel: resolved } : { daySel: resolved })
+  }
+}
+
 function navigate(env: CommandEnv, cmd: 'nav.up' | 'nav.down' | 'nav.first' | 'nav.last'): void {
   const ids = paneIds(env)
   if (ids.length === 0) return
@@ -136,22 +275,34 @@ function navigate(env: CommandEnv, cmd: 'nav.up' | 'nav.down' | 'nav.first' | 'n
 
 /** The day picker's choice: schedule at the end of that day, or take the task off its day (null). Picking the current day does nothing, like T. */
 export function pickDay(
-  env: Pick<CommandEnv, 'api' | 'mutate'>,
+  env: Pick<CommandEnv, 'api' | 'mutate'> & Partial<Pick<CommandEnv, 'dayItems' | 'today'>>,
   t: Task,
   date: ISODate | null,
 ): Promise<unknown> {
   if (t.scheduledOn === date) return Promise.resolve()
-  return env.mutate(() => env.api.send('POST', taskPath(t.id, '/schedule'), { date }))
+  const label =
+    date === null
+      ? `Took ${quoted(t)} off its day`
+      : date === env.today
+        ? `Scheduled ${quoted(t)} for today`
+        : `Scheduled ${quoted(t)} for ${date}`
+  return recordSchedule(
+    env,
+    t,
+    label,
+    env.mutate(() => env.api.send('POST', taskPath(t.id, '/schedule'), { date })),
+  )
 }
 
 /** Drag and drop in the tree: the task and its subtree go to `to` (POST /move), then `expand` opens the new parent. */
 export function moveTo(
-  env: Pick<CommandEnv, 'api' | 'mutate'>,
+  env: CommandEnv,
   id: string,
   to: MoveTarget,
   expand = false,
 ): Promise<unknown> {
-  return env.mutate(async () => {
+  const title = env.rows.find((r) => r.id === id)?.node.title ?? 'task'
+  const write = env.mutate(async () => {
     // Resolved now, inside the queue: an anchor may be a task whose create was only just answered.
     const { section, parentId, afterId, beforeId } = placementFor(to)
     const body: MoveTarget = {
@@ -164,16 +315,19 @@ export function moveTo(
     if (expand && parentId !== null)
       await env.api.send('PATCH', taskPath(parentId), { collapsed: false })
   })
+  return recordMove(env, id, title, write)
 }
 
 /** Drag and drop into My Day: schedule on `date` next to `at.afterId` or `at.beforeId` (at the end with neither). */
 export function scheduleAt(
-  env: Pick<CommandEnv, 'api' | 'mutate'>,
+  env: CommandEnv,
   id: string,
   date: ISODate,
   at: { afterId?: string; beforeId?: string },
 ): Promise<unknown> {
-  return env.mutate(() => {
+  const task =
+    env.dayItems.find((i) => i.task.id === id)?.task ?? env.rows.find((r) => r.id === id)?.node
+  const write = env.mutate(() => {
     const anchor =
       at.afterId !== undefined
         ? { afterId: resolveId(at.afterId) }
@@ -182,11 +336,36 @@ export function scheduleAt(
           : {}
     return env.api.send('POST', taskPath(id, '/schedule'), { date, ...anchor })
   })
+  if (!task) return write
+  const label =
+    task.scheduledOn === date
+      ? `Moved ${quoted(task)} in My Day`
+      : `Added ${quoted(task)} to My Day`
+  return recordSchedule(env, task, label, write, { pane: 'day', id })
 }
 
+/** Takes a task off today: B or Del in My Day, or a My Day row dragged onto the tree. Shows the undo toast. */
+export function removeFromDay(env: CommandEnv, task: Task): Promise<unknown> {
+  if (task.scheduledOn === null) return Promise.resolve()
+  const label = `Removed ${quoted(task)} from My Day`
+  const write = env.mutate(() =>
+    env.api.send('POST', taskPath(task.id, '/schedule'), { date: null }),
+  )
+  const done = recordSchedule(env, task, label, write, { pane: 'day', id: task.id })
+  env.toast.show({ message: label, undoId: lastUndoId() })
+  return done
+}
+
+/** The id of the change just recorded, for a toast that offers to undo it. */
+const lastUndoId = () => undoHistory.peek()?.id
+
 /** My Day: move one slot within today's order, read fresh inside the queue so quick presses stay correct. */
-async function moveInDay(env: CommandEnv, id: string, dir: 'up' | 'down'): Promise<void> {
-  await env.mutate(async () => {
+async function moveInDay(env: CommandEnv, task: Task, dir: 'up' | 'down'): Promise<void> {
+  const id = task.id
+  const ids = env.dayItems.map((i) => i.task.id)
+  const i = ids.indexOf(id)
+  if (i < 0 || (dir === 'up' ? i === 0 : i === ids.length - 1)) return
+  const write = env.mutate(async () => {
     const day = await env.api.get<DayView>(`/api/day/${env.today}`)
     const ids = day.items.map((i) => i.task.id)
     const i = ids.indexOf(id)
@@ -195,6 +374,7 @@ async function moveInDay(env: CommandEnv, id: string, dir: 'up' | 'down'): Promi
     if (Object.values(at)[0] === undefined) return
     await env.api.send('POST', taskPath(id, '/schedule'), { date: env.today, ...at })
   })
+  await recordSchedule(env, task, `Moved ${quoted(task)} in My Day`, write, { pane: 'day', id })
 }
 
 /**
@@ -203,17 +383,43 @@ async function moveInDay(env: CommandEnv, id: string, dir: 'up' | 'down'): Promi
  */
 async function toggleClosed(env: CommandEnv, t: Target, want: Closed): Promise<void> {
   const { ui, api, mutate } = env
+  const select = { pane: ui.pane, id: t.id }
   if (t.task.status === want) {
     ui.set({ confirm: null })
-    await mutate(() => api.send('PATCH', taskPath(t.id), { status: 'open' }))
+    let reopened = 1
+    const write = mutate(() =>
+      api.send<{ changedIds: string[] }>('PATCH', taskPath(t.id), { status: 'open' }),
+    ).then((res) => {
+      reopened = res?.changedIds?.length ?? 1
+      return res
+    })
+    await recorded(
+      {
+        label: `Reopened ${quoted(t.task)}`,
+        // Reopening brought back the subtasks closed with it; closing again takes them along.
+        revert: () =>
+          api.send('PATCH', taskPath(t.id), {
+            status: want,
+            ...(reopened > 1 && { withOpenDescendants: true }),
+          }),
+        select,
+      },
+      write,
+    )
     return
   }
   const c = ui.confirm
   const confirmed = c !== null && c.id === t.id && c.status === want && env.now() < c.until
   const body = confirmed ? { status: want, withOpenDescendants: true } : { status: want }
   try {
-    const res = await mutate(() =>
-      api.send<{ changedIds: string[] }>('PATCH', taskPath(t.id), body),
+    const res = await recorded(
+      {
+        label: `${want === 'done' ? 'Done' : 'Cancelled'} ${quoted(t.task)}`,
+        // Back to the status it had. Reopening brings back exactly the subtasks closed with it.
+        revert: () => api.send('PATCH', taskPath(t.id), { status: t.task.status }),
+        select,
+      },
+      mutate(() => api.send<{ changedIds: string[] }>('PATCH', taskPath(t.id), body)),
     )
     ui.set({ confirm: null })
     // DESIGN has one close toast: Done after closing a subtree (R27). No leaf or Cancel toasts.
@@ -259,24 +465,75 @@ export async function setDetailStatus(
 /** S and W: core toggles a mark that is already set and keeps only one Doing. Closed tasks have no marks. */
 async function markTask(env: CommandEnv, task: Task, mark: 'doing' | 'worked'): Promise<void> {
   if (task.status !== 'open') return
-  await env.mutate(() => env.api.send('POST', taskPath(task.id, '/mark'), { mark }))
+  const before = markOf(env, task.id)
+  // Doing demotes the task that was Doing to Worked on; undo makes it Doing again.
+  const demoted = mark === 'doing' && before !== 'doing' ? doingTaskId(env, task.id) : undefined
+  const spot = daySpotOf(env, task)
+  const label =
+    before === mark
+      ? `Cleared ${mark === 'doing' ? 'Doing' : 'Worked on'} on ${quoted(task)}`
+      : `Marked ${quoted(task)} ${mark === 'doing' ? 'Doing' : 'Worked on'}`
+  await recorded(
+    {
+      label,
+      revert: async () => {
+        await env.api.send('POST', taskPath(task.id, '/mark'), { mark: before })
+        if (demoted) await env.api.send('POST', taskPath(demoted, '/mark'), { mark: 'doing' })
+        // A mark schedules the task today; put it back on the day it had.
+        if (spot.date !== env.today) await putBackOnDay(env, task.id, spot)
+      },
+      select: { pane: env.ui.pane, id: task.id },
+    },
+    env.mutate(() => env.api.send('POST', taskPath(task.id, '/mark'), { mark })),
+  )
+}
+
+/** Today's mark on a task, from My Day or the tree. */
+function markOf(env: CommandEnv, id: string): Mark | null {
+  const item = env.dayItems.find((i) => i.task.id === id)
+  if (item) return item.mark
+  return env.rows.find((r) => r.id === id)?.node.mark ?? null
+}
+
+/** The task that is Doing today, other than `except`. */
+function doingTaskId(env: CommandEnv, except: string): string | undefined {
+  return (
+    env.dayItems.find((i) => i.mark === 'doing' && i.task.id !== except)?.task.id ??
+    env.rows.find((r) => r.node.mark === 'doing' && r.id !== except)?.id
+  )
 }
 
 /** Deletes the task and its subtree and shows the undo toast. The caller has already moved the selection. */
 async function deleteWithToast(env: CommandEnv, t: Target): Promise<void> {
   // Where the task was listed, so undo reselects it only in a pane it comes back to.
-  const restoreIn: Pane[] = []
-  if (treeRows(env).some((r) => r.id === t.id)) restoreIn.push('tree')
-  if (env.dayItems.some((i) => i.task.id === t.id)) restoreIn.push('day')
+  const listed: Record<Pane, boolean> = {
+    tree: treeRows(env).some((r) => r.id === t.id),
+    day: env.dayItems.some((i) => i.task.id === t.id),
+  }
+  const pane = env.ui.pane
   if (env.ui.detailId === t.id) env.ui.set({ detailId: null })
-  const res = await env.mutate(() =>
-    env.api.send<{ deletedIds: string[] }>('DELETE', taskPath(t.id)),
+  const res = await recorded(
+    {
+      label: `Deleted ${quoted(t.task)}`,
+      revert: () => env.api.send('POST', taskPath(t.id, '/restore')),
+      ...(listed[pane] && { select: { pane, id: t.id } }),
+    },
+    env.mutate(() => env.api.send<{ deletedIds: string[] }>('DELETE', taskPath(t.id))),
   )
   env.toast.show({
     message: `Deleted '${t.task.title}'${andSubtasks(Math.max(0, res.deletedIds.length - 1))}`,
-    restoreId: t.id,
-    restoreIn,
+    undoId: lastUndoId(),
   })
+}
+
+/** Mod+↑↓ and Tab / Shift+Tab in the tree, recorded for undo. */
+function nudge(
+  env: CommandEnv,
+  t: Target,
+  direction: 'up' | 'down' | 'indent' | 'outdent',
+): Promise<unknown> {
+  const write = env.mutate(() => env.api.send('POST', taskPath(t.id, '/nudge'), { direction }))
+  return recordMove(env, t.id, t.task.title, write)
 }
 
 // ---- Edit mode ----
@@ -311,7 +568,15 @@ const draftAnchor = (d: Draft) => d.afterId ?? d.parentId ?? null
 function saveTitle(env: CommandEnv, ed: Editing): Promise<unknown> | null {
   if (ed.id === DRAFT_ID || blank(ed.text) || ed.text === ed.initial) return null
   env.cache.update(ed.id, { title: ed.text })
-  return env.mutate(() => env.api.send('PATCH', taskPath(ed.id), { title: ed.text }))
+  const { id, initial, text } = ed
+  return recorded(
+    {
+      label: `Renamed '${initial}' to '${text}'`,
+      revert: () => env.api.send('PATCH', taskPath(id), { title: initial }),
+      select: { pane: env.ui.pane, id },
+    },
+    env.mutate(() => env.api.send('PATCH', taskPath(id), { title: text })),
+  )
 }
 
 /**
@@ -327,6 +592,11 @@ function createDraft(
 ): { id: string; done: Promise<void> } {
   const id = pendingId()
   env.cache.insert({ ...blankNode(id, d.section, d.parentId), title }, d)
+  undoHistory.push({
+    label: `Added '${title}'`,
+    // A refused create has nothing to undo: liveId skips the write (SkippedWrite).
+    revert: () => env.api.send('DELETE', taskPath(id)),
+  })
   const done = env.mutate(async () => {
     // Resolved now, inside the queue: the anchor may be a task whose create was only just answered.
     const at = placementFor(d)
@@ -431,7 +701,9 @@ async function editTask(cmd: Command, env: CommandEnv, ed: Editing): Promise<voi
   const saveAndNudge = (direction: 'up' | 'down' | 'indent' | 'outdent') => {
     const saved = saveTitle(env, ed)
     if (saved) env.ui.set({ editing: { ...ed, initial: ed.text } })
-    const nudged = env.mutate(() => env.api.send('POST', taskPath(ed.id, '/nudge'), { direction }))
+    const nudged = row
+      ? nudge(env, { id: row.id, task: row.node, row }, direction)
+      : env.mutate(() => env.api.send('POST', taskPath(ed.id, '/nudge'), { direction }))
     return Promise.all([saved, nudged])
   }
   switch (cmd) {
@@ -523,17 +795,13 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
     case 'escape':
       if (ui.detailId !== null) return ui.set({ detailId: null })
       return select(env, null)
-    case 'toast.undo': {
-      const shown = env.toast.current()
-      if (!shown?.restoreId) return
-      const id = shown.restoreId
-      // Dismiss only once the restore worked, so a failed one can be retried with Z.
-      await mutate(() => api.send('POST', taskPath(id, '/restore')))
-      if (env.toast.current()?.id === shown.id) env.toast.dismiss()
-      // A task deleted while its create was queued is named by its placeholder in the toast.
-      if (shown.restoreIn?.includes(ui.pane)) select(env, resolveId(id))
-      return
-    }
+    case 'undo':
+      return undo(env)
+    case 'new.inbox':
+      // I: a new task at the end of Inbox, from anywhere, so an empty Inbox is always one key away.
+      if (ui.detailId !== null) ui.set({ detailId: null })
+      ui.set({ pane: 'tree' })
+      return openDraft(env, { section: 'inbox', parentId: null })
     case 'new.below': {
       if (ui.pane === 'day') return ui.focusDayAdd()
       // After the selected task's subtree at its level; with no selection, at the end of Inbox.
@@ -587,26 +855,40 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
     case 'move.up':
     case 'move.down': {
       const direction = cmd === 'move.up' ? 'up' : 'down'
-      if (ui.pane === 'day') return moveInDay(env, t.id, direction)
-      await mutate(() => api.send('POST', taskPath(t.id, '/nudge'), { direction }))
+      if (ui.pane === 'day') return moveInDay(env, t.task, direction)
+      await nudge(env, t, direction)
       return
     }
     case 'indent':
     case 'outdent':
       if (ui.pane !== 'tree') return
-      await mutate(() => api.send('POST', taskPath(t.id, '/nudge'), { direction: cmd }))
+      await nudge(env, t, cmd)
       return
     case 'schedule.today':
       if (t.task.scheduledOn === env.today) return
-      await mutate(() => api.send('POST', taskPath(t.id, '/schedule'), { date: env.today }))
+      await recordSchedule(
+        env,
+        t.task,
+        `Scheduled ${quoted(t.task)} for today`,
+        mutate(() => api.send('POST', taskPath(t.id, '/schedule'), { date: env.today })),
+      )
       return
     case 'schedule.pick':
       // Not from the tree's day-less My Day: B already takes a task off today there.
       return ui.set({ picker: { taskId: t.id, allowNoDay: ui.pane === 'tree' } })
     case 'schedule.backlog':
       if (t.task.scheduledOn === null) return
-      if (ui.pane === 'day') select(env, neighbourAfterRemoval(env, t))
-      await mutate(() => api.send('POST', taskPath(t.id, '/schedule'), { date: null }))
+      if (ui.pane === 'day') {
+        select(env, neighbourAfterRemoval(env, t))
+        await removeFromDay(env, t.task)
+        return
+      }
+      await recordSchedule(
+        env,
+        t.task,
+        `Took ${quoted(t.task)} off its day`,
+        mutate(() => api.send('POST', taskPath(t.id, '/schedule'), { date: null })),
+      )
       return
     case 'mark.doing':
     case 'mark.worked':
@@ -616,7 +898,17 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
     case 'status.cancel':
       return toggleClosed(env, t, 'cancelled')
     case 'delete':
+      // In My Day, Del takes the task off today; the task itself stays (Shift+Del deletes it).
+      if (env.ui.pane === 'day') {
+        if (t.task.scheduledOn === null) return
+        select(env, neighbourAfterRemoval(env, t))
+        await removeFromDay(env, t.task)
+        return
+      }
       // A task the tree does not list (hidden under a collapsed parent) leaves the selection alone.
+      if (row) select(env, neighbourAfterRemoval(env, t))
+      return deleteWithToast(env, t)
+    case 'delete.task':
       if (env.ui.pane === 'day' || row) select(env, neighbourAfterRemoval(env, t))
       return deleteWithToast(env, t)
     case 'detail.open':

@@ -56,6 +56,7 @@ export function MyDayPane() {
   )
   const onToggleDone = useCallback((id: string) => onRowCommand(id, 'status.done'), [onRowCommand])
   const onDoing = useCallback((id: string) => onRowCommand(id, 'mark.doing'), [onRowCommand])
+  const onEditTitle = useCallback((id: string) => onRowCommand(id, 'edit.start'), [onRowCommand])
   // Blur from the title editor; one that comes after editing moved elsewhere is ignored.
   const onLeaveEdit = useCallback(
     (id: string) => {
@@ -109,6 +110,7 @@ export function MyDayPane() {
                     onToggleDone={onToggleDone}
                     onDoing={onDoing}
                     onLeaveEdit={onLeaveEdit}
+                    onEditTitle={onEditTitle}
                     describedBy={confirmId === item.task.id ? CONFIRM_NOTE_ID : undefined}
                   />
                 </DragRow>

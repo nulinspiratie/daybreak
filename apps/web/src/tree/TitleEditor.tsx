@@ -79,3 +79,12 @@ export function TitleEditor({ id, strong, placeholder, onLeave }: TitleEditorPro
     />
   )
 }
+
+/** The tag an edited row carries on its right, so edit mode is never mistaken for a selection. */
+export function EditingTag() {
+  return (
+    <span className="row__editing" aria-hidden="true">
+      Editing <kbd>Esc</kbd>
+    </span>
+  )
+}

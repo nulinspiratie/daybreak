@@ -79,7 +79,9 @@ function OpenPicker({ taskId, allowNoDay }: { taskId: string; allowNoDay: boolea
   const pick = (date: ISODate | null) => {
     close()
     if (!task) return
-    pickDay({ api, mutate }, task, date).catch(reportWriteError)
+    pickDay({ api, mutate, dayItems: day.data?.items ?? [], today }, task, date).catch(
+      reportWriteError,
+    )
   }
 
   if (today === '' || !task) return null

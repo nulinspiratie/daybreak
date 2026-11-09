@@ -1,8 +1,8 @@
 import type { DayItem } from '@daybreak/core'
 import { memo, useEffect, useRef } from 'react'
 import { RowCheckbox, type RowState } from '../tree/RowCheckbox'
-import { rowControlClick } from '../tree/rowControlClick'
-import { TitleEditor } from '../tree/TitleEditor'
+import { quickAction } from '../tree/rowControlClick'
+import { EditingTag, TitleEditor } from '../tree/TitleEditor'
 
 export interface DayRowProps {
   item: DayItem
@@ -15,6 +15,8 @@ export interface DayRowProps {
   onLeaveEdit: (id: string) => void
   /** Id of the confirm note shown under this row, if any. */
   describedBy?: string
+  /** Double-click on the title: edit it. */
+  onEditTitle?: (id: string) => void
 }
 
 export const PATH_SEPARATOR = ' › '
@@ -42,6 +44,7 @@ export const DayRow = memo(function DayRow({
   onDoing,
   onLeaveEdit,
   describedBy,
+  onEditTitle,
 }: DayRowProps) {
   const { task } = item
   const state = stateOf(item)
@@ -78,6 +81,11 @@ export const DayRow = memo(function DayRow({
       data-state={state}
       data-id={task.id}
       onClick={() => onSelect(task.id)}
+      onDoubleClick={(e) => {
+        if (editing || !(e.target instanceof Element) || !e.target.closest('.dayrow__title')) return
+        window.getSelection()?.removeAllRanges()
+        onEditTitle?.(task.id)
+      }}
     >
       <span className="row__handle" aria-hidden="true">
         {GUIDE_DOTS}
@@ -101,6 +109,7 @@ export const DayRow = memo(function DayRow({
           )}
         </span>
       </span>
+      {editing && <EditingTag />}
       {doing && <span className="dayrow__pill dayrow__pill--doing">Doing</span>}
       {state === 'worked' && <span className="dayrow__pill dayrow__pill--worked">Worked on</span>}
       {!closed && !doing && !editing && (
@@ -108,7 +117,7 @@ export const DayRow = memo(function DayRow({
           type="button"
           className="dayrow__start"
           aria-label="Start (S)"
-          onClick={(e) => rowControlClick(e, () => onDoing(task.id))}
+          onClick={(e) => quickAction(e, () => onDoing(task.id))}
         >
           <svg aria-hidden="true" width="11" height="11" viewBox="0 0 16 16">
             <path
