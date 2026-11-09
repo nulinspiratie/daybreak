@@ -32,10 +32,13 @@ function validDate(y: number, m: number, d: number): boolean {
   return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d
 }
 
+/** The local calendar date, or the one before while the wall clock is still earlier than `dayStartsAt` (HH:MM). */
 export function localDate(now: Date, dayStartsAt: string): ISODate {
   const [hh, mm] = dayStartsAt.split(':').map(Number)
-  const shifted = new Date(now.getTime() - ((hh ?? 0) * 60 + (mm ?? 0)) * 60_000)
-  return format(shifted.getFullYear(), shifted.getMonth() + 1, shifted.getDate())
+  const date = format(now.getFullYear(), now.getMonth() + 1, now.getDate())
+  // Wall-clock minutes, not elapsed time: on DST nights the day still starts at dayStartsAt.
+  const early = now.getHours() * 60 + now.getMinutes() < (hh ?? 0) * 60 + (mm ?? 0)
+  return early ? addDays(date, -1) : date
 }
 
 export function addDays(date: ISODate, n: number): ISODate {

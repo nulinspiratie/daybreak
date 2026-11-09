@@ -32,6 +32,20 @@ describe('localDate', () => {
   it('uses midnight when dayStartsAt is 00:00', () => {
     expect(localDate(new Date('2026-11-09T23:30:00Z'), '00:00')).toBe('2026-11-10')
   })
+  // Vitest pins TZ=Europe/Copenhagen. dayStartsAt is local wall-clock time, also on DST nights.
+  it('starts the day at 04:00 local on the spring-forward night (2026-03-29)', () => {
+    expect(localDate(new Date('2026-03-29T01:59:00Z'), '04:00')).toBe('2026-03-28') // 03:59 CEST
+    expect(localDate(new Date('2026-03-29T02:01:00Z'), '04:00')).toBe('2026-03-29') // 04:01 CEST
+  })
+  it('starts the day at 04:00 local on the fall-back night (2026-10-25)', () => {
+    expect(localDate(new Date('2026-10-25T02:30:00Z'), '04:00')).toBe('2026-10-24') // 03:30 CET
+    expect(localDate(new Date('2026-10-25T02:59:00Z'), '04:00')).toBe('2026-10-24') // 03:59 CET
+    expect(localDate(new Date('2026-10-25T03:00:00Z'), '04:00')).toBe('2026-10-25') // 04:00 CET
+  })
+  it('compares minutes too', () => {
+    expect(localDate(new Date('2026-11-10T03:29:00Z'), '04:30')).toBe('2026-11-09') // 04:29 local
+    expect(localDate(new Date('2026-11-10T03:30:00Z'), '04:30')).toBe('2026-11-10') // 04:30 local
+  })
 })
 
 describe('addDays / daysBetween / weekdayName', () => {
