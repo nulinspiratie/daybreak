@@ -30,8 +30,19 @@ export function useTree(completed: CompletedMode) {
   })
 }
 
-export const useDay = (date: string) =>
-  useQuery({ queryKey: ['day', date], queryFn: () => api.get<DayView>(`/api/day/${date}`), enabled: date !== '' })
+/** The day, held back like the tree: a fetch answering while writes are queued would undo their optimistic changes. */
+export function useDay(date: string) {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: ['day', date],
+    queryFn: async () => {
+      const fetched = await api.get<DayView>(`/api/day/${date}`)
+      const shown = qc.getQueryData<DayView>(['day', date])
+      return queue.busy() && shown ? shown : fetched
+    },
+    enabled: date !== '',
+  })
+}
 
 export const useReview = (date: string) =>
   useQuery({ queryKey: ['review', date], queryFn: () => api.get<ReviewView>(`/api/review/${date}`) })

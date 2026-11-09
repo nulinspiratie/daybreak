@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { useMutate } from '../api/hooks'
+import { toast } from '../shell/toastStore'
 import { useUi } from '../ui/store'
 
 /**
@@ -25,9 +26,12 @@ export function AddField({ today }: { today: string }) {
     const title = text.trim()
     if (title === '' || today === '') return
     setText('')
-    mutate(() => api.send('POST', '/api/tasks', { title, section: 'inbox', scheduledOn: today })).catch((e: unknown) =>
-      console.error(e),
-    )
+    mutate(() => api.send('POST', '/api/tasks', { title, section: 'inbox', scheduledOn: today })).catch((e: unknown) => {
+      console.error(e)
+      toast.show({ message: `Couldn't save '${title}'` })
+      // Put the title back for a retry, unless something else has been typed meanwhile.
+      setText((now) => (now === '' ? title : now))
+    })
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {

@@ -1,4 +1,4 @@
-import { Fragment, useCallback } from 'react'
+import { Fragment, useCallback, useEffect } from 'react'
 import { useDay, useStatus } from '../api/hooks'
 import type { Command } from '../keyboard/keymap'
 import { useCommandRunner } from '../keyboard/useKeyboard'
@@ -18,10 +18,15 @@ export function MyDayPane() {
   const runCommand = useCommandRunner()
 
   const items = day?.items ?? []
-  // Cancelled items are left out of both numbers.
-  const counted = items.filter((i) => i.task.status !== 'cancelled')
-  const done = counted.filter((i) => i.task.status === 'done').length
-  const percent = counted.length === 0 ? 0 : Math.round((done / counted.length) * 100)
+  // Core's numbers: cancelled items are left out of both.
+  const done = day?.doneCount ?? 0
+  const total = day?.totalCount ?? 0
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100)
+
+  // The edited task left the list (rescheduled elsewhere, deleted): end editing so keys work again.
+  useEffect(() => {
+    if (day && editingId !== undefined && !day.items.some((i) => i.task.id === editingId)) setUi({ editing: null })
+  }, [day, editingId, setUi])
 
   const onSelect = useCallback((id: string) => setUi({ daySel: id, pane: 'day' }), [setUi])
   // Controls select the row and run the same command as the key, so a click follows the same rules.
@@ -51,13 +56,13 @@ export function MyDayPane() {
         </div>
         <span className="dayhead__grow" />
         <div className="dayhead__progress">
-          <span className="dayhead__count">{done} of {counted.length} done</span>
+          <span className="dayhead__count">{done} of {total} done</span>
           <div
             className="progress"
             role="progressbar"
             aria-label="Done today"
             aria-valuemin={0}
-            aria-valuemax={counted.length}
+            aria-valuemax={total}
             aria-valuenow={done}
           >
             <div className="progress__fill" style={{ width: `${percent}%` }} />

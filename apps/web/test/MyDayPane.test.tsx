@@ -35,7 +35,13 @@ let items: DayItem[]
 /** Also mount the tree, listing every day item in Inbox. */
 let withTree = false
 let gate: Promise<void> | null = null
-const day = (): DayView => ({ date: TODAY, items, doneCount: 0, totalCount: 0 })
+// The counts as core gives them: cancelled items are left out of both.
+const day = (): DayView => ({
+  date: TODAY,
+  items,
+  doneCount: items.filter((i) => i.task.status === 'done').length,
+  totalCount: items.filter((i) => i.task.status !== 'cancelled').length,
+})
 
 function Harness() {
   useDrainInvalidation()
@@ -259,6 +265,60 @@ describe('add field', () => {
     expect(ui().daySel).toBe('b')
   })
 
+  it('a refused add shows the toast and puts the title back for a retry', async () => {
+    fake().reply = async (method, path) => {
+      if (method === 'POST' && path === '/api/tasks') throw new ApiError(400, 'invalid', 'nope')
+      if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+      if (method === 'GET' && path.startsWith('/api/day/')) return day()
+      if (method === 'GET') return { today: TODAY, inbox: [], projects: [], hiddenCompletedCount: 0 }
+      return {}
+    }
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await start([item('a')])
+    const input = addField()
+    input.focus()
+    fireEvent.change(input, { target: { value: 'Order a spare SMA torque wrench' } })
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' })
+    })
+    await flush()
+    expect(toast.current()?.message).toBe("Couldn't save 'Order a spare SMA torque wrench'")
+    expect(addField().value).toBe('Order a spare SMA torque wrench')
+    err.mockRestore()
+  })
+
+  it('a refused add does not overwrite what was typed since', async () => {
+    fake().reply = async (method, path) => {
+      if (method === 'POST' && path === '/api/tasks') throw new ApiError(400, 'invalid', 'nope')
+      if (method === 'GET' && path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
+      if (method === 'GET' && path.startsWith('/api/day/')) return day()
+      if (method === 'GET') return { today: TODAY, inbox: [], projects: [], hiddenCompletedCount: 0 }
+      return {}
+    }
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await start([item('a')])
+    const input = addField()
+    input.focus()
+    fireEvent.change(input, { target: { value: 'first' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    fireEvent.change(input, { target: { value: 'second' } })
+    await flush()
+    expect(addField().value).toBe('second')
+    err.mockRestore()
+  })
+
+  it('fast repeated adds are posted in the order typed', async () => {
+    await start([item('a')])
+    const input = addField()
+    input.focus()
+    for (const title of ['one', 'two', 'three']) {
+      fireEvent.change(input, { target: { value: title } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+    }
+    await flush()
+    expect(writes().map((c) => (c[2] as { title: string }).title)).toEqual(['one', 'two', 'three'])
+  })
+
   it('typing letters in it never runs commands', async () => {
     await start([item('a')], 'a')
     await press('n')
@@ -378,5 +438,19 @@ describe('a task listed in both panes', () => {
     expect(editors[0]!.closest('.dayrow')).not.toBeNull()
     expect(document.activeElement).toBe(editors[0])
     expect(ui().editing).toMatchObject({ id: 'a' })
+  })
+})
+
+describe('the edited task leaves the list', () => {
+  it('ends editing so keys go back to navigate mode', async () => {
+    await start([item('a'), item('b')], 'a')
+    await press('Enter')
+    expect(ui().editing).toMatchObject({ id: 'a' })
+    items = [items[1]!]
+    await act(async () => {
+      await queue.enqueue(async () => {})
+    })
+    await waitFor(() => expect(ui().editing).toBeNull())
+    expect(screen.queryByRole('textbox', { name: 'Task title' })).toBeNull()
   })
 })
