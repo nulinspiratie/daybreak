@@ -31,3 +31,7 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   close.
 - X on a Done task cancels it, and X on a cancelled task reopens it (Space
   works the same way for Done).
+- If a new task can't be saved (server down or restarted mid-typing), a
+  toast says "Couldn't save '…'" so it's never lost silently; tasks typed
+  after it in the same list still save. The wording is mine; DESIGN has no
+  error copy.
