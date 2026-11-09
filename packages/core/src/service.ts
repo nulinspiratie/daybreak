@@ -75,7 +75,13 @@ export function createDaybreak(deps: DaybreakDeps): Daybreak {
     }
   }
 
-  /** End the review of `date`, then write the daily logs it makes final (SPEC §6). */
+  /**
+   * End the review of `date`, then write the daily logs it makes final (SPEC §6).
+   * The files are written inside the transaction, so last_logged_date commits with
+   * the review. If it rolls back after files were written, the next run publishes
+   * nothing over them (writeMissingLogs never replaces an existing log), so the
+   * re-run is harmless.
+   */
   function endReview(end: (ctx: Ctx, date: ISODate) => void, date: ISODate): void {
     mutate(() => {
       end(ctx, date)

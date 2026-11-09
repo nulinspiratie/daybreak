@@ -1,4 +1,4 @@
-import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, linkSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Ctx } from './ctx'
 import { today } from './ctx'
@@ -9,12 +9,17 @@ import { marksOn } from './tasks/marks'
 import { pathOf, rowToTask, TASK_COLUMNS, type TaskRow } from './tasks/rows'
 import type { Task } from './types'
 
-/** A line of the log: the task, the event id that put it in its section, and the outcome suffix. */
+/** Chronological sort key: the event's id, then the task's place in that event's cascade. */
+type Order = [eventId: number, index: number]
+
+/** A line of the log: the task, the event that put it in its section, and the outcome suffix. */
 interface Entry {
   task: Task
-  order: number
+  order: Order
   suffix: string
 }
+
+const byOrder = (a: Entry, b: Entry) => a.order[0] - b.order[0] || a.order[1] - b.order[1]
 
 function lastLoggedDate(ctx: Ctx): ISODate | null {
   return ctx.db.get<{ value: string }>("SELECT value FROM meta WHERE key = 'last_logged_date'")?.value ?? null
@@ -55,11 +60,32 @@ function scheduledOnAfter(ctx: Ctx, task: Task, eventId: number): ISODate | null
   return next ? (JSON.parse(next.data).from ?? null) : task.scheduledOn
 }
 
-/** Per task, the last of its events with one of `kinds`, in event order. */
-function lastByTask(events: EventRow[], kinds: string[]): EventRow[] {
-  const last = new Map<string, EventRow>()
-  for (const e of events) if (e.taskId !== null && kinds.includes(e.kind)) last.set(e.taskId, e)
-  return [...last.values()].sort((a, b) => a.id - b.id)
+interface CloseState {
+  kind: 'done' | 'cancelled' | 'reopened'
+  order: Order
+}
+
+/**
+ * Each task's close state at the end of the day: the last done, cancelled or
+ * reopened event that touched it (Ruling R45). A close touches every id in its
+ * `closedIds`, in tree order (Ruling R46); a reopen touches its `ids`. Undoing a
+ * review cancel reopens exactly what that cancel closed.
+ */
+function closeStates(events: EventRow[]): Map<string, CloseState> {
+  const byId = new Map(events.map((e) => [e.id, e]))
+  const states = new Map<string, CloseState>()
+  const touch = (e: EventRow, kind: CloseState['kind'], ids: string[]) =>
+    ids.forEach((id, i) => states.set(id, { kind, order: [e.id, i] }))
+  for (const e of events) {
+    if (e.taskId === null) continue
+    if (e.kind === 'done' || e.kind === 'cancelled') touch(e, e.kind, e.data.closedIds ?? [e.taskId])
+    if (e.kind === 'reopened') touch(e, 'reopened', e.data.ids ?? [e.taskId])
+    if (e.kind === 'review_undo') {
+      const undone = byId.get(e.data.undoneEventId)
+      if (undone?.kind === 'review_cancel') touch(e, 'reopened', undone.data.closedIds ?? [undone.taskId!])
+    }
+  }
+  return states
 }
 
 /**
@@ -87,11 +113,14 @@ export function buildDayLog(ctx: Ctx, date: ISODate): string | null {
     return d ? outcome(d) : ''
   }
 
-  const done: Entry[] = []
-  for (const e of lastByTask(events, ['done', 'reopened'])) {
-    const task = liveTask(e.taskId!)
-    if (task && e.kind === 'done') done.push({ task, order: e.id, suffix: '' })
-  }
+  const closes = [...closeStates(events)].flatMap(([id, state]) => {
+    const task = liveTask(id)
+    return task ? [{ task, ...state }] : []
+  })
+  const done: Entry[] = closes
+    .filter((c) => c.kind === 'done')
+    .map(({ task, order }) => ({ task, order, suffix: '' }))
+    .sort(byOrder)
   const listed = new Set(done.map((x) => x.task.id))
 
   const firstMark = new Map<string, number>()
@@ -104,23 +133,22 @@ export function buildDayLog(ctx: Ctx, date: ISODate): string | null {
   for (const id of marksOn(ctx, date).keys()) {
     const task = liveTask(id)
     if (!task || listed.has(id)) continue
-    worked.push({ task, order: firstMark.get(id) ?? Number.MAX_SAFE_INTEGER, suffix: decisionSuffix(id) })
+    worked.push({ task, order: [firstMark.get(id) ?? Number.MAX_SAFE_INTEGER, 0], suffix: decisionSuffix(id) })
   }
-  worked.sort((a, b) => a.order - b.order || (a.task.id < b.task.id ? -1 : 1))
+  worked.sort((a, b) => byOrder(a, b) || (a.task.id < b.task.id ? -1 : 1))
   for (const x of worked) listed.add(x.task.id)
 
   const missed = new Map<string, Entry>()
-  // Cancelled during the day while scheduled on it (Ruling R43).
-  for (const e of lastByTask(events, ['cancelled', 'reopened'])) {
-    const task = liveTask(e.taskId!)
-    if (!task || e.kind !== 'cancelled' || listed.has(task.id)) continue
-    if (scheduledOnAfter(ctx, task, e.id) === date) missed.set(task.id, { task, order: e.id, suffix: ' → cancelled' })
+  // Ended the day cancelled, and was scheduled on it when cancelled (Rulings R43, R45, R46).
+  for (const { task, kind, order } of closes) {
+    if (kind !== 'cancelled' || listed.has(task.id)) continue
+    if (scheduledOnAfter(ctx, task, order[0]) === date) missed.set(task.id, { task, order, suffix: ' → cancelled' })
   }
   for (const d of decisions.values()) {
     const task = liveTask(d.taskId)
-    if (task && !listed.has(task.id)) missed.set(task.id, { task, order: d.eventId, suffix: outcome(d) })
+    if (task && !listed.has(task.id)) missed.set(task.id, { task, order: [d.eventId, 0], suffix: outcome(d) })
   }
-  const notDone = [...missed.values()].sort((a, b) => a.order - b.order)
+  const notDone = [...missed.values()].sort(byOrder)
   for (const x of notDone) listed.add(x.task.id)
   const stillScheduled = ctx.db.all<TaskRow>(
     `SELECT ${TASK_COLUMNS} FROM tasks
@@ -128,13 +156,13 @@ export function buildDayLog(ctx: Ctx, date: ISODate): string | null {
     date,
   )
   for (const row of stillScheduled) {
-    if (!listed.has(row.id)) notDone.push({ task: rowToTask(row), order: 0, suffix: '' })
+    if (!listed.has(row.id)) notDone.push({ task: rowToTask(row), order: [0, 0], suffix: '' })
   }
 
   const added: Entry[] = []
   for (const e of events) {
     const task = e.kind === 'created' && e.taskId !== null ? liveTask(e.taskId) : null
-    if (task) added.push({ task, order: e.id, suffix: '' })
+    if (task) added.push({ task, order: [e.id, 0], suffix: '' })
   }
 
   const line = (box: string) => (x: Entry) => {
@@ -155,23 +183,42 @@ export function buildDayLog(ctx: Ctx, date: ISODate): string | null {
   return [`# ${date} · ${weekdayName(date, 'long')}`, ...body].join('\n\n') + '\n'
 }
 
-/** Write `text` to a temp file next to `file`, then rename it into place. */
-function writeAtomically(file: string, text: string): void {
+/** Error codes for a file system without hard links (e.g. FAT). */
+const NO_HARD_LINKS = new Set(['EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'ENOSYS'])
+
+/**
+ * Publish `text` as `file` without ever replacing an existing file: write a
+ * temp file, then hard-link it into place (EEXIST means the log is already
+ * there). Returns false when the file already existed.
+ *
+ * Never clobbering is what makes a re-run harmless when the review transaction
+ * rolls back after the files were written, or when last_logged_date is reset.
+ */
+function publishOnce(file: string, text: string): boolean {
   const tmp = `${file}.tmp`
+  writeFileSync(tmp, text)
   try {
-    writeFileSync(tmp, text)
-    renameSync(tmp, file)
+    linkSync(tmp, file)
+    return true
   } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code ?? ''
+    if (code === 'EEXIST') return false
+    if (!NO_HARD_LINKS.has(code)) throw err
+    if (existsSync(file)) return false
+    renameSync(tmp, file)
+    return true
+  } finally {
     rmSync(tmp, { force: true })
-    throw err
   }
 }
 
 /**
  * Write `<logsDir>/<date>.md` for every day after meta.last_logged_date and
  * before today that has events, then move last_logged_date up to yesterday.
- * Days with nothing to list get no file. A write error is reported and stops
- * here, leaving last_logged_date just before the failed day. Returns the days written.
+ * Days with nothing to list get no file, and a file that already exists is
+ * kept as it is: logs are never changed. A write error is reported and stops
+ * here, leaving last_logged_date just before the failed day. Returns the days
+ * written by this call.
  */
 export function writeMissingLogs(ctx: Ctx, logsDir: string): ISODate[] {
   const last = lastLoggedDate(ctx)
@@ -191,13 +238,12 @@ export function writeMissingLogs(ctx: Ctx, logsDir: string): ISODate[] {
     if (text === null) continue
     try {
       mkdirSync(logsDir, { recursive: true })
-      writeAtomically(join(logsDir, `${date}.md`), text)
+      if (publishOnce(join(logsDir, `${date}.md`), text)) written.push(date)
     } catch (err) {
       console.error(`Daybreak: could not write the log for ${date}:`, err)
       frozenThrough = addDays(date, -1)
       break
     }
-    written.push(date)
   }
   if (last === null || frozenThrough > last) setLastLoggedDate(ctx, frozenThrough)
   return written

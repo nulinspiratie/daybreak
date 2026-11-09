@@ -308,6 +308,116 @@ describe('buildDayLog', () => {
 `)
   })
 
+  it('the last close of the day decides: done then cancelled is Not done, done then reopened is not Done (R45)', async () => {
+    const ctx = await makeCtx()
+    on(ctx, '2026-11-02')
+    const p = project(ctx, 'P')
+    const doneCancelled = project(ctx, 'done then cancelled', p, '2026-11-09')
+    const doneReopened = project(ctx, 'done then reopened', p, '2026-11-09')
+    const reopenedDone = project(ctx, 'reopened then done', p, '2026-11-09')
+    const unscheduled = project(ctx, 'done then cancelled, unscheduled', p)
+    on(ctx, '2026-11-09')
+    setStatus(ctx, doneCancelled, 'done')
+    setStatus(ctx, doneCancelled, 'cancelled')
+    setStatus(ctx, doneReopened, 'done')
+    setStatus(ctx, doneReopened, 'open')
+    setStatus(ctx, reopenedDone, 'done')
+    setStatus(ctx, reopenedDone, 'open')
+    setStatus(ctx, reopenedDone, 'done')
+    setStatus(ctx, unscheduled, 'done')
+    setStatus(ctx, unscheduled, 'cancelled')
+    expect(buildDayLog(ctx, '2026-11-09')).toBe(`# 2026-11-09 · Monday
+
+## Done
+- [x] reopened then done · P (#${reopenedDone})
+
+## Not done
+- [ ] done then cancelled · P (#${doneCancelled}) → cancelled
+- [ ] done then reopened · P (#${doneReopened})
+`)
+  })
+
+  it('a done cascade lists the closed descendants under Done in tree order after the parent (R46)', async () => {
+    const ctx = await makeCtx()
+    on(ctx, '2026-11-02')
+    const p = project(ctx, 'P')
+    const before = project(ctx, 'before', p)
+    const q = project(ctx, 'Q', p)
+    const c1 = project(ctx, 'c1', q)
+    const g = project(ctx, 'g', c1)
+    const c2 = project(ctx, 'c2', q)
+    const already = project(ctx, 'already done', q)
+    setStatus(ctx, already, 'done')
+    on(ctx, '2026-11-09')
+    setStatus(ctx, before, 'done')
+    setStatus(ctx, q, 'done', { withOpenDescendants: true })
+    expect(buildDayLog(ctx, '2026-11-09')).toBe(`# 2026-11-09 · Monday
+
+## Done
+- [x] before · P (#${before})
+- [x] Q · P (#${q})
+- [x] c1 · P › Q (#${c1})
+- [x] g · P › Q › c1 (#${g})
+- [x] c2 · P › Q (#${c2})
+`)
+  })
+
+  it('a cancel cascade lists the descendants scheduled that day as Not done "→ cancelled" (R46)', async () => {
+    const ctx = await makeCtx()
+    on(ctx, '2026-11-02')
+    const p = project(ctx, 'P')
+    const child = project(ctx, 'child', p, '2026-11-09')
+    project(ctx, 'unscheduled child', p)
+    project(ctx, 'other day child', p, '2026-11-12')
+    on(ctx, '2026-11-09')
+    setStatus(ctx, p, 'cancelled', { withOpenDescendants: true })
+    expect(buildDayLog(ctx, '2026-11-09')).toBe(`# 2026-11-09 · Monday
+
+## Not done
+- [ ] child · P (#${child}) → cancelled
+`)
+  })
+
+  it('a cascade reopened the same day lists nothing as closed; an undone review cancel reopens its cascade', async () => {
+    const ctx = await makeCtx()
+    on(ctx, '2026-11-02')
+    const p = project(ctx, 'P')
+    const c = project(ctx, 'c', p, '2026-11-09')
+    const r = project(ctx, 'R', null, '2026-11-08')
+    const rc = project(ctx, 'rc', r, '2026-11-09')
+    on(ctx, '2026-11-09')
+    setStatus(ctx, p, 'done', { withOpenDescendants: true })
+    setStatus(ctx, p, 'open')
+    const d = createDaybreak({ db: ctx.db, clock: ctx.clock, config: ctx.config })
+    d.decide('2026-11-09', r, 'cancel')
+    d.undoDecision('2026-11-09')
+    expect(buildDayLog(ctx, '2026-11-09')).toBe(`# 2026-11-09 · Monday
+
+## Not done
+- [ ] c · P (#${c})
+- [ ] rc · R (#${rc})
+`)
+  })
+
+  it('events before dayStartsAt belong to the previous day', async () => {
+    const ctx = await makeCtx('2026-11-10T08:00:00Z', { dayStartsAt: '06:00' })
+    // Copenhagen is UTC+1 in November: 04:30Z is 05:30 local, 05:30Z is 06:30 local.
+    ctx.clock.set('2026-11-10T04:30:00Z')
+    const late = inbox(ctx, 'late night')
+    ctx.clock.set('2026-11-10T05:30:00Z')
+    const early = inbox(ctx, 'early morning')
+    expect(buildDayLog(ctx, '2026-11-09')).toBe(`# 2026-11-09 · Monday
+
+## Added
+- late night · Inbox (#${late})
+`)
+    expect(buildDayLog(ctx, '2026-11-10')).toBe(`# 2026-11-10 · Tuesday
+
+## Added
+- early morning · Inbox (#${early})
+`)
+  })
+
   it('lines follow the events that put them there; open scheduled tasks follow in day order (R44)', async () => {
     const ctx = await makeCtx()
     on(ctx, '2026-11-02')
@@ -415,6 +525,40 @@ describe('writeMissingLogs', () => {
     expect(files(logsDir)).toEqual(['2026-11-09.md'])
   })
 
+  it('a reset last_logged_date does not rewrite a log: the file stays byte-identical', async () => {
+    const ctx = await makeCtx()
+    on(ctx, '2026-11-09')
+    const a = project(ctx, 'a')
+    setStatus(ctx, a, 'done')
+    on(ctx, '2026-11-10')
+    const logsDir = tempLogsDir()
+    const d = service(ctx, logsDir)
+    d.finishReview('2026-11-10')
+    const before = fs.readFileSync(path.join(logsDir, '2026-11-09.md'))
+    d.update(a, { title: 'a renamed' })
+    ctx.db.run("DELETE FROM meta WHERE key = 'last_logged_date'")
+    d.finishReview('2026-11-10')
+    expect(fs.readFileSync(path.join(logsDir, '2026-11-09.md')).equals(before)).toBe(true)
+    expect(files(logsDir)).toEqual(['2026-11-09.md'])
+    expect(lastLogged(ctx)).toBe('2026-11-09')
+  })
+
+  it('a pre-existing file for a day is left untouched and counts as written', async () => {
+    const ctx = await makeCtx()
+    on(ctx, '2026-11-06')
+    project(ctx, 'fri')
+    on(ctx, '2026-11-09')
+    project(ctx, 'mon')
+    on(ctx, '2026-11-10')
+    const logsDir = tempLogsDir()
+    fs.mkdirSync(logsDir, { recursive: true })
+    fs.writeFileSync(path.join(logsDir, '2026-11-06.md'), 'kept as it was\n')
+    expect(writeMissingLogs(ctx, logsDir)).toEqual(['2026-11-09'])
+    expect(read(logsDir, '2026-11-06')).toBe('kept as it was\n')
+    expect(files(logsDir)).toEqual(['2026-11-06.md', '2026-11-09.md'])
+    expect(lastLogged(ctx)).toBe('2026-11-09')
+  })
+
   it('skipReview also writes logs', async () => {
     const ctx = await makeCtx()
     on(ctx, '2026-11-09')
@@ -469,18 +613,18 @@ describe('writeMissingLogs', () => {
     project(ctx, 'b', p)
     on(ctx, '2026-11-10')
     const logsDir = tempLogsDir()
-    // A directory where the 2026-11-05 log should go makes that write fail.
-    fs.mkdirSync(path.join(logsDir, '2026-11-05.md'), { recursive: true })
+    // A directory where the 2026-11-05 temp file should go makes that write fail.
+    const blocker = path.join(logsDir, '2026-11-05.md.tmp')
+    fs.mkdirSync(blocker, { recursive: true })
     const d = service(ctx, logsDir)
 
     expect(() => d.finishReview('2026-11-10')).not.toThrow()
     expect(reviewView(ctx, '2026-11-10').finished).toBe(true)
     expect(errors).toHaveBeenCalledTimes(1)
-    expect(files(logsDir)).toEqual(['2026-11-02.md', '2026-11-05.md'])
-    expect(fs.statSync(path.join(logsDir, '2026-11-05.md')).isDirectory()).toBe(true)
+    expect(files(logsDir)).toEqual(['2026-11-02.md', '2026-11-05.md.tmp'])
     expect(lastLogged(ctx)).toBe('2026-11-04')
 
-    fs.rmSync(path.join(logsDir, '2026-11-05.md'), { recursive: true })
+    fs.rmSync(blocker, { recursive: true })
     on(ctx, '2026-11-11')
     d.finishReview('2026-11-11')
     expect(files(logsDir)).toEqual(['2026-11-02.md', '2026-11-05.md', '2026-11-06.md'])
