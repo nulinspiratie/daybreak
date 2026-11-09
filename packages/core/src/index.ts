@@ -31,4 +31,5 @@ export { reviewView, decide, undoDecision, skipReview, finishReview, needsReview
 export { createDaybreak } from './service'
 export type { Daybreak, DaybreakDeps, ChangeEvent } from './service'
 export { exportProject } from './export'
+export { buildDayLog, writeMissingLogs } from './log'
 export { seed } from './seed'

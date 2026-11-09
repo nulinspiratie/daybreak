@@ -4,6 +4,7 @@ import { today } from './ctx'
 import { transaction, type Db } from './db/adapter'
 import type { ISODate } from './dates'
 import { exportProject } from './export'
+import { writeMissingLogs } from './log'
 import {
   decide, finishReview, lastReviewDate, needsReview, reviewView, skipReview, undoDecision,
 } from './review'
@@ -74,6 +75,14 @@ export function createDaybreak(deps: DaybreakDeps): Daybreak {
     }
   }
 
+  /** End the review of `date`, then write the daily logs it makes final (SPEC §6). */
+  function endReview(end: (ctx: Ctx, date: ISODate) => void, date: ISODate): void {
+    mutate(() => {
+      end(ctx, date)
+      if (deps.logsDir !== undefined) writeMissingLogs(ctx, deps.logsDir)
+    })
+  }
+
   /** Run `fn` in one transaction, then notify listeners once it has committed. */
   function mutate<T>(fn: () => T): T {
     const result = transaction(ctx.db, fn)
@@ -99,13 +108,13 @@ export function createDaybreak(deps: DaybreakDeps): Daybreak {
     review: (date) => reviewView(ctx, date),
     decide: (date, taskId, choice, targetDate) => mutate(() => decide(ctx, date, taskId, choice, targetDate)),
     undoDecision: (date) => mutate(() => undoDecision(ctx, date)),
-    skipReview: (date) => mutate(() => skipReview(ctx, date)),
-    finishReview: (date) => mutate(() => finishReview(ctx, date)),
+    skipReview: (date) => endReview(skipReview, date),
+    finishReview: (date) => endReview(finishReview, date),
     needsReview: () => needsReview(ctx),
     autoFinishEmptyReview() {
       const date = today(ctx)
       if (needsReview(ctx) || lastReviewDate(ctx) === date) return
-      mutate(() => finishReview(ctx, date))
+      endReview(finishReview, date)
     },
     exportProject: (id) => exportProject(ctx, id),
     onChange(listener) {

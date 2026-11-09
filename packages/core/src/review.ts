@@ -21,9 +21,10 @@ type Group = ReviewItem['group']
 const cmp = (x: string, y: string) => (x < y ? -1 : x > y ? 1 : 0)
 
 /** A review decision event that has not been undone. */
-interface Decision {
+export interface Decision {
   eventId: number
   taskId: string
+  reviewDate: ISODate
   choice: ReviewChoice
   group: Group
   previous: { scheduledOn: ISODate | null; dayPosition: string | null; status: Status; closedAt: string | null }
@@ -31,22 +32,23 @@ interface Decision {
   closedIds?: string[]
 }
 
-/** Decisions made in the review of `date`, oldest first, skipping undone ones. */
-function decisionsOn(ctx: Ctx, date: ISODate): Decision[] {
+/** Decisions whose data at `jsonPath` equals `value`, oldest first, skipping undone ones. */
+function liveDecisions(ctx: Ctx, jsonPath: '$.reviewDate' | '$.previous.scheduledOn', value: ISODate): Decision[] {
   const rows = ctx.db.all<{ id: number; task_id: string; kind: string; data: string }>(
     `SELECT e.id, e.task_id, e.kind, e.data FROM events e
      WHERE e.kind IN ('review_today', 'review_day', 'review_backlog', 'review_cancel')
-       AND json_extract(e.data, '$.reviewDate') = ?
+       AND json_extract(e.data, '${jsonPath}') = ?
        AND NOT EXISTS (SELECT 1 FROM events u
                        WHERE u.kind = 'review_undo' AND json_extract(u.data, '$.undoneEventId') = e.id)
      ORDER BY e.id`,
-    date,
+    value,
   )
   return rows.map((r) => {
     const data = JSON.parse(r.data)
     return {
       eventId: r.id,
       taskId: r.task_id,
+      reviewDate: data.reviewDate,
       choice: r.kind.slice('review_'.length) as ReviewChoice,
       group: data.group,
       previous: data.previous,
@@ -54,6 +56,16 @@ function decisionsOn(ctx: Ctx, date: ISODate): Decision[] {
       closedIds: data.closedIds,
     }
   })
+}
+
+/** Decisions made in the review of `date`. */
+function decisionsOn(ctx: Ctx, date: ISODate): Decision[] {
+  return liveDecisions(ctx, '$.reviewDate', date)
+}
+
+/** Decisions, in any review, about tasks that were scheduled on `date` when decided. */
+export function decisionsLeaving(ctx: Ctx, date: ISODate): Decision[] {
+  return liveDecisions(ctx, '$.previous.scheduledOn', date)
 }
 
 /** Open live tasks scheduled before `date`, oldest day first. */
