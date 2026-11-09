@@ -60,3 +60,12 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   FRIDAY") only when every leftover is from that one day and it was within
   the last 6 days. Otherwise it says "LEFT OVER FROM EARLIER", so a bare
   weekday never points at the wrong week.
+- Daily logs list each task once. If you finished it, it's under Done. If
+  you only worked on it, it's under Worked on, and keeps its "→ moved to …"
+  from the next morning's review. Otherwise it's under Not done.
+- A task you cancel during the day shows under Not done with "→ cancelled",
+  as in SPEC's example. There's no separate Cancelled section.
+- The first time logs are written, every past day with activity gets one.
+  If writing a log fails (disk full, folder locked), finishing the review
+  still works. The failed day and any after it are tried again at the next
+  review.
