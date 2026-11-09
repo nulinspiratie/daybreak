@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Daybreak</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#103d8f"/>
+      <stop offset="0.32" stop-color="#5d55b0"/>
+      <stop offset="0.56" stop-color="#ef8068"/>
+      <stop offset="0.68" stop-color="#ffbf73"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6c9"/>
+      <stop offset="1" stop-color="#ffc552"/>
+    </linearGradient>
+    <clipPath id="tile"><rect width="64" height="64" rx="14"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="64" height="64" fill="url(#sky)"/>
+    <g stroke="#fff1cf" stroke-width="3.6" stroke-linecap="round">
+      <path d="M32 13.5v6"/>
+      <path d="M15.5 21.5l4.2 4.2"/>
+      <path d="M48.5 21.5l-4.2 4.2"/>
+      <path d="M7 36.5h5.5"/>
+      <path d="M51.5 36.5H57"/>
+    </g>
+    <path d="M17 43a15 15 0 0 1 30 0Z" fill="url(#sun)"/>
+    <rect y="43" width="64" height="21" fill="#0d2b63"/>
+    <path d="M22 49.5h20M27 55.5h10" stroke="#ffc552" stroke-width="2.6" stroke-linecap="round" opacity="0.85"/>
+  </g>
+</svg>

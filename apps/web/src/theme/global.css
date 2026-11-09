@@ -99,12 +99,7 @@ kbd {
 .titlebar__icon {
   width: 18px;
   height: 18px;
-  border-radius: 5px;
-  background: var(--accent);
-  color: var(--onAccent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: none;
 }
 
 .titlebar__name {

@@ -88,3 +88,9 @@ Newest at the bottom. Tick or strike items once we've talked them through.
 - Biome is pinned to 2.5.1 because 2.6.3 and 2.6.4 crash during analysis on
   Windows ARM64. This matches the regression reported in
   [biomejs/biome#11242](https://github.com/biomejs/biome/issues/11242).
+- The app icon is now a sunrise (you asked for one) in place of design.md's
+  blue square with a tick. `apps/web/public/daybreak.svg` is the source;
+  `daybreak-small.svg` is a simpler version for 16–24 px (title bar, small
+  .ico frames) and `favicon.ico` holds 16–256 px. Phase 6 can feed
+  `daybreak.svg` to `tauri icon`. Until then you can point a `start.cmd`
+  shortcut's icon at `favicon.ico`.

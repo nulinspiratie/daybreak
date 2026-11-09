@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Daybreak</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#103d8f"/>
+      <stop offset="0.35" stop-color="#5d55b0"/>
+      <stop offset="0.62" stop-color="#ef8068"/>
+      <stop offset="0.72" stop-color="#ffbf73"/>
+    </linearGradient>
+    <clipPath id="tile"><rect width="64" height="64" rx="14"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="64" height="64" fill="url(#sky)"/>
+    <g stroke="#fff1cf" stroke-width="6" stroke-linecap="round">
+      <path d="M32 7.5v6"/>
+      <path d="M12.5 17l4.5 4.5"/>
+      <path d="M51.5 17L47 21.5"/>
+    </g>
+    <path d="M14 46a18 18 0 0 1 36 0Z" fill="#ffd25e"/>
+    <rect y="46" width="64" height="18" fill="#0d2b63"/>
+  </g>
+</svg>
