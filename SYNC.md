@@ -50,3 +50,9 @@ Newest at the bottom. Tick or strike items once we've talked them through.
 - Images in notes aren't loaded; they show as link text. Loading one would
   send a request to an outside server whenever you open the task. Only http,
   https and mailto links are clickable; other links show as plain text.
+- Dark-mode colours for the morning review aren't in DESIGN, so I picked
+  them to match the dark palette: Today blue on dark blue, Another day lilac
+  on dark purple, Backlog and Not today light grey on dark grey, Cancelled
+  pink on dark red. Every one keeps text at 4.5:1 or better.
+- In the review, a task moved to another day shows "Wed" if it's within the
+  coming week and "Tue 17 Nov" if it's further out.
