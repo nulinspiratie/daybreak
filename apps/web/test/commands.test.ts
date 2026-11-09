@@ -367,6 +367,18 @@ describe('navigation', () => {
     expect(ui()).toMatchObject({ pane: 'tree', treeSel: 'c1', daySel: 'd2' })
   })
 
+  it('pane.toggle into a pane with no selection selects its first row; an empty pane selects nothing', async () => {
+    ui().set({ pane: 'tree', treeSel: 'c1', daySel: null })
+    await run('pane.toggle')
+    expect(ui()).toMatchObject({ pane: 'day', daySel: DAY[0]!.task.id })
+    ui().set({ pane: 'day', treeSel: null })
+    await run('pane.toggle')
+    expect(ui()).toMatchObject({ pane: 'tree', treeSel: flatten(view())[0]!.id })
+    ui().set({ pane: 'tree', daySel: null })
+    await run('pane.toggle', { dayItems: [] })
+    expect(ui()).toMatchObject({ pane: 'day', daySel: null })
+  })
+
   it('My Day navigation walks the day items', async () => {
     select(null, 'day')
     await run('nav.down')

@@ -51,9 +51,11 @@ interface Target {
 // The draft row only exists in edit mode; navigate-mode commands skip it.
 const treeRows = (env: CommandEnv) => env.rows.filter((r) => !r.isDraft)
 
-function paneIds(env: CommandEnv): string[] {
-  return env.ui.pane === 'tree' ? treeRows(env).map((r) => r.id) : env.dayItems.map((i) => i.task.id)
+function paneIdsFor(env: CommandEnv, pane: 'tree' | 'day'): string[] {
+  return pane === 'tree' ? treeRows(env).map((r) => r.id) : env.dayItems.map((i) => i.task.id)
 }
+
+const paneIds = (env: CommandEnv) => paneIdsFor(env, env.ui.pane)
 
 function selectedId(env: CommandEnv): string | null {
   return env.ui.pane === 'tree' ? env.ui.treeSel : env.ui.daySel
@@ -441,8 +443,12 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       return navigate(env, cmd)
     case 'pane.toggle':
       // The detail panel stands where My Day is: M closes it and shows My Day.
-      if (ui.detailId !== null) return ui.set({ detailId: null, pane: 'day' })
-      return ui.set({ pane: ui.pane === 'tree' ? 'day' : 'tree' })
+      {
+        const pane = ui.detailId !== null ? 'day' : ui.pane === 'tree' ? 'day' : 'tree'
+        // A pane with no selection yet starts on its first row (none if it is empty).
+        const first = (pane === 'tree' ? ui.treeSel : ui.daySel) === null ? paneIdsFor(env, pane)[0] : undefined
+        return ui.set({ pane, ...(ui.detailId !== null && { detailId: null }), ...(first !== undefined && (pane === 'tree' ? { treeSel: first } : { daySel: first })) })
+      }
     case 'escape':
       if (ui.detailId !== null) return ui.set({ detailId: null })
       return select(env, null)
@@ -537,6 +543,7 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       // The detail replaces My Day, so from there the task is selected in the tree. Hidden under a
       // collapsed parent, the detail still shows it and the tree selection stays where it is.
       if (ui.pane === 'day') return ui.set({ detailId: t.id, pane: 'tree', ...(treeRows(env).some((r) => r.id === t.id) && { treeSel: t.id }) })
+      if (ui.detailId === t.id) return ui.set({ notesNonce: ui.notesNonce + 1 })
       return ui.set({ detailId: t.id })
     case 'link.open':
       if (!t.task.link?.trim()) return

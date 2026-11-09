@@ -17,6 +17,8 @@ export interface UiState {
   draft: Draft | null
   confirm: { id: string; status: 'done' | 'cancelled'; openCount: number; until: number } | null
   detailId: string | null
+  /** Bumped by Ctrl+O on an open detail panel: the notes go into edit mode. */
+  notesNonce: number
   showCompleted: boolean
   reviewOpen: boolean
   /** The day picker (D), floated over the panes by PickerHost. `allowNoDay` is true from the tree only. */
@@ -91,6 +93,7 @@ export const useUi = create<UiState>((set) => ({
   draft: null,
   confirm: null,
   detailId: null,
+  notesNonce: 0,
   showCompleted: false,
   reviewOpen: false,
   picker: null,

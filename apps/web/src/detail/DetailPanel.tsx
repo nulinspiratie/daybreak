@@ -189,10 +189,20 @@ function Notes({ task }: { task: Task }) {
     setText(saved.current)
     setEditing(true)
   }
+  // Ctrl+O on the open panel asks for the notes editor.
+  const nonce = useUi((s) => s.notesNonce)
+  const seen = useRef(nonce)
+  useEffect(() => {
+    if (nonce === seen.current) return
+    seen.current = nonce
+    edit()
+  })
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
       e.preventDefault()
       leave(e.currentTarget.value)
+      // Focus goes back to the page, so the tree's keys work again; the panel stays open.
+      e.currentTarget.blur()
     }
   }
   const openLink = (target: string) => write((env) => env.mutate(() => env.api.send('POST', '/api/open-link', { target })))

@@ -266,6 +266,38 @@ describe('editing fields', () => {
     expect(ui().detailId).toBeNull()
   })
 
+  it('Ctrl+O opens the panel, a second Ctrl+O edits the notes, Esc saves and returns to the tree, a second Esc closes', async () => {
+    await start(null, { projects: [node('p', [], { title: 'Parent', notes: 'old' })] })
+    act(() => ui().set({ treeSel: 'p' }))
+    await press('o', { ctrlKey: true })
+    expect(ui().detailId).toBe('p')
+    expect(screen.queryByRole('textbox', { name: 'Notes' })).toBeNull()
+    await press('o', { ctrlKey: true })
+    const area = screen.getByRole('textbox', { name: 'Notes' }) as HTMLTextAreaElement
+    expect(document.activeElement).toBe(area)
+    // Keys typed in the notes never reach the tree.
+    for (const key of ['t', 'd', 'Tab', ' ', 'Delete', 'ArrowDown']) await press(key)
+    fireEvent.change(area, { target: { value: 'old and new' } })
+    await press('Escape')
+    await flush()
+    expect(writes()).toEqual([['PATCH', '/api/tasks/p', { notes: 'old and new' }]])
+    expect(screen.queryByRole('textbox', { name: 'Notes' })).toBeNull()
+    expect(document.activeElement).toBe(document.body)
+    expect(ui().detailId).toBe('p')
+    await press('Escape')
+    expect(ui().detailId).toBeNull()
+  })
+
+  it('typing "t" in the notes editor opened by Ctrl+O does not schedule the task', async () => {
+    await start('p', { projects: [node('p', [], { title: 'Parent' })] })
+    await press('o', { ctrlKey: true })
+    const area = screen.getByRole('textbox', { name: 'Notes' }) as HTMLTextAreaElement
+    await press('t')
+    fireEvent.change(area, { target: { value: 't' } })
+    await flush()
+    expect(writes().filter((c) => String(c[1]).includes('/schedule'))).toEqual([])
+  })
+
   it('title: saves on Enter only when changed, reverts when empty, Esc reverts and blurs', async () => {
     await start('p', { projects: [node('p', [], { title: 'Parent' })] })
     const input = () => screen.getByRole('textbox', { name: 'Title' }) as HTMLInputElement
