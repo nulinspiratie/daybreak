@@ -198,6 +198,8 @@ function Notes({ task }: { task: Task }) {
     edit()
   })
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Already in the notes: keep the browser's own Ctrl+O (Open file) from firing.
+    if (e.ctrlKey && e.key.toLowerCase() === 'o') e.preventDefault()
     if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
       e.preventDefault()
       leave(e.currentTarget.value)
@@ -356,7 +358,7 @@ function Body({ found, today }: { found: Found; today: ISODate }) {
   )
 }
 
-const HINTS = [['Space', 'Done'], ['S', 'Doing'], ['W', 'Worked on'], ['X', 'Cancel'], ['Esc', 'Close']] as const
+const HINTS = [['Space', 'Done'], ['S', 'Doing'], ['W', 'Worked on'], ['X', 'Cancel'], ['Ctrl+O', 'Notes'], ['Esc', 'Close']] as const
 
 /** The task detail panel, standing where My Day is while `detailId` is set. */
 export function DetailPanel() {

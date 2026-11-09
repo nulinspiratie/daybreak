@@ -441,14 +441,24 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
     case 'nav.first':
     case 'nav.last':
       return navigate(env, cmd)
-    case 'pane.toggle':
+    case 'pane.toggle': {
       // The detail panel stands where My Day is: M closes it and shows My Day.
-      {
-        const pane = ui.detailId !== null ? 'day' : ui.pane === 'tree' ? 'day' : 'tree'
-        // A pane with no selection yet starts on its first row (none if it is empty).
-        const first = (pane === 'tree' ? ui.treeSel : ui.daySel) === null ? paneIdsFor(env, pane)[0] : undefined
-        return ui.set({ pane, ...(ui.detailId !== null && { detailId: null }), ...(first !== undefined && (pane === 'tree' ? { treeSel: first } : { daySel: first })) })
+      const pane = ui.detailId !== null || ui.pane === 'tree' ? 'day' : 'tree'
+      const patch: Partial<UiState> = { pane }
+      if (ui.detailId !== null) patch.detailId = null
+      // A pane whose selection is empty or no longer listed starts on its first row (none if it is empty).
+      const sel = pane === 'tree' ? ui.treeSel : ui.daySel
+      const ids = paneIdsFor(env, pane)
+      if ((sel === null || !ids.includes(sel)) && ids[0] !== undefined) patch[pane === 'tree' ? 'treeSel' : 'daySel'] = ids[0]
+      return ui.set(patch)
+    }
+    case 'detail.open':
+      // The panel is already open on a task: a second Ctrl+O edits its notes. The panel can show a task the
+      // tree selection is not on (opened from My Day, hidden under a collapsed parent), so that case counts too.
+      if (ui.detailId !== null && ui.pane === 'tree' && (ui.treeSel === ui.detailId || !treeRows(env).some((r) => r.id === ui.detailId))) {
+        return ui.set({ notesNonce: ui.notesNonce + 1 })
       }
+      break
     case 'escape':
       if (ui.detailId !== null) return ui.set({ detailId: null })
       return select(env, null)
@@ -543,7 +553,6 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       // The detail replaces My Day, so from there the task is selected in the tree. Hidden under a
       // collapsed parent, the detail still shows it and the tree selection stays where it is.
       if (ui.pane === 'day') return ui.set({ detailId: t.id, pane: 'tree', ...(treeRows(env).some((r) => r.id === t.id) && { treeSel: t.id }) })
-      if (ui.detailId === t.id) return ui.set({ notesNonce: ui.notesNonce + 1 })
       return ui.set({ detailId: t.id })
     case 'link.open':
       if (!t.task.link?.trim()) return

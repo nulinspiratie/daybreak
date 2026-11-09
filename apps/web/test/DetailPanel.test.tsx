@@ -277,6 +277,7 @@ describe('editing fields', () => {
     expect(document.activeElement).toBe(area)
     // Keys typed in the notes never reach the tree.
     for (const key of ['t', 'd', 'Tab', ' ', 'Delete', 'ArrowDown']) await press(key)
+    expect(ui().treeSel).toBe('p')
     fireEvent.change(area, { target: { value: 'old and new' } })
     await press('Escape')
     await flush()
@@ -288,14 +289,19 @@ describe('editing fields', () => {
     expect(ui().detailId).toBeNull()
   })
 
-  it('typing "t" in the notes editor opened by Ctrl+O does not schedule the task', async () => {
-    await start('p', { projects: [node('p', [], { title: 'Parent' })] })
-    await press('o', { ctrlKey: true })
-    const area = screen.getByRole('textbox', { name: 'Notes' }) as HTMLTextAreaElement
-    await press('t')
-    fireEvent.change(area, { target: { value: 't' } })
-    await flush()
-    expect(writes().filter((c) => String(c[1]).includes('/schedule'))).toEqual([])
+  describe.each([['another row', 'q'], ['nothing', null]])('opened from My Day for a task under a collapsed parent, tree selection on %s', (_name, sel) => {
+    it('a second Ctrl+O edits that task\'s notes', async () => {
+      const kid = node('c', [], { title: 'Kid', notes: 'kid notes' })
+      await start(null, { projects: [node('p', [kid], { title: 'Parent', collapsed: true }), node('q', [], { title: 'Other' })] })
+      act(() => ui().set({ pane: 'tree', treeSel: sel }))
+      await flush()
+      act(() => ui().set({ detailId: 'c' })) // as Ctrl+O from My Day leaves it: the tree selection did not follow
+      await flush()
+      await press('o', { ctrlKey: true })
+      expect(ui().detailId).toBe('c')
+      expect(ui().treeSel).toBe(sel)
+      expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Notes' }))
+    })
   })
 
   it('title: saves on Enter only when changed, reverts when empty, Esc reverts and blurs', async () => {

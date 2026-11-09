@@ -164,7 +164,7 @@ The bar: as good as an outliner like Logseq without touching the mouse. One lett
 | Mod+← / Mod+→ | Collapse / expand (tree only) |
 | Mod+↑ / Mod+↓ | Move up / down, children travel along (see "Moving with Mod+↑↓"). In My Day: reorder the day |
 | Tab / Shift+Tab | Indent / outdent (tree only; nothing in Inbox, which is flat) |
-| M | Jump between the tree and My Day (keeps each pane's last selection) |
+| M | Jump between the tree and My Day (keeps each pane's last selection; a pane with none, or whose selection is gone, selects its first row) |
 | Enter or F2 | Edit title |
 | N | New task below the selected one (tree) / focus the add field (My Day) |
 | T | Schedule today (append to the end of My Day) |
@@ -175,9 +175,9 @@ The bar: as good as an outliner like Logseq without touching the mouse. One lett
 | Space | Done / undone. On a task with open subtasks, see "Closing a parent" |
 | X | Cancel / reopen. Same double-press rule as Space |
 | Del | Delete the task and its subtree (undo toast) |
-| Ctrl+O | Open the detail panel |
+| Ctrl+O | Open the detail panel; again to edit its notes |
 | O | Open the task's link |
-| Esc | Close detail panel, cancel drag, clear selection |
+| Esc | Close detail panel, cancel drag, clear selection. In the notes: save and return to the tree with the panel still open; a second Esc closes it |
 | Ctrl+Z | Undo last change (stretch goal) |
 
 Plain letters (T, D, B, S, W, X, N, M, O) and Space work the same in the tree and My Day. Ctrl+N and Ctrl+1–9 are deliberately not used: browsers keep them for new window and tab switching, and the MVP runs in a browser tab. Ctrl+N can be added as an alias in the Tauri shell.

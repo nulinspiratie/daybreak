@@ -379,6 +379,24 @@ describe('navigation', () => {
     expect(ui()).toMatchObject({ pane: 'day', daySel: null })
   })
 
+  it('pane.toggle also selects the first row when the pane\'s selection is no longer listed', async () => {
+    ui().set({ pane: 'tree', treeSel: 'c1', daySel: 'gone' })
+    await run('pane.toggle')
+    expect(ui()).toMatchObject({ pane: 'day', daySel: 'd1' })
+  })
+
+  it('detail.open from My Day on a task hidden under a collapsed parent, then again, targets that task', async () => {
+    const kid = node('hk', [], { title: 'Hidden kid', scheduledOn: TODAY })
+    const hidden = flatten({ today: TODAY, inbox: [], projects: [node('hp', [kid], { title: 'Collapsed', collapsed: true })], hiddenCompletedCount: 0 })
+    const day = [dayItem(kid)]
+    ui().set({ pane: 'day', daySel: 'hk', treeSel: null, detailId: null })
+    await run('detail.open', { rows: hidden, dayItems: day })
+    expect(ui()).toMatchObject({ pane: 'tree', detailId: 'hk', treeSel: null })
+    const nonce = ui().notesNonce
+    await run('detail.open', { rows: hidden, dayItems: day })
+    expect(ui()).toMatchObject({ detailId: 'hk', notesNonce: nonce + 1 })
+  })
+
   it('My Day navigation walks the day items', async () => {
     select(null, 'day')
     await run('nav.down')
