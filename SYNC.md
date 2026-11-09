@@ -9,6 +9,11 @@ Newest at the bottom. Tick or strike items once we've talked them through.
 - [ ] **Windows run.** The final checks in PLAN.md Task 24 (fresh clone,
   `start.cmd`, keyboard-only checklist in Edge) need the work laptop. I'll do
   the same run on Linux with Chromium here; please do the Windows one.
+- [ ] **Links in notes on Windows.** Clicking an http(s) or mailto link in a
+  task's notes asks the server to open it with the system handler
+  (`explorer.exe <url>` on Windows). I can only test that on Linux. Please
+  check that a link opens in your default browser, and a mailto link in
+  Outlook.
 
 ## Calls I made
 
@@ -42,3 +47,8 @@ Newest at the bottom. Tick or strike items once we've talked them through.
 - The task detail panel (Ctrl+O) follows your selection: with it open, ↑/↓
   in the tree show the next task's details. Links in notes open through
   Daybreak's "open link" (your default browser or app), not inside the app.
+
+- **Images in notes are not loaded.** Markdown images show as link text, so
+  notes never fetch remote URLs (a fetch would leak to the image host that
+  you opened the task). Only http, https and mailto links are clickable;
+  others show as plain text.
