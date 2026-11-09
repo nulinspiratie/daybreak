@@ -35,6 +35,12 @@ To change the port or the time a day starts, edit `config.json` in that folder (
 
 Never put DAYBREAK_DATA_DIR inside the repo.
 
+### Install as an app
+
+With Daybreak open in Edge, choose **Install Daybreak** (the install icon at the right of the address bar, or `…` › Apps › Install this site as an app). It then opens in its own window with its own taskbar icon, and you can pin it. The server still has to be running: if it isn't, the window says so and opens Daybreak by itself once you start `start.cmd`. Nothing is stored offline; your tasks only ever come from the server.
+
+To remove it, open `edge://apps` and uninstall Daybreak. This doesn't touch your data.
+
 ## Development
 
 Use a scratch data folder, never the real one; `bun run seed` refuses to run without `DAYBREAK_DATA_DIR`. It fills a fresh folder with fictional tasks.

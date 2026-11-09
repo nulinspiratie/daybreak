@@ -38,6 +38,14 @@ async function check(): Promise<void> {
   if (page.status !== 200 || !html.includes('<div id="root">'))
     throw new Error(`GET / returned ${page.status}`)
 
+  const manifest = await fetch(`${base}/manifest.webmanifest`)
+  if (manifest.status !== 200 || ((await manifest.json()) as { name?: string }).name !== 'Daybreak')
+    throw new Error(`/manifest.webmanifest returned ${manifest.status}`)
+  const sw = await fetch(`${base}/sw.js`)
+  // Registered as a classic script, so the build must not leave module syntax in it.
+  if (sw.status !== 200 || /^(import|export)\b/m.test(await sw.text()))
+    throw new Error(`/sw.js returned ${sw.status} or contains import/export`)
+
   const token = readFileSync(join(dataDir, 'token'), 'utf8').trim()
   const auth = { Authorization: `Bearer ${token}` }
   const ping = await fetch(`${base}/api/ping`, { headers: auth })
@@ -46,7 +54,9 @@ async function check(): Promise<void> {
   if (unauth.status !== 401) throw new Error(`/api/ping without a token returned ${unauth.status}`)
   const status = await fetch(`${base}/api/status`, { headers: auth })
   if (status.status !== 200) throw new Error(`/api/status returned ${status.status}`)
-  console.log('Smoke test passed: page, ping, token check and status all answer.')
+  console.log(
+    'Smoke test passed: page, manifest, service worker, ping, token check and status all answer.',
+  )
 }
 
 let failed = false

@@ -19,6 +19,8 @@ beforeAll(async () => {
     '<!doctype html><title>Built</title><div id="root"></div>',
   )
   writeFileSync(join(dist, 'assets', 'app.js'), 'console.log(1)')
+  writeFileSync(join(dist, 'manifest.webmanifest'), '{"name":"Daybreak"}')
+  writeFileSync(join(dist, 'sw.js'), 'self.addEventListener("fetch", () => {})')
   writeFileSync(join(dist, '..', 'daybreak-secret.txt'), 'secret')
   const db = await openDatabase(':memory:')
   migrate(db)
@@ -61,6 +63,15 @@ describe('static web app', () => {
     expect(res.status).toBe(200)
     expect(await res.text()).toBe('console.log(1)')
     expect(res.headers.get('content-type')).toMatch(/javascript/)
+  })
+
+  it('serves the web app manifest and service worker from the root, without a token', async () => {
+    const manifest = await request('/manifest.webmanifest')
+    expect(manifest.status).toBe(200)
+    expect(manifest.headers.get('content-type')).toMatch(/^application\/manifest\+json/)
+    const sw = await request('/sw.js')
+    expect(sw.status).toBe(200)
+    expect(sw.headers.get('content-type')).toMatch(/javascript/)
   })
 
   it('still applies the Host check to assets', async () => {
