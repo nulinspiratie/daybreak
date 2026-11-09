@@ -41,7 +41,7 @@ All text meets 4.5:1 contrast, including the palest day labels. Keep it that way
 ## Main window
 
 - Target 1440 × 900. Must work at 1280 × 720 and snapped to half the screen.
-- Custom title bar, 40 px: app icon (blue rounded square with a tick), app name, today's date, an "Add to My Day" button showing Ctrl+Alt+Space, a "Morning review" button, then Windows-style minimise / maximise / close (46 × 40 each).
+- Custom title bar, 40 px: app icon (a sun rising over a horizon on a dawn-sky rounded square; `apps/web/public/daybreak-small.svg` at this size, `daybreak.svg` from 32 px up), app name, today's date, an "Add to My Day" button showing Ctrl+Alt+Space, a "Morning review" button, then Windows-style minimise / maximise / close (46 × 40 each).
 - Body: **tree on the left (~60%)**, **My Day on the right (~40%)**.
 - **Task detail opens in place of My Day**, so the tree never shrinks. Esc returns to My Day.
 - A bar of key hints sits under the tree: Enter Edit · N New · Tab Indent · Ctrl+↑↓ Move · Ctrl+←→ Fold · M My Day · T Today · D Day · B Backlog · S Doing · W Worked on · Space Done · X Cancel · Del Delete · Ctrl+O Details. It shows the edit-mode hints (Enter New below · Tab Indent · Esc Done) while a title is being edited.

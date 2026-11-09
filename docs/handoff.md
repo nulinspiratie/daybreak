@@ -82,3 +82,9 @@ Newest at the bottom. Tick or strike items once we've talked them through.
     soft), but the app has no other way to bring them back yet.
   - If you set the day to start between 02:00 and 03:00, the night the
     clocks go back can count as the wrong day. The default (04:00) is fine.
+- The app icon is now a sunrise (you asked for one) in place of design.md's
+  blue square with a tick. `apps/web/public/daybreak.svg` is the source;
+  `daybreak-small.svg` is a simpler version for 16–24 px (title bar, small
+  .ico frames) and `favicon.ico` holds 16–256 px. Phase 6 can feed
+  `daybreak.svg` to `tauri icon`. Until then you can point a `start.cmd`
+  shortcut's icon at `favicon.ico`.
