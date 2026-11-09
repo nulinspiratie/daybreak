@@ -75,3 +75,10 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   only be reached by clicking.)
 - The first time you press M, My Day selects its top row, so the next key
   acts on something straight away.
+- Two small gaps I left for later:
+  - If the server is down at the moment you press Z to undo a delete, the
+    "Couldn't save" toast replaces the Undo toast, so Z can't retry once the
+    server is back. The deleted tasks are still in the database (deletes are
+    soft), but the app has no other way to bring them back yet.
+  - If you set the day to start between 02:00 and 03:00, the night the
+    clocks go back can count as the wrong day. The default (04:00) is fine.
