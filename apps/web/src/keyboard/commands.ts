@@ -235,8 +235,8 @@ type Editing = NonNullable<UiState['editing']>
 
 const blank = (text: string) => text.trim() === ''
 
-function openDraft(env: CommandEnv, draft: Draft): void {
-  env.ui.set({ draft, editing: { id: DRAFT_ID, initial: '', text: '' }, treeSel: DRAFT_ID })
+function openDraft(env: CommandEnv, draft: Draft, text = ''): void {
+  env.ui.set({ draft, editing: { id: DRAFT_ID, initial: '', text }, treeSel: DRAFT_ID })
 }
 
 function editRow(env: CommandEnv, row: FlatRow): void {
@@ -337,7 +337,7 @@ async function editDraft(cmd: Command, env: CommandEnv, d: Draft, text: string):
       // Inbox is flat. The draft becomes the last child of its previous sibling, expanded to show it.
       const prev = i < 0 || d.section === 'inbox' ? undefined : previousSibling(rows, i)
       if (!prev) return
-      openDraft(env, { section: 'projects', parentId: prev.id })
+      openDraft(env, { section: 'projects', parentId: prev.id }, text)
       if (!prev.node.collapsed) return
       env.cache.update(prev.id, { collapsed: false })
       await env.mutate(() => env.api.send('PATCH', taskPath(prev.id), { collapsed: false }))
@@ -346,7 +346,7 @@ async function editDraft(cmd: Command, env: CommandEnv, d: Draft, text: string):
     case 'outdent': {
       const parent = d.parentId === null ? undefined : rows.find((r) => r.id === d.parentId)
       if (!parent) return
-      openDraft(env, { section: d.section, parentId: parent.parentId, afterId: parent.id })
+      openDraft(env, { section: d.section, parentId: parent.parentId, afterId: parent.id }, text)
       return
     }
     default:

@@ -310,6 +310,21 @@ describe('drafts', () => {
     expect(titlesUnder('c1')).toEqual(['nested'])
   })
 
+  it('Tab and Shift+Tab keep the text already typed in a draft', async () => {
+    await start('c1')
+    await press('n')
+    await type('Design')
+    await press('Tab')
+    expect(ui().draft).toMatchObject({ parentId: 'c1', section: 'projects' })
+    expect((editor() as HTMLInputElement).value).toBe('Design')
+    await press('Tab', { shiftKey: true })
+    expect(ui().draft).toMatchObject({ parentId: 'p1', section: 'projects', afterId: 'c1' })
+    expect((editor() as HTMLInputElement).value).toBe('Design')
+    await press('Escape')
+    await settle()
+    expect(writes()).toEqual([['POST', '/api/tasks', { title: 'Design', section: 'projects', parentId: 'p1', afterId: 'c1' }]])
+  })
+
   it('Shift+Tab on a draft moves it to the grandparent, after the old parent', async () => {
     await start('c2')
     await press('n')
