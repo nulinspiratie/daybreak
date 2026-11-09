@@ -57,7 +57,7 @@ export function createKeyHandler(run: (cmd: Command) => void): (e: KeyboardEvent
   return (e) => {
     if (e.isComposing || e.defaultPrevented) return
     const ui = useUi.getState()
-    if (ui.reviewOpen) return
+    if (ui.reviewOpen || ui.picker) return // the review and the day picker own their keys
     const el = e.target instanceof HTMLElement ? e.target : null
     if (el && isTextField(el) && !el.closest('[data-title-editor]')) return
     if (el && (e.key === ' ' || e.key === 'Enter') && el.closest('button, a')) return

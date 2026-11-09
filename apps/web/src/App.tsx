@@ -1,6 +1,7 @@
 import { useDrainInvalidation, useLiveUpdates } from './api/hooks'
 import { useKeyboard } from './keyboard/useKeyboard'
 import { MyDayPane } from './myday/MyDayPane'
+import { PickerHost } from './picker/PickerHost'
 import { ConfirmLive } from './shell/ConfirmNote'
 import { TitleBar } from './shell/TitleBar'
 import { Toast } from './shell/Toast'
@@ -17,6 +18,7 @@ export function App() {
         <TreePane />
         <MyDayPane />
       </div>
+      <PickerHost />
       <Toast />
       <ConfirmLive />
     </div>

@@ -79,7 +79,7 @@ export function TreePane() {
   )
   const onScheduleToday = useCallback((id: string) => onRowCommand(id, 'schedule.today'), [onRowCommand])
   const onDoing = useCallback((id: string) => onRowCommand(id, 'mark.doing'), [onRowCommand])
-  const onPickDay = useCallback((_id: string) => {}, []) // Task 19
+  const onPickDay = useCallback((id: string) => onRowCommand(id, 'schedule.pick'), [onRowCommand])
   // Same as N: a draft after the selected task's subtree, or at the end of Inbox.
   const onNewTask = useCallback(() => {
     setUi({ pane: 'tree' })

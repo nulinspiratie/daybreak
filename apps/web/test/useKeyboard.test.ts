@@ -23,7 +23,7 @@ beforeEach(() => {
   run = vi.fn<(cmd: Command) => void>()
   handler = createKeyHandler((cmd) => run(cmd))
   window.addEventListener('keydown', handler)
-  useUi.getState().set({ pane: 'tree', treeSel: 't1', daySel: null, editing: null, confirm: null, reviewOpen: false })
+  useUi.getState().set({ pane: 'tree', treeSel: 't1', daySel: null, editing: null, confirm: null, reviewOpen: false, picker: null })
 })
 afterEach(() => {
   window.removeEventListener('keydown', handler)
@@ -67,6 +67,14 @@ describe('the global keydown filter', () => {
     useUi.getState().set({ reviewOpen: true })
     press(document.body, ' ')
     expect(run).not.toHaveBeenCalled()
+  })
+
+  it('stands aside while the day picker is open', () => {
+    useUi.getState().set({ picker: { taskId: 't1', allowNoDay: true } })
+    press(document.body, 'd')
+    press(document.body, 'ArrowDown')
+    expect(run).not.toHaveBeenCalled()
+    useUi.getState().set({ picker: null })
   })
 
   it('ignores text fields other than a row title editor', () => {

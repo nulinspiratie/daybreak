@@ -100,6 +100,12 @@ function navigate(env: CommandEnv, cmd: 'nav.up' | 'nav.down' | 'nav.first' | 'n
   select(env, ids[j]!)
 }
 
+/** The day picker's choice: schedule at the end of that day, or take the task off its day (null). Picking the current day does nothing, like T. */
+export function pickDay(env: Pick<CommandEnv, 'api' | 'mutate'>, t: Task, date: ISODate | null): Promise<unknown> {
+  if (t.scheduledOn === date) return Promise.resolve()
+  return env.mutate(() => env.api.send('POST', taskPath(t.id, '/schedule'), { date }))
+}
+
 /** My Day: move one slot within today's order, read fresh inside the queue so quick presses stay correct. */
 async function moveInDay(env: CommandEnv, id: string, dir: 'up' | 'down'): Promise<void> {
   await env.mutate(async () => {
@@ -395,7 +401,6 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
     case 'edit.next':
     case 'edit.deleteEmpty':
     case 'edit.exit':
-    case 'schedule.pick': // the day picker (Task 19) owns D
       return
   }
 
@@ -442,6 +447,9 @@ export async function runCommand(cmd: Command, env: CommandEnv): Promise<void> {
       if (t.task.scheduledOn === env.today) return
       await mutate(() => api.send('POST', taskPath(t.id, '/schedule'), { date: env.today }))
       return
+    case 'schedule.pick':
+      // Not from the tree's day-less My Day: B already takes a task off today there.
+      return ui.set({ picker: { taskId: t.id, allowNoDay: ui.pane === 'tree' } })
     case 'schedule.backlog':
       if (t.task.scheduledOn === null) return
       if (ui.pane === 'day') select(env, neighbourAfterRemoval(env, t))

@@ -426,12 +426,28 @@ describe('scheduling, marks, detail and link', () => {
     ])
   })
 
-  it('detail.open sets detailId; schedule.pick is a no-op until the day picker', async () => {
+  it('detail.open sets detailId', async () => {
     select('c2')
     await run('detail.open')
     expect(ui().detailId).toBe('c2')
+  })
+
+  it('schedule.pick opens the picker for the selection: with No day from the tree, without it from My Day', async () => {
+    select('c2')
     await run('schedule.pick')
+    expect(ui().picker).toEqual({ taskId: 'c2', allowNoDay: true })
+    useUi.getState().set({ picker: null })
+    select('d1', 'day')
+    await run('schedule.pick')
+    expect(ui().picker).toEqual({ taskId: 'd1', allowNoDay: false })
     expect(calls).toEqual([])
+    useUi.getState().set({ picker: null })
+  })
+
+  it('schedule.pick with nothing selected does nothing', async () => {
+    select(null)
+    await run('schedule.pick')
+    expect(ui().picker).toBeNull()
   })
 
   it('link.open asks the server to open the link only when there is one', async () => {

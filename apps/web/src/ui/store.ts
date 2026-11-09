@@ -19,6 +19,8 @@ export interface UiState {
   detailId: string | null
   showCompleted: boolean
   reviewOpen: boolean
+  /** The day picker (D), floated over the panes by PickerHost. `allowNoDay` is true from the tree only. */
+  picker: { taskId: string; allowNoDay: boolean } | null
   /** Bumped by the title bar's "Add to My Day"; the My Day add field (Task 18) reacts to it. */
   dayAddNonce: number
   focusDayAdd: () => void
@@ -87,6 +89,7 @@ export const useUi = create<UiState>((set) => ({
   detailId: null,
   showCompleted: false,
   reviewOpen: false,
+  picker: null,
   dayAddNonce: 0,
   focusDayAdd: () => set((s) => ({ dayAddNonce: s.dayAddNonce + 1 })),
   replaceId: (from, to) => set((s) => withId(s, from, to)),
