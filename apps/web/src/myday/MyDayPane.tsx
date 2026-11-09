@@ -1,9 +1,11 @@
-import { Fragment, useCallback, useEffect } from 'react'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { Fragment, useCallback, useEffect, useMemo } from 'react'
 import { useDay, useStatus } from '../api/hooks'
 import type { Command } from '../keyboard/keymap'
 import { useCommandRunner } from '../keyboard/useKeyboard'
 import { CONFIRM_NOTE_ID, ConfirmNote } from '../shell/ConfirmNote'
 import { longDate } from '../shell/TitleBar'
+import { DragRow, dndId, type Indicator, useDrag, usePaneDrop } from '../tree/Dnd'
 import { useUi } from '../ui/store'
 import { AddField } from './AddField'
 import { DayRow } from './DayRow'
@@ -16,8 +18,22 @@ export function MyDayPane() {
   const confirmId = useUi((s) => (s.pane === 'day' ? s.confirm?.id : undefined))
   const setUi = useUi((s) => s.set)
   const runCommand = useCommandRunner()
+  const dragOff = useUi((s) => s.editing !== null || s.picker !== null)
+  const drag = useDrag()
+  const paneDrop = usePaneDrop('day')
 
   const items = day?.items ?? []
+  const dndIds = useMemo(() => items.map((i) => dndId('day', i.task.id)), [items])
+  // The insertion line: on the dragged row itself as the list sorts (within My Day), else on a
+  // neighbour of the slot (a task from the tree).
+  const at = drag.over === 'day' ? drag.day : null
+  const indicator = (id: string): Indicator | undefined => {
+    if (!at || !drag.active) return undefined
+    if (drag.active.pane === 'day') return drag.active.id === id ? { depth: 'full' } : undefined
+    if (at.beforeId === id) return { depth: 'full' }
+    if (at.afterId === id) return { depth: 'full', at: 'bottom' }
+    return undefined
+  }
   // Core's numbers: cancelled items are left out of both.
   const done = day?.doneCount ?? 0
   const total = day?.totalCount ?? 0
@@ -48,7 +64,7 @@ export function MyDayPane() {
   )
 
   return (
-    <section className="pane pane--day" aria-label="My Day">
+    <section ref={paneDrop} className="pane pane--day" aria-label="My Day">
       <div className="dayhead">
         <div className="dayhead__title">
           <h2>My Day</h2>
@@ -72,21 +88,31 @@ export function MyDayPane() {
 
       <div className="daybody">
         <div className="daylist" role="list" aria-label="Today's tasks">
-          {items.map((item) => (
-            <Fragment key={item.task.id}>
-              <DayRow
-                item={item}
-                selected={daySel === item.task.id}
-                editing={editingId === item.task.id}
-                onSelect={onSelect}
-                onToggleDone={onToggleDone}
-                onDoing={onDoing}
-                onLeaveEdit={onLeaveEdit}
-                describedBy={confirmId === item.task.id ? CONFIRM_NOTE_ID : undefined}
-              />
-              {confirmId === item.task.id && <ConfirmNote />}
-            </Fragment>
-          ))}
+          <SortableContext items={dndIds} strategy={verticalListSortingStrategy}>
+            {items.map((item) => (
+              <Fragment key={item.task.id}>
+                <DragRow
+                  pane="day"
+                  id={item.task.id}
+                  disabled={dragOff}
+                  indicator={indicator(item.task.id)}
+                  activeClass="dragrow--source"
+                >
+                  <DayRow
+                    item={item}
+                    selected={daySel === item.task.id}
+                    editing={editingId === item.task.id}
+                    onSelect={onSelect}
+                    onToggleDone={onToggleDone}
+                    onDoing={onDoing}
+                    onLeaveEdit={onLeaveEdit}
+                    describedBy={confirmId === item.task.id ? CONFIRM_NOTE_ID : undefined}
+                  />
+                </DragRow>
+                {confirmId === item.task.id && <ConfirmNote />}
+              </Fragment>
+            ))}
+          </SortableContext>
         </div>
         <AddField today={today} />
         <div className="dayspace" />

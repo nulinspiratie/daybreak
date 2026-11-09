@@ -2,7 +2,7 @@ import type { DayItem, TreeNode, TreeView } from '@daybreak/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/api/client'
 import { createMutationQueue } from '../src/api/queue'
-import { type CommandEnv, confirmNoteText, runCommand } from '../src/keyboard/commands'
+import { type CommandEnv, confirmNoteText, moveTo, runCommand, scheduleAt } from '../src/keyboard/commands'
 import { TOAST_MS, toast, toastText, useToastStore } from '../src/shell/toastStore'
 import { flatten } from '../src/tree/flatten'
 import type { TreeCache } from '../src/tree/optimistic'
@@ -39,7 +39,7 @@ const fake = createFakeApi()
 const { calls } = fake
 const queue = () => createMutationQueue()
 let q = queue()
-const noCache: TreeCache = { insert: () => {}, update: () => {}, created: () => {}, remove: () => {} }
+const noCache: TreeCache = { insert: () => {}, update: () => {}, created: () => {}, remove: () => {}, move: () => {}, moveInDay: () => {} }
 
 function env(over: Partial<CommandEnv> = {}): CommandEnv {
   return {
@@ -480,5 +480,34 @@ describe('toast store', () => {
     vi.advanceTimersByTime(1)
     expect(toast.current()).toBeNull()
     expect(TOAST_MS).toBe(8000)
+  })
+})
+
+describe('drag and drop writes', () => {
+  it('moveTo sends the move, then opens a collapsed new parent when asked', async () => {
+    await moveTo(env(), 'c5', { parentId: 'p2', section: 'projects', afterId: 'k2' }, true)
+    await moveTo(env(), 'c5', { parentId: null, section: 'projects', beforeId: 'p1' })
+    expect(calls).toEqual([
+      ['POST', '/api/tasks/c5/move', { parentId: 'p2', section: 'projects', afterId: 'k2' }],
+      ['PATCH', '/api/tasks/p2', { collapsed: false }],
+      ['POST', '/api/tasks/c5/move', { parentId: null, section: 'projects', beforeId: 'p1' }],
+    ])
+  })
+
+  it('a refused move does not open the parent', async () => {
+    fake.reply = () => {
+      throw new ApiError(400, 'invalid', 'A task cannot move under itself or its own descendant')
+    }
+    await expect(moveTo(env(), 'p1', { parentId: 'c1', section: 'projects' }, true)).rejects.toThrow(ApiError)
+    expect(calls).toHaveLength(1)
+  })
+
+  it('scheduleAt schedules on the day next to a neighbour', async () => {
+    await scheduleAt(env(), 'c5', TODAY, { beforeId: 'd2' })
+    await scheduleAt(env(), 'd3', TODAY, {})
+    expect(calls).toEqual([
+      ['POST', '/api/tasks/c5/schedule', { date: TODAY, beforeId: 'd2' }],
+      ['POST', '/api/tasks/d3/schedule', { date: TODAY }],
+    ])
   })
 })

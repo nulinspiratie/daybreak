@@ -23,6 +23,8 @@ export interface UiState {
   picker: { taskId: string; allowNoDay: boolean } | null
   /** True once the picker's card is on screen. Until then the global keys still work, except Esc closes it. */
   pickerShown: boolean
+  /** True while a row is being dragged; the global keys stand aside. */
+  dragging: boolean
   /** Bumped by the title bar's "Add to My Day"; the My Day add field (Task 18) reacts to it. */
   dayAddNonce: number
   focusDayAdd: () => void
@@ -93,6 +95,7 @@ export const useUi = create<UiState>((set) => ({
   reviewOpen: false,
   picker: null,
   pickerShown: false,
+  dragging: false,
   dayAddNonce: 0,
   focusDayAdd: () => set((s) => ({ dayAddNonce: s.dayAddNonce + 1 })),
   replaceId: (from, to) => set((s) => withId(s, from, to)),

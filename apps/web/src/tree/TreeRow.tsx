@@ -23,9 +23,12 @@ export interface TreeRowProps {
   editing?: boolean
   /** The user left the title editor: save and return to navigate mode. */
   onLeaveEdit?: (id: string) => void
+  /** Being dragged over My Day: a dashed "Today" in the day column previews the drop. */
+  previewToday?: boolean
 }
 
-function stateOf(row: FlatRow): RowState {
+/** The look of a row's checkbox and title. */
+export function stateOf(row: FlatRow): RowState {
   const { status, mark } = row.node
   if (status !== 'open') return status
   return mark ?? 'open'
@@ -33,7 +36,7 @@ function stateOf(row: FlatRow): RowState {
 
 const noop = () => {}
 
-const GUIDE_DOTS = (
+export const GUIDE_DOTS = (
   <svg width="8" height="12" viewBox="0 0 8 12" aria-hidden="true">
     {[2, 6, 10].flatMap((y) => [2, 6].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1" fill="currentColor" />))}
   </svg>
@@ -71,7 +74,7 @@ export const TreeRow = memo(function TreeRow(p: TreeRowProps) {
       data-id={row.id}
       onClick={() => p.onSelect(row.id)}
     >
-      <DayCell date={node.scheduledOn} today={p.today} closed={closed} />
+      <DayCell date={node.scheduledOn} today={p.today} closed={closed} preview={p.previewToday} />
       <span className="row__handle" aria-hidden="true">{GUIDE_DOTS}</span>
       <span className="row__indent" aria-hidden="true" style={{ width: depth * 22 }} />
       {row.hasChildren ? (

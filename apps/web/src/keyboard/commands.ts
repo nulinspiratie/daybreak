@@ -1,4 +1,4 @@
-import type { DayItem, DayView, ISODate, Task } from '@daybreak/core'
+import type { DayItem, DayView, ISODate, MoveTarget, Task } from '@daybreak/core'
 import { ApiError, type api } from '../api/client'
 import type { useMutate } from '../api/hooks'
 import type { ToastApi } from '../shell/toastStore'
@@ -104,6 +104,24 @@ function navigate(env: CommandEnv, cmd: 'nav.up' | 'nav.down' | 'nav.first' | 'n
 export function pickDay(env: Pick<CommandEnv, 'api' | 'mutate'>, t: Task, date: ISODate | null): Promise<unknown> {
   if (t.scheduledOn === date) return Promise.resolve()
   return env.mutate(() => env.api.send('POST', taskPath(t.id, '/schedule'), { date }))
+}
+
+/** Drag and drop in the tree: the task and its subtree go to `to` (POST /move), then `expand` opens the new parent. */
+export function moveTo(env: Pick<CommandEnv, 'api' | 'mutate'>, id: string, to: MoveTarget, expand = false): Promise<unknown> {
+  return env.mutate(async () => {
+    await env.api.send('POST', taskPath(id, '/move'), to)
+    if (expand && to.parentId !== null) await env.api.send('PATCH', taskPath(to.parentId), { collapsed: false })
+  })
+}
+
+/** Drag and drop into My Day: schedule on `date` next to `at.afterId` or `at.beforeId` (at the end with neither). */
+export function scheduleAt(
+  env: Pick<CommandEnv, 'api' | 'mutate'>,
+  id: string,
+  date: ISODate,
+  at: { afterId?: string; beforeId?: string },
+): Promise<unknown> {
+  return env.mutate(() => env.api.send('POST', taskPath(id, '/schedule'), { date, ...at }))
 }
 
 /** My Day: move one slot within today's order, read fresh inside the queue so quick presses stay correct. */

@@ -1128,3 +1128,163 @@ kbd {
 .picker__status {
   color: var(--text3);
 }
+
+/* ---- Drag and drop ---- */
+
+.dragrow {
+  position: relative;
+}
+
+/* The dragged row stays as a faded placeholder in the slot it would take. */
+.dragrow--source .row {
+  opacity: 0.35;
+  background: none;
+  box-shadow: none;
+}
+
+.dragrow--source .cb {
+  border-style: dashed;
+}
+
+/* Dragged over My Day, the tree row stays put. */
+.dragrow--origin .row {
+  background: var(--hover);
+  box-shadow: inset 0 0 0 1px var(--line2);
+}
+
+.dropline {
+  position: absolute;
+  z-index: 1;
+  top: -1px;
+  /* The row's checkbox x: padding 2, day 48, handle 14, chevron 16 and four 6 px gaps, plus 22 per level. */
+  left: calc(126px + var(--depth, 0) * 22px);
+  right: 20px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.dropline:not(.dropline--full)::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 2px solid var(--accent);
+  border-radius: 5px;
+  background: var(--pane);
+}
+
+/* My Day: between rows, in the list's 2 px gap. */
+.dropline--full {
+  left: 4px;
+  right: 4px;
+  top: -2px;
+}
+
+.dropline--bottom {
+  top: auto;
+  bottom: -2px;
+}
+
+.dragcard {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  max-width: 420px;
+  height: 28px;
+  /* Lines the card's checkbox (46 px in) up with the row's (126 px in, plus 22 per level). */
+  margin: -1px 0 0 calc(80px + var(--depth, 0) * 22px);
+  padding: 0 10px 0 4px;
+  border-radius: 6px;
+  background: var(--pane);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--line);
+  color: var(--text);
+  font-size: 13px;
+  transform: rotate(-0.6deg);
+  cursor: grabbing;
+}
+
+.dragcard .row__handle {
+  opacity: 1;
+  color: var(--text2);
+}
+
+.dragcard .row__chev {
+  flex: none;
+}
+
+.dragcard__title {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dragcard__badge {
+  flex: none;
+  font-size: 11px;
+  color: var(--text3);
+}
+
+/* Over My Day the card takes a My Day row's shape. */
+.dragcard--day {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 1px;
+  width: 240px;
+  height: auto;
+  margin: 0;
+  padding: 6px 10px;
+  transform: none;
+  cursor: copy;
+}
+
+.dragcard--fill {
+  width: auto;
+  height: 46px;
+  cursor: grabbing;
+}
+
+.dragcard__path {
+  font-size: 10.5px;
+  color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dragcard--day .dragcard__title {
+  font-size: 12.5px;
+}
+
+/* The dashed chip previews the Today label a drop into My Day gives the row. */
+.day__preview {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.droplabel {
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text2);
+}
+
+.droplabel__level {
+  display: inline-flex;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--accentSoft);
+  color: var(--accent);
+  font-weight: 600;
+}

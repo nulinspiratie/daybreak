@@ -1,4 +1,5 @@
 import type { TreeNode } from '@daybreak/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Fragment, useCallback, useMemo, useRef } from 'react'
 import { api } from '../api/client'
 import { useMutate, useStatus, useTree } from '../api/hooks'
@@ -7,8 +8,10 @@ import { useCommandRunner } from '../keyboard/useKeyboard'
 import { CONFIRM_NOTE_ID, ConfirmNote } from '../shell/ConfirmNote'
 import { KeyHints } from '../shell/KeyHints'
 import { useUi } from '../ui/store'
+import { DragRow, DropLabel, dndId, useDrag, usePaneDrop } from './Dnd'
 import { flatten, type FlatRow } from './flatten'
 import { rowKey } from './optimistic'
+import { withoutDescendants } from './projectDrop'
 import { TreeRow } from './TreeRow'
 
 function expandedParents(nodes: TreeNode[], out: string[] = []): string[] {
@@ -38,13 +41,20 @@ export function TreePane() {
   const editingId = useUi((s) => (s.pane === 'tree' ? s.editing?.id : undefined))
   const confirmId = useUi((s) => (s.pane === 'tree' ? s.confirm?.id : undefined))
   const setUi = useUi((s) => s.set)
+  const dragOff = useUi((s) => s.editing !== null || s.picker !== null)
+  const drag = useDrag()
+  const paneDrop = usePaneDrop('tree')
   const { data: tree, isError } = useTree(showCompleted ? 'all' : 'recent')
   const { data: status } = useStatus()
   const mutate = useMutate()
   const runCommand = useCommandRunner()
   const today = status?.today ?? tree?.today ?? ''
 
-  const rows = useMemo(() => (tree ? flatten(tree, draft) : []), [tree, draft])
+  const allRows = useMemo(() => (tree ? flatten(tree, draft) : []), [tree, draft])
+  // A dragged parent's children travel in the card under the pointer.
+  const dragged = drag.active?.pane === 'tree' ? drag.active.id : null
+  const rows = useMemo(() => (dragged ? withoutDescendants(allRows, dragged) : allRows), [allRows, dragged])
+  const dndIds = useMemo(() => rows.map((r) => dndId('tree', r.id)), [rows])
 
   const run = useCallback(
     (fn: () => Promise<unknown>) => {
@@ -55,8 +65,8 @@ export function TreePane() {
 
   // Handlers read the latest rows through a ref so their identity never changes
   // and memoised rows are not re-rendered by selection changes.
-  const latest = useRef({ rows })
-  latest.current = { rows }
+  const latest = useRef({ rows: allRows })
+  latest.current = { rows: allRows }
   const find = (id: string): TreeNode | undefined => latest.current.rows.find((r) => r.id === id)?.node
 
   const onSelect = useCallback((id: string) => setUi({ treeSel: id, pane: 'tree' }), [setUi])
@@ -100,33 +110,45 @@ export function TreePane() {
   }
 
   const inboxOpen = tree ? tree.inbox.filter((n) => n.status === 'open').length : 0
-  const renderRow = (r: FlatRow) => (
-    // Keyed by the placeholder a new row was first shown under, so it isn't remounted (and its
-    // editor reset) when the server's answer gives it its real id.
-    <Fragment key={rowKey(r.id)}>
-      <TreeRow
-        row={r}
-        today={today}
-        selected={treeSel === r.id}
-        onSelect={onSelect}
-        onToggleCollapse={onToggleCollapse}
-        onToggleDone={onToggleDone}
-        onScheduleToday={onScheduleToday}
-        onDoing={onDoing}
-        onPickDay={onPickDay}
-        describedBy={confirmId === r.id ? CONFIRM_NOTE_ID : undefined}
-        editing={editingId === r.id}
-        onLeaveEdit={onLeaveEdit}
-      />
-      {confirmId === r.id && <ConfirmNote depth={r.depth} />}
-    </Fragment>
-  )
+  const renderRow = (r: FlatRow) => {
+    const isDragged = r.id === dragged
+    return (
+      // Keyed by the placeholder a new row was first shown under, so it isn't remounted (and its
+      // editor reset) when the server's answer gives it its real id.
+      <Fragment key={rowKey(r.id)}>
+        <DragRow
+          pane="tree"
+          id={r.id}
+          disabled={dragOff || r.isDraft === true}
+          indicator={isDragged && drag.over === 'tree' && drag.tree ? { depth: drag.tree.depth } : undefined}
+          activeClass={drag.over === 'day' ? 'dragrow--origin' : 'dragrow--source'}
+        >
+          <TreeRow
+            row={r}
+            today={today}
+            selected={treeSel === r.id}
+            onSelect={onSelect}
+            onToggleCollapse={onToggleCollapse}
+            onToggleDone={onToggleDone}
+            onScheduleToday={onScheduleToday}
+            onDoing={onDoing}
+            onPickDay={onPickDay}
+            describedBy={confirmId === r.id ? CONFIRM_NOTE_ID : undefined}
+            editing={editingId === r.id}
+            onLeaveEdit={onLeaveEdit}
+            previewToday={isDragged && drag.over === 'day'}
+          />
+        </DragRow>
+        {confirmId === r.id && <ConfirmNote depth={r.depth} />}
+      </Fragment>
+    )
+  }
 
   const firstProject = rows.findIndex((r) => r.section === 'projects')
   const projectsAt = firstProject < 0 ? rows.length : firstProject
 
   return (
-    <section className="pane pane--tree" aria-label="Task tree">
+    <section ref={paneDrop} className="pane pane--tree" aria-label="Task tree">
       <div className="pane__head tree__head">
         <h1>Tasks</h1>
         <span className="tree__grow" />
@@ -164,15 +186,15 @@ export function TreePane() {
         {isError && <p className="tree__msg">Could not load tasks.</p>}
         {!tree && !isError && <p className="tree__msg">Loading…</p>}
         {tree && (
-          <>
+          <SortableContext items={dndIds} strategy={verticalListSortingStrategy}>
             <SectionHead title="Inbox" count={inboxOpen} />
             {rows.slice(0, projectsAt).map(renderRow)}
             <SectionHead title="Projects" count={tree.projects.length} />
             {rows.slice(projectsAt).map(renderRow)}
-          </>
+          </SortableContext>
         )}
       </div>
-      <KeyHints />
+      {drag.over === 'tree' && drag.tree ? <DropLabel label={drag.tree.label} /> : <KeyHints />}
     </section>
   )
 }

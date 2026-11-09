@@ -133,6 +133,47 @@ export function removeNode(view: TreeView, id: string): TreeView {
   return inbox === view.inbox && projects === view.projects ? view : { ...view, inbox, projects }
 }
 
+/** `view` with task `id` and its subtree taken out, or undefined if it is not there. */
+function detach(view: TreeView, id: string): { view: TreeView; node: TreeNode } | undefined {
+  let found: TreeNode | undefined
+  const drop = (list: TreeNode[]): TreeNode[] => {
+    const i = list.findIndex((n) => n.id === id)
+    if (i >= 0) {
+      found = list[i]
+      return [...list.slice(0, i), ...list.slice(i + 1)]
+    }
+    return list.map((n) => {
+      const children = drop(n.children)
+      return children === n.children ? n : { ...n, children, totalCount: n.totalCount - 1 }
+    })
+  }
+  const inbox = drop(view.inbox)
+  const projects = drop(view.projects)
+  return found && { view: { ...view, inbox, projects }, node: found }
+}
+
+function inSection(n: TreeNode, section: TreeNode['section']): TreeNode {
+  return { ...n, section, children: n.children.map((c) => inSection(c, section)) }
+}
+
+/** `view` with task `id` and its subtree moved to `at` (ids already real). */
+export function moveNode(view: TreeView, id: string, at: Draft): TreeView {
+  const out = detach(view, id)
+  if (!out) return view
+  return insertNode(out.view, { ...inSection(out.node, at.section), parentId: at.parentId }, at)
+}
+
+/** `day` with task `id` moved next to `at.afterId` or `at.beforeId`. */
+export function moveDayItem(day: DayView, id: string, at: { afterId?: string; beforeId?: string }): DayView {
+  const item = day.items.find((i) => i.task.id === id)
+  if (!item) return day
+  const rest = day.items.filter((i) => i !== item)
+  const anchor = at.afterId ?? at.beforeId
+  const k = rest.findIndex((i) => i.task.id === anchor)
+  const to = k < 0 ? rest.length : at.afterId !== undefined ? k + 1 : k
+  return { ...day, items: [...rest.slice(0, to), item, ...rest.slice(to)] }
+}
+
 /**
  * Optimistic edits to the cached tree. Each one first cancels a tree fetch in flight, whose answer
  * would predate it; fetches made while writes are queued are held back (see useTree), so the
@@ -144,6 +185,10 @@ export interface TreeCache {
   /** The server answered a create: the row takes its real id, keeping a title renamed since. */
   created(placeholder: string, task: Partial<TreeNode>, sentTitle: string): void
   remove(id: string): void
+  /** A dragged task (and its subtree) dropped elsewhere in the tree. */
+  move(id: string, at: Draft): void
+  /** A dragged task dropped elsewhere in today's list. */
+  moveInDay(id: string, at: { afterId?: string; beforeId?: string }): void
 }
 
 export function treeCache(qc: QueryClient): TreeCache {
@@ -167,5 +212,10 @@ export function treeCache(qc: QueryClient): TreeCache {
         updateNode(v, placeholder, (n) => ({ ...n, ...task, title: n.title === sentTitle ? (task.title ?? n.title) : n.title })),
       ),
     remove: (id) => edit((v) => removeNode(v, id)),
+    move: (id, at) => edit((v) => moveNode(v, resolveId(id), placementFor(at))),
+    moveInDay: (id, at) => {
+      void qc.cancelQueries({ queryKey: ['day'] })
+      qc.setQueriesData<DayView>({ queryKey: ['day'] }, (d) => d && moveDayItem(d, resolveId(id), at))
+    },
   }
 }

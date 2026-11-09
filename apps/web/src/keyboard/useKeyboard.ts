@@ -6,14 +6,14 @@ import { toast } from '../shell/toastStore'
 import { flatten } from '../tree/flatten'
 import { SkippedWrite, treeCache } from '../tree/optimistic'
 import { useUi } from '../ui/store'
-import { runCommand } from './commands'
+import { type CommandEnv, runCommand } from './commands'
 import { type Command, resolveKey } from './keymap'
 import { IS_MAC } from './platform'
 
 const MODIFIERS = new Set(['Control', 'Alt', 'Shift', 'Meta', 'AltGraph', 'CapsLock'])
 
-/** Returns a stable function that runs a command against the latest rows, day and UI state. */
-export function useCommandRunner(): (cmd: Command) => void {
+/** Returns a stable getter for the latest rows, day and UI state, with the api, queue and cache; null until status loads. */
+export function useCommandEnv(): () => CommandEnv | null {
   const showCompleted = useUi((s) => s.showCompleted)
   const draft = useUi((s) => s.draft)
   const { data: tree } = useTree(showCompleted ? 'all' : 'recent')
@@ -27,15 +27,26 @@ export function useCommandRunner(): (cmd: Command) => void {
   const latest = useRef({ rows, dayItems: day?.items ?? [], today })
   latest.current = { rows, dayItems: day?.items ?? [], today }
 
+  return useCallback(() => {
+    if (latest.current.today === '') return null // status not loaded yet
+    return { ...latest.current, ui: useUi.getState(), api, cache, mutate, now: Date.now, toast }
+  }, [mutate, cache])
+}
+
+/** Logs a failed write; the refetch when the queue drains shows the true state again. */
+export function reportWriteError(e: unknown): void {
+  if (!(e instanceof SkippedWrite)) console.error(e)
+}
+
+/** Returns a stable function that runs a command against the latest rows, day and UI state. */
+export function useCommandRunner(): (cmd: Command) => void {
+  const getEnv = useCommandEnv()
   return useCallback(
     (cmd: Command) => {
-      const env = { ...latest.current, ui: useUi.getState(), api, cache, mutate, now: Date.now, toast }
-      if (env.today === '') return // status not loaded yet
-      runCommand(cmd, env).catch((e: unknown) => {
-        if (!(e instanceof SkippedWrite)) console.error(e)
-      })
+      const env = getEnv()
+      if (env) runCommand(cmd, env).catch(reportWriteError)
     },
-    [mutate, cache],
+    [getEnv],
   )
 }
 
@@ -57,7 +68,8 @@ export function createKeyHandler(run: (cmd: Command) => void): (e: KeyboardEvent
   return (e) => {
     if (e.isComposing || e.defaultPrevented) return
     const ui = useUi.getState()
-    if (ui.reviewOpen) return
+    // A drag owns the keys: dnd-kit's own Esc cancels it, and nothing else may act meanwhile.
+    if (ui.reviewOpen || ui.dragging) return
     if (ui.picker) {
       // Once its card is shown the picker owns the keys; while it loads, Esc is the way out.
       if (ui.pickerShown) return

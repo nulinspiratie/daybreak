@@ -5,6 +5,7 @@ import { PickerHost } from './picker/PickerHost'
 import { ConfirmLive } from './shell/ConfirmNote'
 import { TitleBar } from './shell/TitleBar'
 import { Toast } from './shell/Toast'
+import { DragAndDrop } from './tree/Dnd'
 import { TreePane } from './tree/TreePane'
 
 export function App() {
@@ -15,8 +16,10 @@ export function App() {
     <div className="app">
       <TitleBar />
       <div className="body">
-        <TreePane />
-        <MyDayPane />
+        <DragAndDrop>
+          <TreePane />
+          <MyDayPane />
+        </DragAndDrop>
       </div>
       <PickerHost />
       <Toast />

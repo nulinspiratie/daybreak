@@ -20,6 +20,15 @@ export function RowCheckbox({ state, onToggle, round }: { state: RowState; onTog
       aria-label={LABEL[state]}
       onClick={(e) => rowControlClick(e, onToggle)}
     >
+      <CheckMark state={state} />
+    </button>
+  )
+}
+
+/** What a checkbox shows inside: a tick, a cross or the Doing dot. */
+export function CheckMark({ state }: { state: RowState }) {
+  return (
+    <>
       {state === 'done' && (
         <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">
           <path d="M3.5 8.2 6.6 11.2 12.5 4.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -31,6 +40,6 @@ export function RowCheckbox({ state, onToggle, round }: { state: RowState; onTog
         </svg>
       )}
       {state === 'doing' && <span aria-hidden="true" className="cb__dot" />}
-    </button>
+    </>
   )
 }

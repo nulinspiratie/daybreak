@@ -23,7 +23,7 @@ beforeEach(() => {
   run = vi.fn<(cmd: Command) => void>()
   handler = createKeyHandler((cmd) => run(cmd))
   window.addEventListener('keydown', handler)
-  useUi.getState().set({ pane: 'tree', treeSel: 't1', daySel: null, editing: null, confirm: null, reviewOpen: false, picker: null, pickerShown: false })
+  useUi.getState().set({ pane: 'tree', treeSel: 't1', daySel: null, editing: null, confirm: null, reviewOpen: false, picker: null, pickerShown: false, dragging: false })
 })
 afterEach(() => {
   window.removeEventListener('keydown', handler)
@@ -67,6 +67,14 @@ describe('the global keydown filter', () => {
     useUi.getState().set({ reviewOpen: true })
     press(document.body, ' ')
     expect(run).not.toHaveBeenCalled()
+  })
+
+  it('stands aside during a drag, so its Esc only cancels the drag', () => {
+    useUi.getState().set({ dragging: true })
+    const e = press(document.body, 'Escape')
+    press(document.body, ' ')
+    expect(run).not.toHaveBeenCalled()
+    expect(e.defaultPrevented).toBe(false)
   })
 
   it('stands aside while the day picker is open', () => {
