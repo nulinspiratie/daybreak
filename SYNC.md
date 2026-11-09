@@ -39,3 +39,6 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   short pause (0.4 s), or straight away if you press Enter. If you keep
   typing, it becomes a typed date instead, so "20 nov" works. (The plan's
   rule picked on the first digit, which made "20 nov" impossible to type.)
+- The task detail panel (Ctrl+O) follows your selection: with it open, ↑/↓
+  in the tree show the next task's details. Links in notes open through
+  Daybreak's "open link" (your default browser or app), not inside the app.
