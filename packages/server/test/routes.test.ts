@@ -68,6 +68,12 @@ describe('status, tree and day routes', () => {
       expect(((await res.json()) as { error: string }).error).toBe('invalid')
     }
     expect((await h.req('/api/days?from=2026-02-30&to=2026-03-01')).status).toBe(400)
+    // At most 400 days: a huge range would build millions of entries on the one server thread.
+    expect((await h.req('/api/days?from=2026-01-01&to=2027-02-05')).status).toBe(200)
+    const wide = await h.req('/api/days?from=2026-01-01&to=2027-02-06')
+    expect(wide.status).toBe(400)
+    expect(await wide.json()).toMatchObject({ error: 'invalid' })
+    expect((await h.req('/api/days?from=0001-01-01&to=9999-12-31')).status).toBe(400)
     expect((await h.req('/api/review/2026-13-01')).status).toBe(400)
   })
 })
@@ -128,7 +134,7 @@ describe('task routes', () => {
       const res = await h.req(`/api/tasks/${t.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: raw })
       expect(res.status, raw).toBe(400)
     }
-    expect((await h.req(`/api/tasks/${t.id}`, { method: 'PATCH' })).status).toBe(400)
+    expect((await h.req(`/api/tasks/${t.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' } })).status).toBe(400)
     expect((await h.req(`/api/tasks/${t.id}`, patch({ colour: 'red' }))).status).toBe(400)
   })
   it('POST move', async () => {

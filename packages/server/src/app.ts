@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import type { Daybreak } from '@daybreak/core'
 import { Hono } from 'hono'
 import { setCookie } from 'hono/cookie'
-import { COOKIE_NAME, hostGuard, tokenGuard } from './auth'
+import { COOKIE_NAME, hostGuard, originGuard, tokenGuard } from './auth'
 import { errorResponse } from './errors'
 import { openLink } from './openLink'
 import { dayRoutes } from './routes/day'
@@ -36,7 +36,7 @@ export function createApp(deps: AppDeps): Hono {
 
   app.onError(errorResponse)
 
-  app.use('/api/*', host, token)
+  app.use('/api/*', host, token, originGuard(deps.port, deps.extraHosts))
   app.use('/events/*', host, token)
 
   app.get('/api/ping', (c) => c.json({ ok: true }))

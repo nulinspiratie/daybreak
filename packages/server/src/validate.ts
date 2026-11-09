@@ -1,5 +1,6 @@
 import { DaybreakError } from '@daybreak/core'
 import type { Context } from 'hono'
+import { Forbidden } from './errors'
 
 export const invalid = (message: string): DaybreakError => new DaybreakError('invalid', message)
 
@@ -24,8 +25,13 @@ export const oneOf =
 
 export type Body = Record<string, unknown>
 
-/** The JSON body as an object; a missing, malformed or non-object body is `invalid`. */
+/**
+ * The JSON body as an object; a missing, malformed or non-object body is `invalid`. It must be
+ * sent as application/json: a browser sends text/plain or a form cross-origin without asking first.
+ */
 export async function readBody(c: Context): Promise<Body> {
+  const type = (c.req.header('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
+  if (type !== 'application/json') throw new Forbidden('Content-Type must be application/json')
   let raw: unknown
   try {
     raw = await c.req.json()

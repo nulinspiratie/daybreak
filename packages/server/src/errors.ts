@@ -9,7 +9,11 @@ const STATUS: Record<ErrorCode, ContentfulStatusCode> = {
   needs_confirmation: 409,
 }
 
+/** A request the server will not take, whatever its content (403). */
+export class Forbidden extends Error {}
+
 export function errorResponse(err: unknown, c: Context): Response {
+  if (err instanceof Forbidden) return c.json({ error: 'forbidden', message: err.message }, 403)
   if (err instanceof DaybreakError) {
     const body: { error: ErrorCode; message: string; details?: Record<string, unknown> } = {
       error: err.code,
