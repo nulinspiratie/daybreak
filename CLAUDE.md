@@ -9,6 +9,10 @@ Daybreak: a local Windows 11 task manager and daily planner for work. Read
 [`DESIGN.md`](DESIGN.md) for visual and interaction details. `context.md` has
 the current state.
 
+Phases 1–5 (the MVP) are built. Phase 6 (Tauri shell) waits for a week of real
+use on the work laptop. `PLAN.md` is the finished MVP build plan, kept for
+reference; don't execute it again.
+
 ## Conventions
 
 - Work task data must never be committed or leave the work laptop. The app's
@@ -20,6 +24,65 @@ the current state.
   side only does windowing, tray, shortcuts and launching the server.
 - Build in the phase order of SPEC.md section 9. `core` gets unit tests
   (Vitest) for every tree, scheduling and review rule.
+- Where you make a judgment call on Serwan's behalf, or something needs him or
+  the work laptop, add a line to [`SYNC.md`](SYNC.md). Open product questions
+  go in SPEC.md section 10.
+- UI copy, sizes and colours come from DESIGN.md. Colours are tokens in
+  `apps/web/src/theme/tokens.css`, with light and dark values.
+
+## Layout
+
+| Path | What's there |
+|---|---|
+| `packages/core` | Domain logic over SQLite: tree, scheduling, marks, review, export, daily logs. No HTTP. Tests in `packages/core/test`. |
+| `packages/server` | Hono API, token/host/origin guards, SSE, day rollover, link opening, `main.ts` entry. |
+| `apps/web` | React 19 + Vite UI. `api/` (queries, write queue, SSE), `keyboard/` (keymap and commands), `tree/`, `myday/`, `review/`, `detail/`, `picker/`. |
+| `scripts` | `seed.ts`, `smoke.ts`, the pre-commit guard `check-staged.ts`, `install-hooks.ts`. |
+| `docs` | ai-wiki knowledge base (see below). Not app code. |
+
+Packages are consumed as TypeScript source; there is no build step except the
+web bundle.
+
+## Commands
+
+```bash
+bun install                  # also points git at .githooks/
+bun run check                # typecheck + Vitest + bun:sqlite smoke test
+bun run smoke                # build the web app, start the server on a scratch folder, ping it
+bun run test                 # Vitest only (needs Node 22.13+)
+bun run typecheck
+```
+
+To run the app in development, always with a scratch data folder:
+
+```bash
+export DAYBREAK_DATA_DIR=$(mktemp -d)
+bun run seed
+bun run dev                  # API on 127.0.0.1:47815
+bun run --cwd apps/web dev   # second terminal, same DAYBREAK_DATA_DIR: http://localhost:5173
+```
+
+`bun run start` builds the web app and serves everything from the server, as
+`start.cmd` does on Windows.
+
+## Checks
+
+- **Pre-commit hook** (`.githooks/pre-commit`, installed by `bun install`):
+  refuses database files, a data folder's `token` and daily logs; runs
+  typecheck and Vitest when code is staged. Docs-only commits skip the tests.
+  Don't bypass it with `--no-verify` to get a commit through; fix the cause.
+- **CI** (`.github/workflows/ci.yml`) runs the data guard, typecheck, both test
+  suites and `bun run smoke` on Windows and Linux for pushes and PRs.
+
+## Gotchas
+
+- The server only accepts writes whose Origin is its own page
+  (`originGuard` in `packages/server/src/auth.ts`). Phase 6 must add the Tauri
+  window's origin there.
+- The day rolls over at `dayStartsAt` (default 04:00), not midnight. Use
+  `localDate` in `packages/core/src/dates.ts`, never `new Date()` slicing.
+- Tests use a fixed clock and a temp database; never point a test or the seed
+  at a real data folder (`assertOutsideRepo` refuses folders in the repo).
 
 ## Knowledge base
 
