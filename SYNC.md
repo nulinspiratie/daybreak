@@ -56,3 +56,7 @@ Newest at the bottom. Tick or strike items once we've talked them through.
   pink on dark red. Every one keeps text at 4.5:1 or better.
 - In the review, a task moved to another day shows "Wed" if it's within the
   coming week and "Tue 17 Nov" if it's further out.
+- The morning review's leftovers heading names the day ("LEFT OVER FROM
+  FRIDAY") only when every leftover is from that one day and it was within
+  the last 6 days. Otherwise it says "LEFT OVER FROM EARLIER", so a bare
+  weekday never points at the wrong week.
