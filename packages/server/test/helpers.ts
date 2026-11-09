@@ -2,13 +2,19 @@ import type { Daybreak } from '@daybreak/core'
 import { createDaybreak, fixedClock, migrate, openDatabase, seed } from '@daybreak/core'
 import type { Hono } from 'hono'
 import { createApp } from '../src/app'
+import type { BackupStatus } from '../src/backup'
 import { ChangeBroker } from '../src/sse'
 
 export const TEST_TOKEN = 'a'.repeat(64)
 export const TEST_PORT = 47815
 
 export async function testApp(
-  opts: { now?: string; seed?: boolean; openLink?: (link: string) => void } = {},
+  opts: {
+    now?: string
+    seed?: boolean
+    openLink?: (link: string) => void
+    backupStatus?: () => BackupStatus
+  } = {},
 ): Promise<{
   app: Hono
   daybreak: Daybreak
@@ -28,6 +34,7 @@ export async function testApp(
     token: TEST_TOKEN,
     port: TEST_PORT,
     dayStartsAt: '04:00',
+    backupStatus: opts.backupStatus,
     broker,
     openLink: opts.openLink ?? (() => {}),
   })

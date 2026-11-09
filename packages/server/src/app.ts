@@ -4,6 +4,7 @@ import type { Daybreak } from '@daybreak/core'
 import { Hono } from 'hono'
 import { setCookie } from 'hono/cookie'
 import { COOKIE_NAME, hostGuard, originGuard, tokenGuard } from './auth'
+import type { BackupStatus } from './backup'
 import { errorResponse } from './errors'
 import { openLink } from './openLink'
 import { dayRoutes } from './routes/day'
@@ -19,6 +20,8 @@ export interface AppDeps {
   token: string
   port: number
   dayStartsAt: string
+  /** The backup schedule's status, shown in /api/status. Tests may leave it out. */
+  backupStatus?: () => BackupStatus
   broker: ChangeBroker
   /** Extra allowed Host values (the Vite dev server). */
   extraHosts?: string[]
@@ -65,7 +68,7 @@ export function createApp(deps: AppDeps): Hono {
     return c.body(null, 204)
   })
 
-  app.route('/api', miscRoutes(deps.daybreak, deps.dayStartsAt))
+  app.route('/api', miscRoutes(deps.daybreak, deps.dayStartsAt, deps.backupStatus))
   app.route('/api', dayRoutes(deps.daybreak))
   app.route('/api/tasks', taskRoutes(deps.daybreak, deps.openLink ?? openLink))
   app.route('/api/review', reviewRoutes(deps.daybreak))

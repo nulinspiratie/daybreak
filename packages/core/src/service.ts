@@ -1,3 +1,4 @@
+import { type BackupOptions, type BackupResult, backupDatabase } from './backup'
 import type { Clock } from './clock'
 import type { Ctx } from './ctx'
 import { today } from './ctx'
@@ -70,6 +71,8 @@ export interface Daybreak {
   needsReview(): boolean
   autoFinishEmptyReview(): void
   exportProject(id: string): string
+  /** Copy the database to a backup folder (see backup.ts). Changes nothing, so emits nothing. */
+  backup(opts: BackupOptions): BackupResult
   onChange(listener: (e: ChangeEvent) => void): () => void
 }
 
@@ -138,6 +141,7 @@ export function createDaybreak(deps: DaybreakDeps): Daybreak {
       endReview(finishReview, date)
     },
     exportProject: (id) => exportProject(ctx, id),
+    backup: (opts) => backupDatabase(ctx, opts),
     onChange(listener) {
       listeners.add(listener)
       return () => {

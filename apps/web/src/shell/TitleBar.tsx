@@ -36,6 +36,13 @@ export function TitleBar({ review }: TitleBarProps = {}) {
   const { theme, toggle } = useTheme()
   // The live feed is down: most likely the server is not running, so writes would fail too.
   const feedNote = reconnecting && <span className="titlebar__status">Reconnecting…</span>
+  // Quiet until a backup fails; the reason is in the tooltip (design.md, "Backups").
+  const backupError = status?.backup?.error
+  const backupNote = backupError && !reconnecting && (
+    <span className="titlebar__status" title={backupError} data-testid="backup-failed">
+      Backup failed
+    </span>
+  )
 
   return (
     <header className="titlebar">
@@ -45,6 +52,7 @@ export function TitleBar({ review }: TitleBarProps = {}) {
         <>
           <span className="titlebar__date">Morning review</span>
           {feedNote}
+          {backupNote}
           <span className="titlebar__spacer" />
           <button type="button" className="tb-link" onClick={review.onSkip}>
             Skip for today
@@ -56,6 +64,7 @@ export function TitleBar({ review }: TitleBarProps = {}) {
             {status ? longDate(status.today) : ''}
           </span>
           {feedNote}
+          {backupNote}
           <span className="titlebar__spacer" />
           <button type="button" className="tb-btn" onClick={focusDayAdd}>
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16">

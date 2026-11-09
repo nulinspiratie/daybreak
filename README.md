@@ -23,17 +23,51 @@ cd daybreak
 bun install
 ```
 
-The committed lockfile uses versions verified on Microsoft's npm proxy.
-Keep `bun.lock` when installing; `bun install --frozen-lockfile` installs its
-exact resolutions without updating it. Registry settings remain local to your machine.
+The committed lockfile uses versions verified on Microsoft's npm proxy, but names no
+registry: each machine installs from the registry its own npm or Bun settings point at
+(the work feed on the work laptop, public npm elsewhere), and the checksums in `bun.lock`
+make sure it's the same package either way. Keep `bun.lock` when installing;
+`bun install --frozen-lockfile` installs its exact resolutions without updating it. If a
+`bun install` on the work laptop writes feed URLs back into `bun.lock`, don't commit them.
 
 Then double-click `start.cmd`. It builds the web app, starts the server and opens http://127.0.0.1:47815.
 
-Your data lives in `%LOCALAPPDATA%\Daybreak`: the database (`daybreak.db`), `logs\`, `token` and `config.json`.
+Your data lives in `%LOCALAPPDATA%\Daybreak`: the database (`daybreak.db`), `logs\`, `token` and `backups\`.
 
-To change the port or the time a day starts, edit `config.json` in that folder (`port`, default 47815; `dayStartsAt`, default `04:00`) and restart. If you change `port`, also edit the URL in `start.cmd`.
+### Settings
+
+Settings are in `%USERPROFILE%\.daybreak.toml`, created with every setting written out and commented the first time Daybreak starts. Edit it and restart Daybreak.
+
+```toml
+[server]
+port = 47815               # if you change it, also edit the URL in start.cmd
+
+[day]
+starts_at = "04:00"        # the day rolls over at this time, not midnight
+
+[backup]
+dir = '%OneDriveCommercial%\Daybreak backups'
+retain_days = 14
+```
+
+Use single quotes around Windows paths, so the backslashes are kept as they are. `~` and `%NAME%` environment variables are expanded; `%OneDriveCommercial%` is your work OneDrive folder. If an older `config.json` is in the data folder, its port and day start are moved into the new file the first time, and it's renamed `config.json.old`.
+
+`DAYBREAK_CONFIG` points Daybreak at another settings file. When `DAYBREAK_DATA_DIR` is set (development), Daybreak reads `daybreak.toml` in that folder instead of yours.
 
 Never put DAYBREAK_DATA_DIR inside the repo.
+
+### Backups
+
+Daybreak copies its database to `dir` as `daybreak-YYYY-MM-DD.db` when it starts, at the start of each day, and once an hour while there are changes, so at most about an hour of work is ever missing from a copy. The daily logs are copied to `dir\logs\`. Copies older than `retain_days` are deleted, but the newest 3 are always kept. Without `dir`, copies go to `%LOCALAPPDATA%\Daybreak\backups`, which protects against a damaged database but not a lost laptop.
+
+If a backup fails (for example the OneDrive folder isn't there), Daybreak keeps working, the title bar says **Backup failed** (hover it for the reason), and it tries again every hour.
+
+To restore a copy:
+
+1. Stop Daybreak (close the `start.cmd` window).
+2. In `%LOCALAPPDATA%\Daybreak`, rename `daybreak.db` to keep it, and delete `daybreak.db-wal` and `daybreak.db-shm` if they're there.
+3. Copy the backup you want into that folder as `daybreak.db`.
+4. Start Daybreak again.
 
 ### Install as an app
 

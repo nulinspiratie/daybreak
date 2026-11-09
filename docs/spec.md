@@ -17,7 +17,7 @@ The one thing that decides whether it sticks: a morning review that takes about 
 
 ### Hard constraints
 
-- **Work content never leaves the work laptop.** The database and logs live in a local data folder outside this repo. No cloud sync, no telemetry. Development on other machines uses fake seed data only.
+- **Work content never leaves the secure work environment**: the work laptop and storage the employer manages, such as the work OneDrive. It never goes to personal cloud storage, personal devices, this repo, or telemetry. The database and logs live in a local data folder outside this repo; backups may go to the work OneDrive (section 7). Development on other machines uses fake seed data only. *(Reworded 2026-11-09 from "never leaves the work laptop", so backups can go to the work OneDrive.)*
 - **Windows 11 desktop only** for V1. Built with web tech so a browser version can run later (for example on the NAS behind Cloudflare Access) without a rewrite.
 - **Lean.** Nothing gets built until it's actually missed. The out-of-scope list below is deliberate.
 
@@ -37,6 +37,7 @@ The one thing that decides whether it sticks: a morning review that takes about 
 - A frozen Markdown log per day, readable without the app.
 - Quick add from anywhere in Windows (Ctrl+Alt+Space) and a small My Day pop-up from the tray or taskbar. These come after the core, not before.
 - A CLI so AI agents can read and update tasks (after the UI works).
+- A settings file (`~/.daybreak.toml`) and daily backups of the database to a folder it names, such as the work OneDrive. *(Added 2026-11-09.)*
 
 ### Not in V1
 
@@ -221,8 +222,10 @@ Key decisions:
 - **How it runs on the work laptop:** from source. Clone the repo, `bun install`, then one start command (also a double-clickable `start.cmd`) builds the web UI if needed and starts the server; the UI is used in a browser tab at `http://127.0.0.1:47815`. No prebuilt or downloaded `.exe` in the MVP. A "Running on Windows" section in the README covers this.
 - **Server binds to 127.0.0.1 only**, on a fixed port (default 47815, configurable), and requires a random token generated at first run (kept in the data folder). The UI and CLI read it from there. Writes (any `/api/*` request but GET) are refused with 403 unless they come from the app's own origin (`Origin` and `Sec-Fetch-Site`, where sent) and a JSON body is sent as `Content-Type: application/json`, so other local pages can't use the cookie.
 - **Live updates:** server-sent events (`GET /events/stream`) so the main window, pop-up and CLI changes stay in sync.
-- **What "today" is:** the server owns the date. A day starts at 04:00 local time (configurable as `dayStartsAt` in `config.json`), so working past midnight still counts as the same day. When the day rolls over, the server sends a `day_changed` SSE event; an open tab shows the morning review the next time it gets focus or input. Doing and Worked-on marks belong to the day they were set, so they lapse at rollover by construction. *(Builder's call.)*
-- **Data folder:** `%LOCALAPPDATA%\Daybreak\` by default (`daybreak.db`, `logs\`, `token`, `config.json`), overridable with `DAYBREAK_DATA_DIR`. Never inside this repo. `.gitignore` covers `*.db` as a safety net.
+- **What "today" is:** the server owns the date. A day starts at 04:00 local time (configurable as `starts_at` under `[day]` in the settings file), so working past midnight still counts as the same day. When the day rolls over, the server sends a `day_changed` SSE event; an open tab shows the morning review the next time it gets focus or input. Doing and Worked-on marks belong to the day they were set, so they lapse at rollover by construction. *(Builder's call.)*
+- **Data folder:** `%LOCALAPPDATA%\Daybreak\` by default (`daybreak.db`, `logs\`, `token`, `backups\`), overridable with `DAYBREAK_DATA_DIR`. Never inside this repo. `.gitignore` covers `*.db` as a safety net.
+- **Settings file:** `%USERPROFILE%\.daybreak.toml` (`~/.daybreak.toml` elsewhere), overridable with `DAYBREAK_CONFIG`. When `DAYBREAK_DATA_DIR` is set and `DAYBREAK_CONFIG` isn't, it's `daybreak.toml` in that data folder instead, so a dev or test run never reads the real settings or backs fictional data up into the real backup folder. Created on first run with every setting written out and commented. One `[section]` per feature: `[server] port`, `[day] starts_at`, `[backup] dir` and `retain_days`. Unknown sections and keys are warnings, so the file can run ahead of the code; a bad value stops start-up with a message naming the file, the setting and the value. Paths expand `~` and `%NAME%` and must be absolute. The first run moves `port` and `dayStartsAt` from the older `<data folder>\config.json` into the new file and renames it `config.json.old`. It's read by a small hand-written TOML reader (`packages/server/src/toml.ts`) that knows only tables, strings, integers, booleans and comments and refuses the rest, so no new dependency has to be checked against the work feed. *(Builder's call.)*
+- **Backups:** the database is copied to `[backup] dir` (default `<data folder>\backups`) as `daybreak-YYYY-MM-DD.db`, dated by Daybreak's day. A copy is made at start-up, on the first check of each new day and at most once an hour while there are changes, so a later copy on the same day replaces the earlier one. SQLite's `VACUUM INTO` writes a consistent copy into the data folder, which is copied to the target as `.partial` and renamed, so SQLite never runs on a synced folder and OneDrive only ever sees finished files. New daily logs are mirrored into `<dir>\logs\` and never pruned. After a successful copy, copies dated `retain_days` or more days before today (default 14) are deleted, except the newest 3 and any file not named like a copy. The target is created only if its parent folder exists, so a typo in the path fails visibly instead of making a folder nothing syncs; it can't be the data folder itself or inside the repo. A failed backup never stops the server: it's logged, retried hourly, shown in `/api/status` as `backup.error` and in the title bar as "Backup failed" (design.md, "Backups"). Restoring is manual (README, "Backups"). The token isn't backed up; a missing one is recreated. A future schema migration should take a copy before it runs. *(Builder's call where not said above.)*
 - **Drag and drop:** `@dnd-kit/core` + `@dnd-kit/sortable`, sortable-tree pattern. Horizontal pointer offset picks depth, 22 px per level.
 - **Markdown rendering** in notes: `marked` or `markdown-it` with HTML disabled. Editing is a plain textarea in V1.
 - **Natural-language day input** in the day picker ("fri", "tomorrow", "nov 20"): a small hand-written parser in `core`, unit-tested. No big date library needed.
@@ -232,7 +235,7 @@ Key decisions:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | /api/status | `{today, needsReview, dayStartsAt}` *(new)* |
+| GET | /api/status | `{today, needsReview, dayStartsAt, backup: {dir, lastAt, error}}` *(new)* |
 | GET | /api/tree?completed=recent\|all\|none | Whole tree with statuses and today's marks |
 | GET | /api/day/:date | My Day for a date, in day order, with paths |
 | GET | /api/days?from=&to= | Task counts per day in a range of at most 400 days (else 400) *(new)* |

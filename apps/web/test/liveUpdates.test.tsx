@@ -162,3 +162,32 @@ describe('useStatus', () => {
     focusManager.setFocused(undefined)
   })
 })
+
+describe('the title bar on a failed backup', () => {
+  it('says "Backup failed" with the reason as its tooltip, and nothing while backups work', () => {
+    const qc = new QueryClient()
+    vi.spyOn(qc, 'invalidateQueries').mockResolvedValue()
+    const backup = { dir: '/backups', lastAt: null, error: "The backup folder doesn't exist" }
+    qc.setQueryData(['status'], { today, needsReview: false, dayStartsAt: '04:00', backup })
+    render(
+      <QueryClientProvider client={qc}>
+        <TitleBar />
+      </QueryClientProvider>,
+    )
+    expect(screen.getByText('Backup failed').getAttribute('title')).toBe(backup.error)
+
+    act(() => useUi.getState().set({ reconnecting: true })) // "Reconnecting…" says enough then
+    expect(screen.queryByText('Backup failed')).toBeNull()
+
+    act(() => {
+      useUi.getState().set({ reconnecting: false })
+      qc.setQueryData(['status'], {
+        today,
+        needsReview: false,
+        dayStartsAt: '04:00',
+        backup: { ...backup, lastAt: '2026-11-09T09:00:00.000Z', error: null },
+      })
+    })
+    expect(screen.queryByText('Backup failed')).toBeNull()
+  })
+})

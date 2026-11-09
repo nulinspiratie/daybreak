@@ -246,6 +246,14 @@ Added at Serwan's request, outside V1 scope. A thin PWA: a manifest, icons, and 
 - The offline page carries the icon inline, since the server that would serve it is down.
 - Opening the app again focuses the open window rather than starting a second one (`launch_handler: focus-existing`).
 
+## Backups
+
+Added at Serwan's request on 2026-11-09 (spec.md §7, "Backups"). Backups work in the background and the window says nothing about them while they succeed.
+
+- When the last attempt failed, the title bar shows **Backup failed** after the date, in the same small `--worked` text as "Reconnecting…". Hovering it shows the reason, for example "The backup folder C:\Users\…\OneDrive - Lab\Daybreak backups doesn't exist, and neither does C:\Users\…\OneDrive - Lab. Check dir in [backup] in the settings file." It disappears after the next successful backup (Daybreak tries again every hour).
+- While "Reconnecting…" shows, "Backup failed" is hidden: the server is unreachable, so its backup status is out of date anyway.
+- No other UI: where backups go and how long they're kept are set in the settings file (README, "Settings").
+
 ## Accessibility
 
 Real `<button>`, `<input>` and `<label>` elements, `aria-label` on icon-only buttons, visible focus rings, text contrast at least 4.5:1, and colours that differ in lightness, not just hue (blue/orange rather than red/green for meaning).

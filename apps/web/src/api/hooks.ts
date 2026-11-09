@@ -17,6 +17,8 @@ export interface Status {
   today: string
   needsReview: boolean
   dayStartsAt: string
+  /** null when the server runs without backups (tests). */
+  backup?: { dir: string; lastAt: string | null; error: string | null } | null
 }
 
 // Refetched on focus, unlike the rest: a tab left open overnight must learn the new today (and so show the review).
