@@ -17,7 +17,21 @@ async function until(cond: () => boolean): Promise<void> {
   expect(cond()).toBe(true)
 }
 
+/** The stream opens with a comment, so a browser sees it open before any event (Bun sends the headers with the first bytes). */
+async function opened(res: Response) {
+  const reader = res.body!.getReader()
+  expect(await readUntil(reader, '\n\n')).toBe(': connected\n\n')
+  return reader
+}
+
 describe('GET /events/stream', () => {
+  it('opens with a comment before any event', async () => {
+    const { req } = await testApp()
+    const res = await req('/events/stream')
+    const reader = await opened(res)
+    await reader.cancel()
+  })
+
   it('streams "changed" after a POST /api/tasks', async () => {
     const { req, broker } = await testApp()
     const res = await req('/events/stream')
@@ -30,7 +44,7 @@ describe('GET /events/stream', () => {
       body: JSON.stringify({ title: 'Write report', section: 'inbox' }),
     })
     expect(post.status).toBeLessThan(300)
-    const reader = res.body!.getReader()
+    const reader = await opened(res)
     const text = await readUntil(reader, '\n\n')
     expect(text).toBe('event: changed\ndata: {}\n\n')
     await reader.cancel()
@@ -41,7 +55,7 @@ describe('GET /events/stream', () => {
     const res = await req('/events/stream')
     await until(() => broker.listenerCount === 1)
     broker.publish('day_changed', { today: '2026-11-11' })
-    const reader = res.body!.getReader()
+    const reader = await opened(res)
     expect(await readUntil(reader, '\n\n')).toBe('event: day_changed\ndata: {"today":"2026-11-11"}\n\n')
     await reader.cancel()
   })
@@ -71,7 +85,7 @@ describe('GET /events/stream', () => {
       const { req, broker } = await testApp()
       const res = await req('/events/stream')
       await until(() => broker.listenerCount === 1)
-      const reader = res.body!.getReader()
+      const reader = await opened(res)
       expect(vi.getTimerCount()).toBe(1)
       vi.advanceTimersByTime(25_000)
       expect(await readUntil(reader, '\n\n')).toBe(': ping\n\n')

@@ -29,6 +29,9 @@ export function eventRoutes(broker: ChangeBroker): Hono {
   const app = new Hono()
   app.get('/stream', (c) =>
     streamSSE(c, async (stream) => {
+      // Bun sends the headers with the first bytes: without these the browser would not see the
+      // stream open (nor the app leave "Reconnecting…") until the first event or ping.
+      await stream.write(': connected\n\n')
       const unsubscribe = broker.subscribe((event, data) => {
         void stream.writeSSE({ event, data: JSON.stringify(data) }).catch(() => {})
       })
