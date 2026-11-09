@@ -9,7 +9,7 @@ Conventions for the `docs/` knowledge base.
 - `notes/`: one page per source: `## My notes` (your framing) + `## Summary` (AI restatement).
 - `wiki/`: AI-owned multi-source pages that compound across notes.
 - Co-authored project docs live at the top of `docs/`: `spec.md`,
-  `design.md`, `keyboard.md`, `handoff.md`, `future-ideas.md`. Canvas mock-ups are in
+  `design.md`, `keyboard.md`, `future-ideas.md`. Canvas mock-ups are in
   `mockups/`; finished plans go in `archive/`.
 
 ## Mutation classes

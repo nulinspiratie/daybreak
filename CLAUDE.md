@@ -24,9 +24,10 @@ plan, kept for reference; don't execute it again.
   side only does windowing, tray, shortcuts and launching the server.
 - Build in the phase order of spec.md section 9. `core` gets unit tests
   (Vitest) for every tree, scheduling and review rule.
-- Where you make a judgment call on Serwan's behalf, or something needs him or
-  the work laptop, add a line to [`docs/handoff.md`](docs/handoff.md). Open
-  product questions go in spec.md section 10.
+- Where you make a judgment call on Serwan's behalf, say so when you report
+  back, and write the resulting behaviour into design.md (or spec.md). Things
+  that need the work laptop go under "Needs the work laptop" in `context.md`.
+  Open product questions go in spec.md section 10.
 - UI copy, sizes and colours come from design.md. Colours are tokens in
   `apps/web/src/theme/tokens.css`, with light and dark values.
 
@@ -38,7 +39,7 @@ plan, kept for reference; don't execute it again.
 | `packages/server` | Hono API, token/host/origin guards, SSE, day rollover, link opening, `main.ts` entry. |
 | `apps/web` | React 19 + Vite UI. `api/` (queries, write queue, SSE), `keyboard/` (keymap and commands), `tree/`, `myday/`, `review/`, `detail/`, `picker/`. |
 | `scripts` | `seed.ts`, `smoke.ts`, the pre-commit guard `check-staged.ts`, `install-hooks.ts`. |
-| `docs` | Project docs: `spec.md`, `design.md`, `keyboard.md`, `handoff.md`, `future-ideas.md`, the canvas mock-ups in `mockups/` and the finished MVP plan in `archive/`. Also the ai-wiki knowledge base (see below). Not app code. |
+| `docs` | Project docs: `spec.md`, `design.md`, `keyboard.md`, `future-ideas.md`, the canvas mock-ups in `mockups/` and the finished MVP plan in `archive/`. Also the ai-wiki knowledge base (see below). Not app code. |
 
 Packages are consumed as TypeScript source; there is no build step except the
 web bundle.

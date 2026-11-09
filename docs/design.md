@@ -222,7 +222,7 @@ Space (or X) on a task with open subtasks doesn't act straight away. The first p
 
 Z (or Ctrl+Z) undoes the last change made in the main window, and keeps going back one change per press: scheduling (T, D, B, drops into My Day, reordering My Day, taking a task off today), moves (Mod+↑↓, Tab, Shift+Tab, drags), Done / Cancel / reopen, Doing / Worked on, deletes, new tasks and title edits. Each undo shows a toast saying what it put back ("Undone: Scheduled 'Order coax' for today"); with nothing left it says "Nothing to undo". Ctrl+Shift+Z or Ctrl+Y redoes what was undone ("Redone: …"), one change per press; any new change clears what could be redone. In edit mode Z types and Ctrl+Z, Ctrl+Y are the text field's own.
 
-Not undone: folding, notes and link edits in the detail panel (their fields have their own undo while you type), and changes made elsewhere (the CLI, another window). The morning review has its own Z. The history lasts until the window is reloaded.
+Not undone: folding, notes and link edits in the detail panel (their fields have their own undo while you type), and changes made elsewhere (the CLI, another window). The morning review has its own Z. The history lasts until the window is reloaded. Two results are approximate, by choice: a task moved back goes after the sibling that was visible above it (a hidden completed sibling can make it land one slot off), and undoing a reopen closes the task again with all its open subtasks, not only those closed with it.
 
 ### Delete toast
 
