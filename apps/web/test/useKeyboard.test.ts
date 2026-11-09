@@ -23,7 +23,7 @@ beforeEach(() => {
   run = vi.fn<(cmd: Command) => void>()
   handler = createKeyHandler((cmd) => run(cmd))
   window.addEventListener('keydown', handler)
-  useUi.getState().set({ pane: 'tree', treeSel: 't1', daySel: null, editing: null, confirm: null, reviewOpen: false, picker: null })
+  useUi.getState().set({ pane: 'tree', treeSel: 't1', daySel: null, editing: null, confirm: null, reviewOpen: false, picker: null, pickerShown: false })
 })
 afterEach(() => {
   window.removeEventListener('keydown', handler)
@@ -70,11 +70,20 @@ describe('the global keydown filter', () => {
   })
 
   it('stands aside while the day picker is open', () => {
-    useUi.getState().set({ picker: { taskId: 't1', allowNoDay: true } })
+    useUi.getState().set({ picker: { taskId: 't1', allowNoDay: true }, pickerShown: true })
     press(document.body, 'd')
     press(document.body, 'ArrowDown')
     expect(run).not.toHaveBeenCalled()
-    useUi.getState().set({ picker: null })
+    useUi.getState().set({ picker: null, pickerShown: false })
+  })
+
+  it('while the picker has not appeared yet, only Esc is taken (it closes the picker)', () => {
+    useUi.getState().set({ picker: { taskId: 't1', allowNoDay: true }, pickerShown: false })
+    press(document.body, 'ArrowDown')
+    expect(run).toHaveBeenCalledWith('nav.down')
+    press(document.body, 'Escape')
+    expect(useUi.getState().picker).toBeNull()
+    expect(run).toHaveBeenCalledTimes(1)
   })
 
   it('ignores text fields other than a row title editor', () => {

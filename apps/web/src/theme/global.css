@@ -1074,6 +1074,9 @@ kbd {
 
 .picker-host__card {
   position: absolute;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1120,4 +1123,8 @@ kbd {
   background: var(--pane);
   color: var(--text2);
   font-size: 12px;
+}
+
+.picker__status {
+  color: var(--text3);
 }

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { queue, useDrainInvalidation } from '../src/api/hooks'
 import { useKeyboard } from '../src/keyboard/useKeyboard'
 import { PickerHost } from '../src/picker/PickerHost'
+import { QUICK_PICK_MS } from '../src/picker/DayPicker'
 import { TreePane } from '../src/tree/TreePane'
 import { useUi } from '../src/ui/store'
 import { type FakeApi, node } from './helpers'
@@ -17,6 +18,14 @@ vi.mock('../src/api/client', async (importOriginal) => {
 })
 const fake = () => shared.fake!
 const TODAY = '2026-11-09'
+/** What the tree holds: the picker's task 'a', or nothing. */
+let hasTask = true
+let dayFails = false
+let qc: QueryClient
+const dayItems = () =>
+  hasTask
+    ? [{ task: node('a', [], { title: 'Task a', scheduledOn: TODAY }), path: ['Inbox'], mark: null, doneCount: 0, totalCount: 0 }]
+    : []
 
 function Harness() {
   useDrainInvalidation()
@@ -43,28 +52,39 @@ async function flush() {
   })
 }
 
+function mount() {
+  qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={qc}>
+      <Harness />
+    </QueryClientProvider>,
+  )
+}
+
 beforeEach(async () => {
+  hasTask = true
+  dayFails = false
+  qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   fake().calls.length = 0
   fake().reply = (method, path) => {
     if (path === '/api/status') return { today: TODAY, needsReview: false, dayStartsAt: '04:00' }
-    if (path.startsWith('/api/day/')) return { date: TODAY, items: [], doneCount: 0, totalCount: 0 }
+    if (path.startsWith('/api/day/')) {
+      if (dayFails) throw new Error('down')
+      return { date: TODAY, items: dayItems(), doneCount: 0, totalCount: 1 }
+    }
     if (path.startsWith('/api/days')) return {}
     if (path.startsWith('/api/tree')) {
       return {
         today: TODAY,
-        inbox: [node('a', [], { section: 'inbox', title: 'Task a', scheduledOn: '2026-11-12' })],
+        inbox: !hasTask ? [] : [node('a', [], { section: 'inbox', title: 'Task a', scheduledOn: '2026-11-12' })],
         projects: [],
         hiddenCompletedCount: 0,
       }
     }
     return method === 'POST' ? {} : undefined
   }
-  useUi.getState().set({ pane: 'tree', treeSel: null, daySel: null, editing: null, picker: null })
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <Harness />
-    </QueryClientProvider>,
-  )
+  useUi.getState().set({ pane: 'tree', treeSel: null, daySel: null, editing: null, picker: null, pickerShown: false })
+  mount()
   await screen.findByText('Task a')
   act(() => ui().set({ treeSel: 'a' }))
 })
@@ -80,6 +100,9 @@ describe('PickerHost', () => {
     expect(screen.getByText('Task a', { selector: '.picker-host__title' })).toBeTruthy()
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Day' }))
     await press('3')
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, QUICK_PICK_MS + 50))
+    })
     await flush()
     expect(writes()).toEqual([['POST', '/api/tasks/a/schedule', { date: '2026-11-11' }]])
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -120,5 +143,58 @@ describe('PickerHost', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pick a day (D)' }))
     expect(ui().picker).toEqual({ taskId: 'a', allowNoDay: true })
     expect(ui().treeSel).toBe('a')
+  })
+
+  it('closes, with the pane and selection left alone, when the task is gone from the tree', async () => {
+    hasTask = false
+    act(() => ui().set({ picker: { taskId: 'a', allowNoDay: true } }))
+    await flush()
+    expect(ui().picker).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(ui().treeSel).toBe('a')
+    expect(ui().pickerShown).toBe(false)
+  })
+
+  it('closes when the task is missing and the day query failed too', async () => {
+    cleanup()
+    hasTask = false
+    dayFails = true
+    mount()
+    await flush()
+    act(() => ui().set({ picker: { taskId: 'a', allowNoDay: true } }))
+    await flush()
+    expect(ui().picker).toBeNull()
+  })
+
+  it('closes when the picked task is deleted while it is open', async () => {
+    await press('d')
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    hasTask = false
+    await act(async () => {
+      await qc.invalidateQueries()
+    })
+    await flush()
+    expect(ui().picker).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('while the picker has not appeared, Esc closes it and other keys are not swallowed', async () => {
+    act(() => ui().set({ picker: { taskId: 'zzz', allowNoDay: true }, pickerShown: false }))
+    await press('ArrowDown') // not swallowed: selection moves (or stays on the only row)
+    await press('Escape')
+    expect(ui().picker).toBeNull()
+  })
+
+  it('from My Day the picker has no No day button', async () => {
+    await flush()
+    act(() => ui().set({ pane: 'day', daySel: 'a' }))
+    await press('d')
+    expect(ui().picker).toEqual({ taskId: 'a', allowNoDay: false })
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'No day' })).toBeNull()
+    await press('Escape')
+    expect(ui().picker).toBeNull()
+    expect(ui().daySel).toBe('a')
+    expect(ui().pane).toBe('day')
   })
 })

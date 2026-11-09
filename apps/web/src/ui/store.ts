@@ -21,6 +21,8 @@ export interface UiState {
   reviewOpen: boolean
   /** The day picker (D), floated over the panes by PickerHost. `allowNoDay` is true from the tree only. */
   picker: { taskId: string; allowNoDay: boolean } | null
+  /** True once the picker's card is on screen. Until then the global keys still work, except Esc closes it. */
+  pickerShown: boolean
   /** Bumped by the title bar's "Add to My Day"; the My Day add field (Task 18) reacts to it. */
   dayAddNonce: number
   focusDayAdd: () => void
@@ -90,6 +92,7 @@ export const useUi = create<UiState>((set) => ({
   showCompleted: false,
   reviewOpen: false,
   picker: null,
+  pickerShown: false,
   dayAddNonce: 0,
   focusDayAdd: () => set((s) => ({ dayAddNonce: s.dayAddNonce + 1 })),
   replaceId: (from, to) => set((s) => withId(s, from, to)),
