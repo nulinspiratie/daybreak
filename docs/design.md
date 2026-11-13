@@ -120,7 +120,7 @@ A task with subtasks can't go into Inbox (Inbox is flat). Dragged there, the row
 ## Morning review (chosen design: running list)
 
 - Full window, same title bar with "Morning review" and a "Skip for today" link.
-- Centre column, 820 px wide. Above it: "Good morning — Tuesday 10 November" (12 px, text3) and the heading "Plan today, top to bottom" (24 px, semibold), with "x of y done" on the right.
+- Centre column, 820 px wide. Above it: "Good morning — Tuesday 10 November" (12 px, text3) and the heading "Plan today, top to bottom" (24 px, semibold), with "x of y sorted" on the right (it said "done" until the review got a Done choice).
 - Sections: "LEFT OVER FROM MONDAY · x of y sorted", then "ANYTHING ELSE FOR TODAY? · Suggestions from your tree and Inbox", then the end row.
 - **Decided rows:** 36 px, tinted by outcome, a small white circle with a tick in the outcome colour, the title (struck through if cancelled or done), and an outcome chip ("Today", "Wed", "Backlog", "Cancelled", "Not today", "Done"). Done is green (`--rv-done-bg`/`--rv-done-fg`, a builder's call). A click on any row puts the card there.
 - **Current item:** a white card, 12 px radius, 2 px accent ring, soft shadow. Path on top with "3 of 7" (or "Suggestion") on the right, the title at 20 px semibold, an optional "Worked on Monday · Continue today?" chip, an optional note, then the action buttons, each with its key cap (T Today / D Another day / B Backlog / Space Done / X Cancel; on a suggestion B reads "Not today"). The first button is primary blue. Cancel text is red. On an item decided already (reached with ↑↓), the outcome chip sits left of "3 of 7" and the chosen button has a 2 px accent ring; pressing another choice replaces it.

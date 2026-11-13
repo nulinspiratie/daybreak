@@ -363,7 +363,7 @@ export function ReviewScreen() {
             </div>
             <span className="review__grow" />
             {view && (
-              <span className="review__progress">{`${view.sortedCount} of ${view.totalCount} done`}</span>
+              <span className="review__progress">{`${view.sortedCount} of ${view.totalCount} sorted`}</span>
             )}
           </div>
           {review.isError && (

@@ -166,7 +166,7 @@ describe('ReviewScreen', () => {
     await mount()
     expect(ui().reviewOpen).toBe(true)
     expect(screen.getByText('Good morning — Monday 9 November')).toBeTruthy()
-    expect(screen.getByText('0 of 3 done')).toBeTruthy()
+    expect(screen.getByText('0 of 3 sorted')).toBeTruthy()
     expect(screen.getByText('ANYTHING ELSE FOR TODAY?')).toBeTruthy()
     expect(screen.getByText('Suggestions from your tree and Inbox')).toBeTruthy()
     expect(screen.getByText('0 of 2 sorted')).toBeTruthy()
@@ -220,7 +220,7 @@ describe('ReviewScreen', () => {
     expect(row.classList.contains('rv-row--today')).toBe(true)
     expect(within(row).getByText('Today')).toBeTruthy()
     expect(within(rowOf('Task b')).getByText('2 of 2')).toBeTruthy() // b is the current card now
-    expect(screen.getByText('1 of 3 done')).toBeTruthy()
+    expect(screen.getByText('1 of 3 sorted')).toBeTruthy()
     expect(screen.getByText('1 of 2 sorted')).toBeTruthy()
     expect(screen.getByText('3 tasks for today')).toBeTruthy()
   })
@@ -251,18 +251,18 @@ describe('ReviewScreen', () => {
     await press('t')
     await tick()
     expect(held).toHaveLength(1) // the first post is in flight, the other two wait in the queue
-    expect(screen.getByText('3 of 3 done')).toBeTruthy() // shown at once
+    expect(screen.getByText('3 of 3 sorted')).toBeTruthy() // shown at once
     expect(screen.getByText('5 tasks for today')).toBeTruthy()
     for (let i = 0; i < 3; i++) {
       expect(held).toHaveLength(1)
       held.shift()!()
       await tick()
-      expect(screen.getByText('3 of 3 done')).toBeTruthy() // an early reply never shows a step back
+      expect(screen.getByText('3 of 3 sorted')).toBeTruthy() // an early reply never shows a step back
     }
     await flush()
     expect(writes().map((w) => (w[2] as { taskId: string }).taskId)).toEqual(['a', 'b', 's'])
     expect(order).toEqual(['a', 'b', 's'])
-    expect(screen.getByText('3 of 3 done')).toBeTruthy()
+    expect(screen.getByText('3 of 3 sorted')).toBeTruthy()
     expect(screen.getByText('5 tasks for today')).toBeTruthy()
     for (const t of ['Task a', 'Task b', 'Task s'])
       expect(within(rowOf(t)).getByText('Today')).toBeTruthy()
@@ -401,7 +401,7 @@ describe('ReviewScreen', () => {
     await flush()
     expect(writes().at(-1)).toEqual(['POST', `${R}/decide`, { taskId: 'a', choice: 'cancel' }])
     expect(rowOf('Task a').classList.contains('rv-row--cancelled')).toBe(true)
-    expect(screen.getByText('2 of 3 done')).toBeTruthy()
+    expect(screen.getByText('2 of 3 sorted')).toBeTruthy()
     expect(screen.getByText('2 tasks for today')).toBeTruthy()
     // The cursor moves on to the next undecided item, the suggestion.
     expect(within(rowOf('Task s')).getByText('Suggestion')).toBeTruthy()
