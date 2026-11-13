@@ -35,6 +35,8 @@
   --rv-not-today-fg: #4d4d4d;
   --rv-cancelled-bg: #fbe9e7;
   --rv-cancelled-fg: #b3261e;
+  --rv-done-bg: #e5f3e8;
+  --rv-done-fg: #1e7b34;
 
   color-scheme: light;
 }
@@ -72,5 +74,7 @@
   --rv-not-today-fg: #c4c4c4;
   --rv-cancelled-bg: #3d2422;
   --rv-cancelled-fg: #ff99a4;
+  --rv-done-bg: #1f3325;
+  --rv-done-fg: #7fd49a;
   color-scheme: dark;
 }

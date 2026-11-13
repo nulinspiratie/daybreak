@@ -1,4 +1,4 @@
-import type { ISODate, ReviewItem } from '@daybreak/core'
+import type { ISODate, ReviewChoice, ReviewItem } from '@daybreak/core'
 import { daysBetween, weekdayName } from '@daybreak/core/dates'
 import { useEffect, useRef } from 'react'
 import { PATH_SEPARATOR } from '../myday/DayRow'
@@ -6,7 +6,7 @@ import { DayPicker } from '../picker/DayPicker'
 import { monthShort } from '../picker/dayGrid'
 import type { ReviewCommand } from './reviewKeys'
 
-type Choice = Exclude<ReviewCommand, 'undo' | 'start'>
+type Choice = Exclude<ReviewCommand, 'undo' | 'start' | 'up' | 'down'>
 
 /** "Monday" within the last week, else "2 Nov". */
 function workedDay(date: ISODate, today: ISODate): string {
@@ -21,6 +21,8 @@ export interface ReviewCardProps {
   today: ISODate
   /** "3 of 7" for a leftover, "Suggestion" for a suggestion. */
   tag: string
+  /** The outcome chip of an item decided already ("Today", "Wed", …), shown while you change it. */
+  decided: { label: string; outcome: string } | null
   picking: boolean
   onChoose: (choice: Choice) => void
   onPick: (date: ISODate) => void
@@ -28,14 +30,16 @@ export interface ReviewCardProps {
 }
 
 /**
- * The item being decided: a white card with its path, title, worked-on chip and note, the four
- * choices with their key caps, and the day picker inline after D. It keeps itself in view as the
- * list runs on.
+ * The item under the cursor: a white card with its path, title, worked-on chip and note, the five
+ * choices with their key caps, and the day picker inline after D. On an item decided already, its
+ * outcome chip sits by the tag and the chosen button is ringed; any other choice replaces it. It
+ * keeps itself in view as the cursor moves.
  */
 export function ReviewCard({
   item,
   today,
   tag,
+  decided,
   picking,
   onChoose,
   onPick,
@@ -48,16 +52,21 @@ export function ReviewCard({
     ref.current?.scrollIntoView?.({ block: 'nearest' })
   }, [task.id, picking])
   const suggestion = item.group === 'suggestion'
+  const chosen: ReviewChoice | null = item.decision?.choice ?? null
   const buttons: Array<{ choice: Choice; key: string; label: string; cls: string }> = [
     { choice: 'today', key: 'T', label: 'Today', cls: 'rv-btn--primary' },
     { choice: 'day', key: 'D', label: 'Another day', cls: picking ? 'is-on' : '' },
     { choice: 'backlog', key: 'B', label: suggestion ? 'Not today' : 'Backlog', cls: '' },
+    { choice: 'done', key: 'Space', label: 'Done', cls: '' },
     { choice: 'cancel', key: 'X', label: 'Cancel', cls: 'rv-btn--danger' },
   ]
   return (
     <li ref={ref} className="rv-card" aria-current="step">
       <div className="rv-card__top">
         <span className="rv-card__path">{item.path.join(PATH_SEPARATOR)}</span>
+        {decided && (
+          <span className={`rv-card__chip rv-row--${decided.outcome}`}>{decided.label}</span>
+        )}
         <span className="rv-card__tag">{tag}</span>
       </div>
       <span className="rv-card__title">{task.title}</span>
@@ -79,11 +88,15 @@ export function ReviewCard({
           <button
             key={b.choice}
             type="button"
-            className={`rv-btn ${b.cls}`.trim()}
+            className={`rv-btn ${b.cls}${b.choice === chosen ? ' is-chosen' : ''}`.trim()}
             aria-expanded={b.choice === 'day' ? picking : undefined}
+            aria-pressed={chosen === null ? undefined : b.choice === chosen}
             onClick={() => onChoose(b.choice)}
           >
-            <span className="rv-btn__cap" aria-hidden="true">
+            <span
+              className={`rv-btn__cap${b.key.length > 1 ? ' rv-btn__cap--wide' : ''}`}
+              aria-hidden="true"
+            >
               {b.key}
             </span>
             {b.label}

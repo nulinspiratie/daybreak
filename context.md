@@ -15,6 +15,7 @@ Daybreak is Serwan's planned work task manager and daily planner. It replaces Lo
 - 2026-11-09, first round of use: My Day's Del takes a task off today (not a delete), Z is a general undo history, My Day rows can be dragged out, I adds to Inbox, edit mode looks distinct, double-click edits or folds, the fold button toggles. Behaviour is in docs/design.md; the keyboard inventory and its decisions in docs/keyboard.md.
 
 - 2026-11-09: backups and a settings file. Settings moved from `config.json` in the data folder to `~/.daybreak.toml` (port, day start, backup folder and retention); the old file is migrated on first start. The database is copied daily (and hourly while there are changes) to the backup folder, by default `%LOCALAPPDATA%\Daybreak\backups`, meant to be the work OneDrive. The hard constraint now reads "never leaves the secure work environment", which includes the work OneDrive. Details in docs/spec.md §7.
+- 2026-11-13: the morning review gets Done (Space) next to Cancel, and ↑↓ (or a click) move the card to any item, so an earlier choice can be changed. Items keep their place once decided. Space on the end row still starts the day. Details in docs/spec.md §4 and docs/design.md, "Morning review".
 
 ## Needs the work laptop
 

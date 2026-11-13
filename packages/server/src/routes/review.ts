@@ -2,7 +2,7 @@ import type { Daybreak, ReviewChoice } from '@daybreak/core'
 import { Hono } from 'hono'
 import { dateParam, isDate, isString, maybe, need, oneOf, readBody } from '../validate'
 
-const isChoice = oneOf<ReviewChoice>('today', 'day', 'backlog', 'cancel')
+const isChoice = oneOf<ReviewChoice>('today', 'day', 'backlog', 'cancel', 'done')
 
 export function reviewRoutes(d: Daybreak): Hono {
   const app = new Hono()
@@ -17,7 +17,7 @@ export function reviewRoutes(d: Daybreak): Hono {
       d.decide(
         day,
         need(b, 'taskId', isString, 'a task id'),
-        need(b, 'choice', isChoice, '"today", "day", "backlog" or "cancel"'),
+        need(b, 'choice', isChoice, '"today", "day", "backlog", "cancel" or "done"'),
         maybe(b, 'targetDate', isDate, 'a date as YYYY-MM-DD'),
       ),
     )

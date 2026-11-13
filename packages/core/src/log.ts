@@ -46,6 +46,8 @@ function outcome(d: Decision): string {
       return ' → backlog'
     case 'cancel':
       return ' → cancelled'
+    case 'done':
+      return ' → done'
   }
 }
 
@@ -72,7 +74,7 @@ interface CloseState {
  * Each task's close state at the end of the day: the last done, cancelled or
  * reopened event that touched it (Ruling R45). A close touches every id in its
  * `closedIds`, in tree order (Ruling R46); a reopen touches its `ids`. Undoing a
- * review cancel reopens exactly what that cancel closed.
+ * review cancel or done reopens exactly what it closed.
  */
 function closeStates(events: EventRow[]): Map<string, CloseState> {
   const byId = new Map(events.map((e) => [e.id, e]))
@@ -88,7 +90,7 @@ function closeStates(events: EventRow[]): Map<string, CloseState> {
     if (e.kind === 'reopened') touch(e, 'reopened', e.data.ids ?? [e.taskId])
     if (e.kind === 'review_undo') {
       const undone = byId.get(e.data.undoneEventId)
-      if (undone?.kind === 'review_cancel')
+      if (undone?.kind === 'review_cancel' || undone?.kind === 'review_done')
         touch(e, 'reopened', undone.data.closedIds ?? [undone.taskId!])
     }
   }

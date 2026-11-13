@@ -415,6 +415,37 @@ describe('buildDayLog', () => {
 `)
   })
 
+  it('an undone review done reopens its cascade too', async () => {
+    const ctx = await makeCtx()
+    on(ctx, '2026-11-02')
+    const r = project(ctx, 'R', null, '2026-11-08')
+    const rc = project(ctx, 'rc', r, '2026-11-09')
+    on(ctx, '2026-11-09')
+    const d = createDaybreak({ db: ctx.db, clock: ctx.clock, config: ctx.config })
+    d.decide('2026-11-09', r, 'done')
+    d.undoDecision('2026-11-09')
+    expect(buildDayLog(ctx, '2026-11-09')).toBe(`# 2026-11-09 · Monday
+
+## Not done
+- [ ] rc · R (#${rc})
+`)
+  })
+
+  it('done in the review shows "→ done" on the day it was left over from', async () => {
+    const ctx = await makeCtx()
+    on(ctx, '2026-11-02')
+    const p = project(ctx, 'P')
+    const a = project(ctx, 'a', p, '2026-11-09')
+    quietEventOn(ctx, '2026-11-09', project(ctx, 'other'))
+    on(ctx, '2026-11-10')
+    decide(ctx, '2026-11-10', a, 'done')
+    expect(buildDayLog(ctx, '2026-11-09')).toBe(`# 2026-11-09 · Monday
+
+## Not done
+- [ ] a · P (#${a}) → done
+`)
+  })
+
   it('events before dayStartsAt belong to the previous day', async () => {
     const ctx = await makeCtx('2026-11-10T08:00:00Z', { dayStartsAt: '06:00' })
     // Copenhagen is UTC+1 in November: 04:30Z is 05:30 local, 05:30Z is 06:30 local.

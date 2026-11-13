@@ -132,13 +132,29 @@ describe('decide', () => {
     })
   })
 
-  it('deciding an already decided task or one not in the review is invalid', async () => {
+  it('deciding a task not in the review is invalid', async () => {
     const { ctx, ids } = await leftovers()
-    decide(ctx, D, ids.a!, 'today')
-    expectInvalid(() => decide(ctx, D, ids.a!, 'backlog'))
     expectInvalid(() => decide(ctx, D, ids.x!, 'backlog'))
-    expect(getTask(ctx, ids.a!).scheduledOn).toBe(D)
-    expect(reviewEvents(ctx)).toHaveLength(1)
+    expect(getTask(ctx, ids.x!).scheduledOn).toBe(D)
+    expect(reviewEvents(ctx)).toHaveLength(0)
+  })
+
+  it('decide done marks it done with its open subtasks, and Z reopens exactly those', async () => {
+    const { ctx, ids } = await leftovers()
+    const view = decide(ctx, D, ids.c!, 'done')
+    expect(getTask(ctx, ids.c!)).toMatchObject({ status: 'done', scheduledOn: YESTERDAY })
+    expect(getTask(ctx, ids.c1!).status).toBe('done')
+    expect(view.leftovers.find((i) => i.task.id === ids.c)!.decision).toMatchObject({
+      choice: 'done',
+    })
+    expect(view.sortedCount).toBe(1)
+    const ev = reviewEvents(ctx)[0]!
+    expect(ev.kind).toBe('review_done')
+    expect(ev.data.closedIds).toEqual([ids.c, ids.c1])
+    undoDecision(ctx, D)
+    expect(getTask(ctx, ids.c!)).toMatchObject({ status: 'open', closedAt: null })
+    expect(getTask(ctx, ids.c1!).status).toBe('open')
+    expect(getTask(ctx, ids.c2!).status).toBe('done')
   })
 
   it('decide day requires targetDate', async () => {
@@ -156,7 +172,7 @@ describe('decide', () => {
     const { ctx, ids } = await leftovers()
     const view = decide(ctx, D, ids.b!, 'backlog')
     expect(getTask(ctx, ids.b!)).toMatchObject({ scheduledOn: null, dayPosition: null })
-    expect(view.leftovers[0]).toMatchObject({ decision: { choice: 'backlog' }, scheduledOn: null })
+    expect(view.leftovers[1]).toMatchObject({ decision: { choice: 'backlog' }, scheduledOn: null })
   })
 
   it('decide backlog on a suggestion does not touch the task', async () => {
@@ -180,10 +196,94 @@ describe('decide', () => {
     expect(getTask(ctx, ids.c!).status).toBe('cancelled')
     expect(getTask(ctx, ids.c1!).status).toBe('cancelled')
     expect(getTask(ctx, ids.c2!).status).toBe('done')
-    expect(view.leftovers.find((i) => i.task.id === ids.c)!.decision).toEqual({ choice: 'cancel' })
+    expect(view.leftovers.find((i) => i.task.id === ids.c)!.decision).toMatchObject({
+      choice: 'cancel',
+    })
     const ev = reviewEvents(ctx)[0]!
     expect(ev.kind).toBe('review_cancel')
     expect(ev.data.closedIds).toEqual([ids.c, ids.c1])
+  })
+})
+
+describe('changing a decision', () => {
+  async function three() {
+    const ctx = await makeCtx(NOW)
+    const ids = at(ctx, LONG_AGO, () => {
+      const ids = build(ctx, 'projects:\n  P\n    a\n    b\n    c\n      c1')
+      for (const t of ['a', 'b', 'c']) schedule(ctx, ids[t]!, YESTERDAY)
+      return ids
+    })
+    return { ctx, ids, before: getTask(ctx, ids.a!) }
+  }
+  const choices = (v: ReviewView) => v.leftovers.map((i) => i.decision?.choice ?? null)
+
+  it('a decided item can be decided again: the old choice is undone, then the new one applied', async () => {
+    const { ctx, ids, before } = await three()
+    decide(ctx, D, ids.a!, 'today')
+    decide(ctx, D, ids.b!, 'backlog')
+    const view = decide(ctx, D, ids.a!, 'cancel')
+    expect(getTask(ctx, ids.a!)).toMatchObject({
+      status: 'cancelled',
+      scheduledOn: YESTERDAY,
+      dayPosition: before.dayPosition,
+    })
+    expect(dayView(ctx, D).items).toHaveLength(0)
+    expect(titles(view.leftovers)).toEqual(['a', 'b', 'c'])
+    expect(choices(view)).toEqual(['cancel', 'backlog', null])
+    expect(view.sortedCount).toBe(2)
+    expect(view.leftovers[0]!.leftoverFrom).toBe(YESTERDAY)
+    expect(reviewEvents(ctx).map((e) => e.kind)).toEqual([
+      'review_today',
+      'review_backlog',
+      'review_undo',
+      'review_cancel',
+    ])
+    // The new decision is now the latest, so its seq is the highest.
+    expect(view.leftovers[0]!.decision!.seq).toBeGreaterThan(view.leftovers[1]!.decision!.seq)
+  })
+
+  it('a cancel changed to today reopens the subtasks it closed', async () => {
+    const { ctx, ids } = await three()
+    decide(ctx, D, ids.c!, 'cancel')
+    decide(ctx, D, ids.c!, 'today')
+    expect(getTask(ctx, ids.c!)).toMatchObject({ status: 'open', scheduledOn: D })
+    expect(getTask(ctx, ids.c1!).status).toBe('open')
+  })
+
+  it('the same choice again changes nothing; another day to a different day moves it', async () => {
+    const { ctx, ids } = await three()
+    decide(ctx, D, ids.a!, 'today')
+    decide(ctx, D, ids.a!, 'today')
+    expect(reviewEvents(ctx)).toHaveLength(1)
+    decide(ctx, D, ids.b!, 'day', '2026-11-12')
+    decide(ctx, D, ids.b!, 'day', '2026-11-12')
+    expect(reviewEvents(ctx)).toHaveLength(2)
+    const view = decide(ctx, D, ids.b!, 'day', '2026-11-13')
+    expect(getTask(ctx, ids.b!).scheduledOn).toBe('2026-11-13')
+    expect(view.leftovers[1]!.decision).toMatchObject({ choice: 'day', date: '2026-11-13' })
+  })
+
+  it('Z after a change leaves the item undecided, with the task as it was before the review', async () => {
+    const { ctx, ids, before } = await three()
+    decide(ctx, D, ids.a!, 'today')
+    decide(ctx, D, ids.a!, 'done')
+    const view = undoDecision(ctx, D)
+    expect(getTask(ctx, ids.a!)).toMatchObject({
+      status: 'open',
+      scheduledOn: YESTERDAY,
+      dayPosition: before.dayPosition,
+    })
+    expect(choices(view)).toEqual([null, null, null])
+  })
+
+  it('items decided out of order keep their place in the list', async () => {
+    const { ctx, ids } = await three()
+    let view = decide(ctx, D, ids.c!, 'today')
+    expect(titles(view.leftovers)).toEqual(['a', 'b', 'c'])
+    expect(choices(view)).toEqual([null, null, 'today'])
+    view = decide(ctx, D, ids.a!, 'day', '2026-11-12')
+    expect(titles(view.leftovers)).toEqual(['a', 'b', 'c'])
+    expect(titles(reviewView(ctx, D).leftovers)).toEqual(['a', 'b', 'c'])
   })
 })
 
@@ -248,7 +348,7 @@ describe('undoDecision', () => {
     const { ctx, ids } = await decided()
     undoDecision(ctx, D)
     const view = decide(ctx, D, ids.c!, 'today')
-    expect(view.leftovers[2]!.decision).toEqual({ choice: 'today', date: D })
+    expect(view.leftovers[2]!.decision).toMatchObject({ choice: 'today', date: D })
     expect(getTask(ctx, ids.c!).status).toBe('open')
   })
 
@@ -417,17 +517,17 @@ describe('suggestions', () => {
     // q1 is now scheduled today, yet stays listed and still counts toward the cap.
     view = decide(ctx, D, ids.q1!, 'today')
     expect(titles(view.suggestions)).toEqual(['p1', 'q1', 'i1', 'i2', 'i3'])
-    expect(view.suggestions[1]!.decision).toEqual({ choice: 'today', date: D })
+    expect(view.suggestions[1]!.decision).toMatchObject({ choice: 'today', date: D })
 
-    // Decided ones come first, in decision order; fresh candidates fill the rest.
+    // Deciding out of order moves nothing: projects in tree order, then Inbox oldest first.
     view = decide(ctx, D, inbox.i3!, 'cancel')
-    expect(titles(view.suggestions)).toEqual(['p1', 'q1', 'i3', 'i1', 'i2'])
+    expect(titles(view.suggestions)).toEqual(['p1', 'q1', 'i1', 'i2', 'i3'])
     expect(view.suggestions.map((i) => i.decision?.choice ?? null)).toEqual([
       'day',
       'today',
+      null,
+      null,
       'cancel',
-      null,
-      null,
     ])
     expect(view.sortedCount).toBe(3)
     expect(view.totalCount).toBe(5)
