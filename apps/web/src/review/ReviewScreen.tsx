@@ -10,14 +10,20 @@ import { toast } from '../shell/toastStore'
 import { useUi } from '../ui/store'
 import { ReviewCard } from './ReviewCard'
 import {
+  afterDecision,
+  allItems,
   applyDecision,
-  currentItem,
+  END,
+  lastDecided,
   type ReviewCommand,
   resolveReviewKey,
+  type Spot,
+  spotIn,
+  step,
   undoLast,
 } from './reviewKeys'
 
-type Outcome = 'today' | 'day' | 'backlog' | 'not-today' | 'cancelled'
+type Outcome = 'today' | 'day' | 'backlog' | 'not-today' | 'cancelled' | 'done'
 
 function outcomeOf(item: ReviewItem): Outcome {
   switch (item.decision!.choice) {
@@ -29,6 +35,8 @@ function outcomeOf(item: ReviewItem): Outcome {
       return item.group === 'suggestion' ? 'not-today' : 'backlog'
     case 'cancel':
       return 'cancelled'
+    case 'done':
+      return 'done'
   }
 }
 
@@ -42,7 +50,13 @@ function dayChip(date: ISODate, today: ISODate): string {
 function chipText(item: ReviewItem, today: ISODate): string {
   const o = outcomeOf(item)
   if (o === 'day') return item.decision!.date ? dayChip(item.decision!.date, today) : 'Another day'
-  return { today: 'Today', backlog: 'Backlog', 'not-today': 'Not today', cancelled: 'Cancelled' }[o]
+  return {
+    today: 'Today',
+    backlog: 'Backlog',
+    'not-today': 'Not today',
+    cancelled: 'Cancelled',
+    done: 'Done',
+  }[o]
 }
 
 /**
@@ -82,9 +96,11 @@ export function useOpenReviewWhenDue(): void {
 
 /**
  * The morning review, full-window: leftovers, then suggestions, then "Start the day", worked top
- * to bottom with T D B X and Z. Each choice is posted through the one mutation queue and shown
- * at once, so a quick T T T goes down the list in order. It owns the keys while open (the main
- * window's handler stands aside for `reviewOpen`).
+ * to bottom with T D B X Space and Z. A cursor (the card) sits on one item: after a choice it
+ * moves to the next undecided one, and ↑↓ move it freely, so a decided item can be changed.
+ * Each choice is posted through the one mutation queue and shown at once, so a quick T T T goes
+ * down the list in order. It owns the keys while open (the main window's handler stands aside
+ * for `reviewOpen`).
  */
 export function ReviewScreen() {
   const today = useStatus().data?.today ?? ''
@@ -94,6 +110,14 @@ export function ReviewScreen() {
   const mutate = useMutate()
   const setUi = useUi((s) => s.set)
   const [picking, setPicking] = useState<string | null>(null)
+  // The cursor: a task id or the end row, or null for "the first undecided item". The ref is the
+  // truth, so a quick T T T reads each move before React re-renders.
+  const [chosen, setChosenState] = useState<Spot | null>(null)
+  const chosenRef = useRef<Spot | null>(null)
+  const setChosen = (s: Spot | null) => {
+    chosenRef.current = s
+    setChosenState(s)
+  }
   const root = useRef<HTMLDivElement>(null)
   const pending = useRef(0)
 
@@ -106,6 +130,7 @@ export function ReviewScreen() {
     body: unknown,
     optimistic: (v: ReviewView) => ReviewView,
     failure: string,
+    onFail?: () => void,
   ) => {
     const shown = latest()
     if (shown) qc.setQueryData(key(), optimistic(shown))
@@ -118,26 +143,56 @@ export function ReviewScreen() {
         pending.current--
         console.error(e)
         toast.show({ message: failure })
+        onFail?.()
         void qc.invalidateQueries({ queryKey: key() })
       },
     )
   }
 
+  /** The item under the cursor, or null on the end row. */
+  const spotItem = (v: ReviewView | undefined) => {
+    if (!v) return null
+    const spot = spotIn(v, chosenRef.current)
+    return allItems(v).find((i) => i.task.id === spot) ?? null
+  }
+
   const decide = (choice: ReviewChoice, targetDate?: ISODate) => {
     const v = latest()
-    const item = v && currentItem(v)
-    if (!item) return
+    const item = spotItem(v)
+    if (!v || !item) return
     if (choice === 'day' && targetDate === today) choice = 'today' // the picker's "Today" is just T
     const date = choice === 'today' ? today : choice === 'day' ? targetDate : undefined
+    const was = item.decision
+    // The same choice again changes nothing; the server says so too.
+    if (was?.choice === choice && (choice !== 'day' || was.date === date)) {
+      setChosen(afterDecision(v, item.task.id))
+      return
+    }
+    const decision = { choice, ...(date ? { date } : {}) }
+    setChosen(afterDecision(applyDecision(v, item.task.id, decision), item.task.id))
     post(
       'decide',
       { taskId: item.task.id, choice, ...(choice === 'day' ? { targetDate } : {}) },
-      (shown) => applyDecision(shown, item.task.id, { choice, ...(date ? { date } : {}) }),
+      (shown) => applyDecision(shown, item.task.id, decision),
       "Couldn't save that choice",
+      () => setChosen(item.task.id), // back to the item, to try again
     )
   }
 
-  const undo = () => post('undo', undefined, undoLast, "Couldn't undo that choice")
+  /** Z: the cursor goes to the item whose choice is undone, ready for another. */
+  const undo = () => {
+    const v = latest()
+    const item = v && lastDecided(v)
+    if (item) setChosen(item.task.id)
+    post('undo', undefined, undoLast, "Couldn't undo that choice")
+  }
+
+  const move = (by: 1 | -1) => {
+    const v = latest()
+    if (!v) return
+    setPicking(null)
+    setChosen(step(v, spotIn(v, chosenRef.current), by))
+  }
 
   /** Finish or skip: once the server has it, back to the main window with a fresh status. */
   const leave = (action: 'finish' | 'skip', failure: string) => {
@@ -159,9 +214,10 @@ export function ReviewScreen() {
   const run = (cmd: ReviewCommand) => {
     if (cmd === 'undo') return undo()
     if (cmd === 'start') return start()
+    if (cmd === 'up') return move(-1)
+    if (cmd === 'down') return move(1)
     if (cmd === 'day') {
-      const v = latest()
-      const item = v && currentItem(v)
+      const item = spotItem(latest())
       if (item) setPicking(item.task.id)
       return
     }
@@ -183,10 +239,11 @@ export function ReviewScreen() {
       const cmd = resolveReviewKey(e, {
         pickerOpen: pickingRef.current !== null,
         allSorted: v.sortedCount === v.totalCount,
+        onItem: spotIn(v, chosenRef.current) !== END,
       })
       if (cmd === null) return
       e.preventDefault()
-      if (e.repeat) return // a held key decides once
+      if (e.repeat && cmd !== 'up' && cmd !== 'down') return // a held key decides once; arrows repeat
       runRef.current(cmd)
     }
     window.addEventListener('keydown', onKeyDown)
@@ -199,9 +256,9 @@ export function ReviewScreen() {
     if (picking === null) root.current?.focus()
   }, [picking])
 
-  const current = view ? currentItem(view) : null
+  const spot = view ? spotIn(view, chosen) : END
   // The picker belongs to the card it was opened on.
-  const pickerOpen = picking !== null && picking === current?.task.id
+  const pickerOpen = picking !== null && picking === spot
   useEffect(() => {
     if (picking !== null && !pickerOpen) setPicking(null)
   }, [picking, pickerOpen])
@@ -215,6 +272,12 @@ export function ReviewScreen() {
     if (e.detail > 0 && el?.closest('button') && !el.closest('.picker')) root.current?.focus()
   }
 
+  /** A click on a row puts the cursor there. */
+  const select = (id: Spot) => {
+    setPicking(null)
+    setChosen(id)
+  }
+
   /** A card button: act, then hand focus back to the screen (a keyboard press re-renders the card away). */
   const choose = (cmd: ReviewCommand) => {
     if (cmd === 'day' && pickerOpen) return setPicking(null) // "Another day" again folds the picker away
@@ -226,7 +289,7 @@ export function ReviewScreen() {
 
   const rows = (list: ReviewItem[]) =>
     list.map((item) => {
-      if (item === current) {
+      if (item.task.id === spot) {
         const at = view!.leftovers.indexOf(item)
         return (
           <ReviewCard
@@ -235,6 +298,9 @@ export function ReviewScreen() {
             today={today}
             tag={
               item.group === 'leftover' ? `${at + 1} of ${view!.leftovers.length}` : 'Suggestion'
+            }
+            decided={
+              item.decision ? { label: chipText(item, today), outcome: outcomeOf(item) } : null
             }
             picking={pickerOpen}
             onChoose={choose}
@@ -249,7 +315,12 @@ export function ReviewScreen() {
       if (item.decision) {
         const o = outcomeOf(item)
         return (
-          <li key={item.task.id} className={`rv-row rv-row--${o}`}>
+          // biome-ignore lint/a11y/useKeyWithClickEvents: ↑↓ move the cursor from the keyboard
+          <li
+            key={item.task.id}
+            className={`rv-row rv-row--${o}`}
+            onClick={() => select(item.task.id)}
+          >
             <span className="rv-row__mark" aria-hidden="true">
               <svg aria-hidden="true" width="11" height="11" viewBox="0 0 16 16">
                 <path
@@ -268,7 +339,8 @@ export function ReviewScreen() {
         )
       }
       return (
-        <li key={item.task.id} className="rv-next">
+        // biome-ignore lint/a11y/useKeyWithClickEvents: ↑↓ move the cursor from the keyboard
+        <li key={item.task.id} className="rv-next" onClick={() => select(item.task.id)}>
           <span className="rv-next__circle" aria-hidden="true" />
           <span className="rv-next__title">{item.task.title}</span>
           <span className="rv-next__short">{item.path[0] ?? ''}</span>
@@ -291,7 +363,7 @@ export function ReviewScreen() {
             </div>
             <span className="review__grow" />
             {view && (
-              <span className="review__progress">{`${view.sortedCount} of ${view.totalCount} done`}</span>
+              <span className="review__progress">{`${view.sortedCount} of ${view.totalCount} sorted`}</span>
             )}
           </div>
           {review.isError && (
@@ -317,7 +389,9 @@ export function ReviewScreen() {
                   {rows(view.suggestions)}
                 </>
               )}
-              <li className={`rv-end${allSorted ? ' is-ready' : ''}`}>
+              <li
+                className={`rv-end${allSorted ? ' is-ready' : ''}${spot === END ? ' is-current' : ''}`}
+              >
                 <span className="rv-end__count">{`${plural(view.todayCount, 'task')} for today`}</span>
                 <span className="review__grow" />
                 <button type="button" className="rv-end__btn" onClick={start}>
@@ -333,17 +407,22 @@ export function ReviewScreen() {
               ['T', 'Today'],
               ['D', 'Another day'],
               ['B', 'Backlog / not today'],
+              ['Space', 'Done'],
               ['X', 'Cancel'],
+              ['↑↓', 'Move'],
             ].map(([k, label]) => (
               <span key={k} className="review__cap">
-                <span className="review__capkey">{k}</span>
+                <span className={`review__capkey${k!.length > 1 ? ' review__capkey--wide' : ''}`}>
+                  {k}
+                </span>
                 <span className="review__caplabel">{label}</span>
               </span>
             ))}
           </div>
           <p className="review__hint">
             After D: 1–9 pick today up to 8 days out, or move with the arrows and press Enter. Z
-            undoes the last choice.
+            undoes the last choice. ↑↓ go back to an item to change its choice. On the last row,
+            Space starts the day.
           </p>
         </aside>
       </div>

@@ -120,13 +120,13 @@ A task with subtasks can't go into Inbox (Inbox is flat). Dragged there, the row
 ## Morning review (chosen design: running list)
 
 - Full window, same title bar with "Morning review" and a "Skip for today" link.
-- Centre column, 820 px wide. Above it: "Good morning — Tuesday 10 November" (12 px, text3) and the heading "Plan today, top to bottom" (24 px, semibold), with "x of y done" on the right.
+- Centre column, 820 px wide. Above it: "Good morning — Tuesday 10 November" (12 px, text3) and the heading "Plan today, top to bottom" (24 px, semibold), with "x of y sorted" on the right (it said "done" until the review got a Done choice).
 - Sections: "LEFT OVER FROM MONDAY · x of y sorted", then "ANYTHING ELSE FOR TODAY? · Suggestions from your tree and Inbox", then the end row.
-- **Decided rows:** 36 px, tinted by outcome, a small white circle with a tick in the outcome colour, the title (struck through if cancelled), and an outcome chip ("Today", "Wed", "Backlog", "Cancelled", "Not today").
-- **Current item:** a white card, 12 px radius, 2 px accent ring, soft shadow. Path on top with "3 of 7" (or "Suggestion") on the right, the title at 20 px semibold, an optional "Worked on Monday · Continue today?" chip, an optional note, then the action buttons, each with its key cap (T Today / D Another day / B Backlog / X Cancel; on a suggestion B reads "Not today"). The first button is primary blue. Cancel text is red.
+- **Decided rows:** 36 px, tinted by outcome, a small white circle with a tick in the outcome colour, the title (struck through if cancelled or done), and an outcome chip ("Today", "Wed", "Backlog", "Cancelled", "Not today", "Done"). Done is green (`--rv-done-bg`/`--rv-done-fg`, a builder's call). A click on any row puts the card there.
+- **Current item:** a white card, 12 px radius, 2 px accent ring, soft shadow. Path on top with "3 of 7" (or "Suggestion") on the right, the title at 20 px semibold, an optional "Worked on Monday · Continue today?" chip, an optional note, then the action buttons, each with its key cap (T Today / D Another day / B Backlog / Space Done / X Cancel; on a suggestion B reads "Not today"). The first button is primary blue. Cancel text is red. On an item decided already (reached with ↑↓), the outcome chip sits left of "3 of 7" and the chosen button has a 2 px accent ring; pressing another choice replaces it.
 - **Upcoming rows:** 38 px, empty round checkbox, title, short project name on the right.
-- **End row:** "N tasks for today" with a "Start the day · Space" button; it turns blue once everything is sorted.
-- **Key legend** on the right (220 px): four key caps T D B X labelled "Today", "Another day", "Backlog / not today", "Cancel", then: "After D: 1–9 pick today up to 8 days out, or move with the arrows and press Enter. Z undoes the last choice." The screen never changes during the review; the list just runs on.
+- **End row:** "N tasks for today" with a "Start the day · Space" button; it turns blue once everything is sorted. ↓ past the last item reaches it (a 2 px accent ring); the card goes there by itself once everything is sorted, and Space there starts the day.
+- **Key legend** on the right (220 px), key caps wrapping onto two lines: T D B Space X ↑↓ labelled "Today", "Another day", "Backlog / not today", "Done", "Cancel", "Move", then: "After D: 1–9 pick today up to 8 days out, or move with the arrows and press Enter. Z undoes the last choice. ↑↓ go back to an item to change its choice. On the last row, Space starts the day." The screen never changes during the review; the list just runs on, and items keep their place once decided.
 
 ### Day picker
 
@@ -230,7 +230,7 @@ Dark toast at the bottom of the window, same style as the quick-add toast: "Dele
 
 ### Morning review
 
-T Today · D Another day · B Backlog (Not today for suggestions) · X Cancel · Z Undo · Space Start the day (once sorted). In the day picker: 1–9, arrows, Enter, Esc.
+T Today · D Another day · B Backlog (Not today for suggestions) · Space Done · X Cancel · Z Undo · ↑↓ Move the card (decided items too, to change them) · Space on the end row: Start the day (once sorted). In the day picker: 1–9, arrows, Enter, Esc.
 
 ### Global
 

@@ -22,6 +22,7 @@ export type EventKind =
   | 'review_day'
   | 'review_backlog'
   | 'review_cancel'
+  | 'review_done'
   | 'review_skip'
   | 'review_undo'
 
@@ -84,13 +85,14 @@ export interface DayView {
   totalCount: number
 }
 
-export type ReviewChoice = 'today' | 'day' | 'backlog' | 'cancel'
+export type ReviewChoice = 'today' | 'day' | 'backlog' | 'cancel' | 'done'
 
 export interface ReviewItem {
   task: Task
   path: string[]
   group: 'leftover' | 'suggestion'
-  decision: { choice: ReviewChoice; date?: ISODate } | null
+  /** `seq` orders decisions: the highest is the one Z undoes next. */
+  decision: { choice: ReviewChoice; date?: ISODate; seq: number } | null
   workedOn: ISODate | null
   /** The task's day as it is now (after any decision). */
   scheduledOn: ISODate | null

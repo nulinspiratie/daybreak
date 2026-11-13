@@ -5,7 +5,7 @@ import { transaction } from './db/adapter'
 import { DaybreakError } from './errors'
 import { recordEvent } from './events'
 import { lastWorkedBefore } from './tasks/marks'
-import { pathOf } from './tasks/rows'
+import { getTask, pathOf } from './tasks/rows'
 import { dayView, schedule, scheduleToday } from './tasks/schedule'
 import { setStatus } from './tasks/status'
 import { liveKids } from './tasks/tree'
@@ -14,7 +14,7 @@ import type { ReviewChoice, ReviewItem, ReviewView, Status, Task } from './types
 const SUGGESTION_CAP = 5
 const RECENT_DAYS = 7
 const DAY_MS = 24 * 60 * 60 * 1000
-const CHOICES: ReviewChoice[] = ['today', 'day', 'backlog', 'cancel']
+const CHOICES: ReviewChoice[] = ['today', 'day', 'backlog', 'cancel', 'done']
 
 type Group = ReviewItem['group']
 
@@ -45,7 +45,7 @@ function liveDecisions(
 ): Decision[] {
   const rows = ctx.db.all<{ id: number; task_id: string; kind: string; data: string }>(
     `SELECT e.id, e.task_id, e.kind, e.data FROM events e
-     WHERE e.kind IN ('review_today', 'review_day', 'review_backlog', 'review_cancel')
+     WHERE e.kind IN ('review_today', 'review_day', 'review_backlog', 'review_cancel', 'review_done')
        AND json_extract(e.data, '${jsonPath}') = ?
        AND NOT EXISTS (SELECT 1 FROM events u
                        WHERE u.kind = 'review_undo' AND json_extract(u.data, '$.undoneEventId') = e.id)
@@ -144,8 +144,10 @@ function setLastReviewDate(ctx: Ctx, date: ISODate): void {
 
 /**
  * The morning review for `date`: leftovers (open tasks scheduled before it) and up to
- * five suggestions. Items decided in this review keep their row, listed first in
- * decision order, rebuilt from the decision events.
+ * five suggestions, rebuilt from the decision events. Items keep their place once decided,
+ * so the list doesn't reorder when you go back up and change a decision: leftovers by the
+ * day and My Day place they had before the review, suggestions by their project's place in
+ * the tree, then Inbox tasks oldest first (the order candidates() offers them in).
  */
 export function reviewView(ctx: Ctx, date: ISODate): ReviewView {
   const kids = liveKids(ctx)
@@ -158,7 +160,9 @@ export function reviewView(ctx: Ctx, date: ISODate): ReviewView {
     task,
     path: pathOf(ctx, task.id),
     group,
-    decision: d ? { choice: d.choice, ...(d.to !== undefined ? { date: d.to } : {}) } : null,
+    decision: d
+      ? { choice: d.choice, ...(d.to !== undefined ? { date: d.to } : {}), seq: d.eventId }
+      : null,
     workedOn: lastWorkedBefore(ctx, task.id, date),
     scheduledOn: task.scheduledOn,
     leftoverFrom: group === 'leftover' ? (d ? d.previous.scheduledOn : task.scheduledOn) : null,
@@ -166,28 +170,50 @@ export function reviewView(ctx: Ctx, date: ISODate): ReviewView {
   const decidedIn = (group: Group) =>
     decisions.filter((d) => d.group === group).map((d) => item(byId.get(d.taskId)!, group, d))
 
+  const before = new Map(decisions.map((d) => [d.taskId, d.previous]))
+  const leftoverKey = (i: ReviewItem) => {
+    const p = before.get(i.task.id) ?? i.task
+    return [p.scheduledOn ?? '', p.dayPosition ?? '', i.task.id] as const
+  }
   const leftovers = [
     ...decidedIn('leftover'),
     ...overdue(ctx, date, byId)
       .filter((t) => !decided.has(t.id))
       .map((t) => item(t, 'leftover')),
-  ]
+  ].sort((a, b) => {
+    const [x, y] = [leftoverKey(a), leftoverKey(b)]
+    return cmp(x[0], y[0]) || cmp(x[1], y[1]) || cmp(x[2], y[2])
+  })
 
   const decidedSuggestions = decidedIn('suggestion')
   const exclude = new Set([...decided, ...leftovers.map((i) => i.task.id)])
+  const rootOf = (t: Task) => {
+    let root = t
+    while (root.parentId !== null) root = byId.get(root.parentId)!
+    return root
+  }
   const usedProjects = new Set<string>()
   for (const { task } of decidedSuggestions) {
-    let root = task
-    while (root.parentId !== null) root = byId.get(root.parentId)!
+    const root = rootOf(task)
     if (root.section === 'projects') usedProjects.add(root.id)
   }
   const room = Math.max(0, SUGGESTION_CAP - decidedSuggestions.length)
+  const roots = kids.get(null) ?? []
+  const suggestionKey = (i: ReviewItem) => {
+    const root = rootOf(i.task)
+    return root.section === 'projects'
+      ? ([0, roots.indexOf(root), '', i.task.id] as const)
+      : ([1, 0, i.task.createdAt, i.task.id] as const)
+  }
   const suggestions = [
     ...decidedSuggestions,
     ...candidates(ctx, date, kids, exclude, usedProjects)
       .slice(0, room)
       .map((t) => item(t, 'suggestion')),
-  ]
+  ].sort((a, b) => {
+    const [x, y] = [suggestionKey(a), suggestionKey(b)]
+    return x[0] - y[0] || x[1] - y[1] || cmp(x[2], y[2]) || cmp(x[3], y[3])
+  })
 
   const skipped =
     ctx.db.get(
@@ -207,7 +233,11 @@ export function reviewView(ctx: Ctx, date: ISODate): ReviewView {
   }
 }
 
-/** Apply a review choice to an undecided item of the review and record it for undo. */
+/**
+ * Apply a review choice to an item of the review and record it for undo. An item that is
+ * already decided has its earlier decision undone first (recorded as a review_undo, so the
+ * logs see a plain undo and a new decision); the same choice again changes nothing.
+ */
 export function decide(
   ctx: Ctx,
   date: ISODate,
@@ -223,16 +253,18 @@ export function decide(
   return transaction(ctx.db, () => {
     const view = reviewView(ctx, date)
     const current = [...view.leftovers, ...view.suggestions].find((i) => i.task.id === taskId)
-    if (!current || current.decision !== null) {
-      throw new DaybreakError(
-        'invalid',
-        `Task #${taskId} is not waiting for a decision in this review`,
-        {
-          id: taskId,
-        },
-      )
+    if (!current) {
+      throw new DaybreakError('invalid', `Task #${taskId} is not in this review`, {
+        id: taskId,
+      })
     }
-    const { task, group } = current
+    const was = current.decision
+    if (was) {
+      if (was.choice === choice && (choice !== 'day' || was.date === targetDate)) return view
+      revert(ctx, decisionsOn(ctx, date).find((d) => d.eventId === was.seq)!)
+    }
+    const { group } = current
+    const task = was ? getTask(ctx, taskId) : current.task
     const data: Record<string, unknown> = {
       reviewDate: date,
       group,
@@ -246,8 +278,9 @@ export function decide(
     if (choice === 'today') data.to = scheduleToday(ctx, taskId).scheduledOn
     if (choice === 'day') data.to = schedule(ctx, taskId, targetDate!).scheduledOn
     if (choice === 'backlog' && group === 'leftover') schedule(ctx, taskId, null)
-    if (choice === 'cancel') {
-      data.closedIds = setStatus(ctx, taskId, 'cancelled', { withOpenDescendants: true }).changedIds
+    if (choice === 'cancel' || choice === 'done') {
+      const status = choice === 'cancel' ? 'cancelled' : 'done'
+      data.closedIds = setStatus(ctx, taskId, status, { withOpenDescendants: true }).changedIds
     }
     recordEvent(ctx, `review_${choice}`, taskId, data)
     return reviewView(ctx, date)
@@ -264,36 +297,39 @@ export function undoDecision(ctx: Ctx, date: ISODate): ReviewView {
     const live = (d: Decision) =>
       ctx.db.get('SELECT 1 FROM tasks WHERE id = ? AND deleted_at IS NULL', d.taskId) !== undefined
     const last = decisionsOn(ctx, date).filter(live).at(-1)
-    if (last) {
-      const p = last.previous
-      const now = nowIso(ctx)
-      // "Not today" on a suggestion changed no task data, so undo writes no row (Ruling R12).
-      const changedTask = !(last.choice === 'backlog' && last.group === 'suggestion')
-      if (changedTask) {
-        ctx.db.run(
-          `UPDATE tasks SET scheduled_on = ?, day_position = ?, status = ?, closed_at = ?, updated_at = ?
-           WHERE id = ?`,
-          p.scheduledOn,
-          p.dayPosition,
-          p.status,
-          p.closedAt,
-          now,
-          last.taskId,
-        )
-      }
-      // A cancel closed the open subtree with it; reopen exactly those (Ruling R4).
-      for (const id of last.closedIds ?? []) {
-        if (id === last.taskId) continue
-        ctx.db.run(
-          "UPDATE tasks SET status = 'open', closed_at = NULL, updated_at = ? WHERE id = ? AND status != 'open'",
-          now,
-          id,
-        )
-      }
-      recordEvent(ctx, 'review_undo', last.taskId, { undoneEventId: last.eventId })
-    }
+    if (last) revert(ctx, last)
     return reviewView(ctx, date)
   })
+}
+
+/** Put the task back as it was before decision `d`, and record the undo. */
+function revert(ctx: Ctx, d: Decision): void {
+  const p = d.previous
+  const now = nowIso(ctx)
+  // "Not today" on a suggestion changed no task data, so undo writes no row (Ruling R12).
+  const changedTask = !(d.choice === 'backlog' && d.group === 'suggestion')
+  if (changedTask) {
+    ctx.db.run(
+      `UPDATE tasks SET scheduled_on = ?, day_position = ?, status = ?, closed_at = ?, updated_at = ?
+       WHERE id = ?`,
+      p.scheduledOn,
+      p.dayPosition,
+      p.status,
+      p.closedAt,
+      now,
+      d.taskId,
+    )
+  }
+  // A cancel or done closed the open subtree with it; reopen exactly those (Ruling R4).
+  for (const id of d.closedIds ?? []) {
+    if (id === d.taskId) continue
+    ctx.db.run(
+      "UPDATE tasks SET status = 'open', closed_at = NULL, updated_at = ? WHERE id = ? AND status != 'open'",
+      now,
+      id,
+    )
+  }
+  recordEvent(ctx, 'review_undo', d.taskId, { undoneEventId: d.eventId })
 }
 
 export function skipReview(ctx: Ctx, date: ISODate): void {

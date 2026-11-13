@@ -23,12 +23,16 @@ const FRIDAY = '2026-11-06'
 const THURSDAY = '2026-11-05'
 const R = `/api/review/${MONDAY}`
 
-/** A tiny stand-in for the server's review: decisions apply in order, undo reverts the latest. */
+/**
+ * A tiny stand-in for the server's review: decisions apply in order, a decided item can be
+ * decided again (its old choice is dropped), undo reverts the latest.
+ */
 let server: ReviewView
 let order: string[] = []
 let needsReview = true
 let statusToday = MONDAY
 let failDecide = false
+let seq = 0
 
 function item(id: string, group: ReviewItem['group'], over: Partial<ReviewItem> = {}): ReviewItem {
   return {
@@ -67,10 +71,15 @@ function reply(method: string, path: string, body?: unknown): unknown {
     if (failDecide) throw new ApiError(500, 'internal', 'boom')
     const b = body as { taskId: string; choice: ReviewChoice; targetDate?: string }
     const it = items().find((i) => i.task.id === b.taskId)
-    if (!it || it.decision) throw new ApiError(400, 'invalid', 'not waiting')
+    if (!it) throw new ApiError(400, 'invalid', 'not in this review')
+    if (it.decision) {
+      if (it.decision.choice === 'today') server.todayCount--
+      order = order.filter((id) => id !== b.taskId)
+    }
     it.decision = {
       choice: b.choice,
       ...(b.choice === 'today' ? { date: MONDAY } : b.targetDate ? { date: b.targetDate } : {}),
+      seq: ++seq,
     }
     // Like the server, the item shows the task's day as it is now.
     if (b.choice === 'today') it.scheduledOn = MONDAY
@@ -138,6 +147,7 @@ beforeEach(() => {
     [item('s', 'suggestion', { path: ['Inbox'] })],
   )
   order = []
+  seq = 0
   needsReview = true
   statusToday = MONDAY
   failDecide = false
@@ -156,7 +166,7 @@ describe('ReviewScreen', () => {
     await mount()
     expect(ui().reviewOpen).toBe(true)
     expect(screen.getByText('Good morning — Monday 9 November')).toBeTruthy()
-    expect(screen.getByText('0 of 3 done')).toBeTruthy()
+    expect(screen.getByText('0 of 3 sorted')).toBeTruthy()
     expect(screen.getByText('ANYTHING ELSE FOR TODAY?')).toBeTruthy()
     expect(screen.getByText('Suggestions from your tree and Inbox')).toBeTruthy()
     expect(screen.getByText('0 of 2 sorted')).toBeTruthy()
@@ -192,7 +202,7 @@ describe('ReviewScreen', () => {
     server.leftovers[0] = item('a', 'leftover', {
       scheduledOn: MONDAY,
       leftoverFrom: THURSDAY,
-      decision: { choice: 'today', date: MONDAY },
+      decision: { choice: 'today', date: MONDAY, seq: ++seq },
     })
     order = ['a']
     recount()
@@ -210,7 +220,7 @@ describe('ReviewScreen', () => {
     expect(row.classList.contains('rv-row--today')).toBe(true)
     expect(within(row).getByText('Today')).toBeTruthy()
     expect(within(rowOf('Task b')).getByText('2 of 2')).toBeTruthy() // b is the current card now
-    expect(screen.getByText('1 of 3 done')).toBeTruthy()
+    expect(screen.getByText('1 of 3 sorted')).toBeTruthy()
     expect(screen.getByText('1 of 2 sorted')).toBeTruthy()
     expect(screen.getByText('3 tasks for today')).toBeTruthy()
   })
@@ -241,18 +251,18 @@ describe('ReviewScreen', () => {
     await press('t')
     await tick()
     expect(held).toHaveLength(1) // the first post is in flight, the other two wait in the queue
-    expect(screen.getByText('3 of 3 done')).toBeTruthy() // shown at once
+    expect(screen.getByText('3 of 3 sorted')).toBeTruthy() // shown at once
     expect(screen.getByText('5 tasks for today')).toBeTruthy()
     for (let i = 0; i < 3; i++) {
       expect(held).toHaveLength(1)
       held.shift()!()
       await tick()
-      expect(screen.getByText('3 of 3 done')).toBeTruthy() // an early reply never shows a step back
+      expect(screen.getByText('3 of 3 sorted')).toBeTruthy() // an early reply never shows a step back
     }
     await flush()
     expect(writes().map((w) => (w[2] as { taskId: string }).taskId)).toEqual(['a', 'b', 's'])
     expect(order).toEqual(['a', 'b', 's'])
-    expect(screen.getByText('3 of 3 done')).toBeTruthy()
+    expect(screen.getByText('3 of 3 sorted')).toBeTruthy()
     expect(screen.getByText('5 tasks for today')).toBeTruthy()
     for (const t of ['Task a', 'Task b', 'Task s'])
       expect(within(rowOf(t)).getByText('Today')).toBeTruthy()
@@ -350,12 +360,72 @@ describe('ReviewScreen', () => {
     expect(document.activeElement?.classList.contains('review')).toBe(true)
   })
 
-  it('Space before everything is sorted does nothing', async () => {
+  it('Space marks the item done: a "Done" chip, and the screen stays open', async () => {
     await mount()
+    expect(within(rowOf('Task a')).getByRole('button', { name: /Done/ })).toBeTruthy()
+    await press(' ')
+    await flush()
+    expect(writes()).toEqual([['POST', `${R}/decide`, { taskId: 'a', choice: 'done' }]])
+    const row = rowOf('Task a')
+    expect(row.classList.contains('rv-row--done')).toBe(true)
+    expect(within(row).getByText('Done')).toBeTruthy()
+    expect(within(rowOf('Task b')).getByText('2 of 2')).toBeTruthy()
+    expect(ui().reviewOpen).toBe(true)
+  })
+
+  it('on the end row before everything is sorted, Space does nothing', async () => {
+    await mount()
+    for (let i = 0; i < 4; i++) await press('ArrowDown')
+    expect(document.querySelector('.rv-end.is-current')).not.toBeNull()
+    expect(document.querySelector('.rv-card')).toBeNull()
     await press(' ')
     await flush()
     expect(writes()).toEqual([])
     expect(ui().reviewOpen).toBe(true)
+  })
+
+  it('↑ goes back to a decided item, which shows its choice and can be changed', async () => {
+    await mount()
+    await press('t')
+    await press('b')
+    await flush()
+    await press('ArrowUp')
+    await press('ArrowUp')
+    const card = rowOf('Task a')
+    expect(card.classList.contains('rv-card')).toBe(true)
+    expect(card.querySelector('.rv-card__chip')?.textContent).toBe('Today')
+    expect(within(card).getByRole('button', { name: /Today/ }).getAttribute('aria-pressed')).toBe(
+      'true',
+    )
+    await press('x')
+    await flush()
+    expect(writes().at(-1)).toEqual(['POST', `${R}/decide`, { taskId: 'a', choice: 'cancel' }])
+    expect(rowOf('Task a').classList.contains('rv-row--cancelled')).toBe(true)
+    expect(screen.getByText('2 of 3 sorted')).toBeTruthy()
+    expect(screen.getByText('2 tasks for today')).toBeTruthy()
+    // The cursor moves on to the next undecided item, the suggestion.
+    expect(within(rowOf('Task s')).getByText('Suggestion')).toBeTruthy()
+  })
+
+  it('↓ skips ahead; a later Z returns the cursor to the item undone', async () => {
+    await mount()
+    await press('ArrowDown')
+    expect(within(rowOf('Task b')).getByText('2 of 2')).toBeTruthy()
+    await press('b')
+    await flush()
+    expect(writes()).toEqual([['POST', `${R}/decide`, { taskId: 'b', choice: 'backlog' }]])
+    expect(within(rowOf('Task s')).getByText('Suggestion')).toBeTruthy() // next undecided below
+    await press('z')
+    await flush()
+    expect(within(rowOf('Task b')).getByText('2 of 2')).toBeTruthy()
+    expect(rowOf('Task a').classList.contains('rv-next')).toBe(true)
+  })
+
+  it('a click on a row puts the cursor there', async () => {
+    await mount()
+    fireEvent.click(screen.getByText('Task s'))
+    expect(within(rowOf('Task s')).getByText('Suggestion')).toBeTruthy()
+    expect(rowOf('Task a').classList.contains('rv-next')).toBe(true)
   })
 
   it('Space when all sorted posts finish and closes the screen', async () => {
@@ -364,6 +434,7 @@ describe('ReviewScreen', () => {
     await press('t')
     await press('b')
     await flush()
+    expect(document.querySelector('.rv-end.is-current')).not.toBeNull()
     needsReview = false
     await press(' ')
     await flush()

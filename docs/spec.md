@@ -104,13 +104,17 @@ Choices for a leftover item, left hand only. The letters mean the same as in the
 | D | Another day | Opens the day picker: 1–9 = today up to 8 days out, or arrows then Enter; Esc closes |
 | B | Backlog | Scheduled day cleared |
 | X | Cancel | Status cancelled; kept in the tree history and the log |
+| Space | Done | Status done (with its open subtasks), for work finished but not ticked off. The scheduled day stays as it was |
 | Z | Undo | Reverts the last choice |
+| ↑ ↓ | Move | Moves the current card up or down the list, decided items included |
 
-For suggestions, the choices are T (add to today), D (another day), B (not today) and X (cancel the task).
+For suggestions, the choices are T (add to today), D (another day), B (not today), Space (done) and X (cancel the task).
+
+**Changing a choice** *(added 2026-11-13 at Serwan's request; details are the builder's call)*: ↑↓ (or a click on a row) put the card on any item, decided ones too. A decided item's card shows its outcome chip and rings the chosen button; any other choice replaces it (the old one is undone first, recorded as a review undo, then the new one applied; the same choice again does nothing). After a choice the card moves to the next undecided item below, else the first above, else the end row. Items keep their place in the list once decided: leftovers by the day and My Day place they had before the review, suggestions by their project's place in the tree, then Inbox tasks oldest first. Z still undoes the latest choice and puts the card on that item; after a changed choice it leaves the item undecided (it does not bring back the earlier choice). Space on the end row starts the day once everything is sorted.
 
 Tasks already scheduled for today (for example added the night before) are not part of the review; they're already planned.
 
-Each decision is applied right away (so a crash mid-review loses nothing) and recorded as an event so Z can undo it. Decided rows stay in the list, tinted by outcome: blue today, purple another day, grey backlog or not today, red cancelled.
+Each decision is applied right away (so a crash mid-review loses nothing) and recorded as an event so Z can undo it. Decided rows stay in the list, tinted by outcome: blue today, purple another day, grey backlog or not today, red cancelled, green done.
 
 **Suggestions, V1 rule (keep it simple and tune later):** up to 5 items from
 - the first open, unscheduled leaf task in each project that had activity in the last 7 days ("next step, no day"), and
@@ -159,7 +163,7 @@ CREATE TABLE events (
   kind     TEXT NOT NULL,          -- created | renamed | moved | scheduled | unscheduled
                                    -- | done | reopened | cancelled | doing | worked
                                    -- | deleted | restored
-                                   -- | review_today | review_day | review_backlog | review_cancel
+                                   -- | review_today | review_day | review_backlog | review_cancel | review_done
                                    -- | review_skip | review_undo
   data     TEXT NOT NULL DEFAULT '{}'  -- JSON: previous values, target date, etc.
 );
@@ -250,7 +254,7 @@ Key decisions:
 | POST | /api/tasks/:id/open-link | Open the task's link or path with the OS; 204 *(new)* |
 | POST | /api/open-link | `{target}`: open a link from rendered notes with the OS; only http, https and mailto, parsed, no spaces, control characters or quotes (else 400); 204 *(new)* |
 | GET | /api/review/:date | Leftovers, suggestions, decisions so far |
-| POST | /api/review/:date/decide | `{taskId, choice: 'today' \| 'day' \| 'backlog' \| 'cancel', targetDate?}` |
+| POST | /api/review/:date/decide | `{taskId, choice: 'today' \| 'day' \| 'backlog' \| 'cancel' \| 'done', targetDate?}`; a decided task is decided again |
 | POST | /api/review/:date/undo | Undo last decision |
 | POST | /api/review/:date/skip | Skip the review today |
 | POST | /api/review/:date/finish | Mark the review finished *(new)* |
@@ -303,7 +307,7 @@ Settled on 2026-11-08:
 1. Cancel in the review (formerly "Drop", key F) marks the task cancelled, so the log stays complete. Key X, same as in the tree.
 2. Only one task can be Doing at once; starting one demotes the previous to worked on.
 3. When a parent is scheduled today, its children don't appear in My Day; only the parent, with its `done/total`. May revisit after real use.
-4. Keys are consistent across screens: T today, D pick a day, B backlog, X cancel, S doing, W worked on, Space done, Z undo. The review uses T/D/B/X/Z.
+4. Keys are consistent across screens: T today, D pick a day, B backlog, X cancel, S doing, W worked on, Space done, Z undo. The review uses T/D/B/X/Space/Z, plus ↑↓ to go back and change a choice.
 5. The review doesn't include tasks already scheduled for today (e.g. added the night before).
 7. Delete exists (Del), as a soft delete with an undo toast; see section 3.
 8. Keyboard model: plain arrows only navigate (↑↓ visible rows, ← parent, → first child); one modifier (Mod = Ctrl on Windows, Option on macOS) for collapse/expand and move; Tab for depth; M switches panes. Avoids browser-reserved keys such as Alt+← (Back) and Ctrl+N.
